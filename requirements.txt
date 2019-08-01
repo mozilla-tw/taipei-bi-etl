@@ -1,2 +1,4 @@
 google-cloud-bigquery==1.17.0
 requests==2.22.0
+pandas==0.25.0
+

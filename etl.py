@@ -5,7 +5,8 @@
 This script loads market data from various sources and combine them into one big file.
 """
 from argparse import ArgumentParser
-import os,sys
+import sys
+import os
 import os.path
 import requests
 import time
@@ -32,6 +33,7 @@ parser.add_argument(
     help="Clean up cached files.",
 )
 
+
 def extract(d, p):
     sources = settings.SOURCES
     current_date = d
@@ -48,7 +50,8 @@ def extract(d, p):
     for name, source in sources.items():
         fpath = './data/{}_latest.json'.format(name)
         if not os.path.isfile(fpath):
-            url = source['url'].format(api_key=source['api_key'], start_date=prev_month.strftime(source['date_format']), end_date=current_date.strftime(source['date_format']))
+            url = source['url'].format(api_key=source['api_key'], start_date=prev_month.strftime(source['date_format']),
+                                       end_date=current_date.strftime(source['date_format']))
             print(url)
             r = requests.get(url, allow_redirects=True)
             open(fpath, 'wb').write(r.content)
@@ -61,13 +64,14 @@ def extract(d, p):
 def main():
     args = parser.parse_args()
     print(args)
-    if args.rm == True:
+    if args.rm:
         files = glob.glob('./data/*')
         for f in files:
             os.remove(f)
         print("Clean up cached files")
     extract(args.date, args.period)
-    #transform()
+    # transform()
+
 
 if __name__ == "__main__":
     main()
