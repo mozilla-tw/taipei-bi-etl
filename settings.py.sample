@@ -1,10 +1,9 @@
-partner1 = {
+SOURCES = {
+    'partner1': {
+        'type': 'api'
         'url': 'https://partner1.com/?api_key={api_key}&start_date={start_date}&end_date={end_date}'
         'api_key': '',
         'date_format': '%Y-%m-%d'
         }
-
-SOURCES = {
-        'partner1': partner1
-        }
+    }
 
