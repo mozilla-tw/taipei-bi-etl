@@ -1,5 +1,5 @@
-# em-partners-etl
-Docker image for partner data ETL.
+# taipei-bi-etl
+Docker image for taipei-bi team ETL.
 
 ## Getting Started
 1. [Install docker](https://docs.docker.com/install/)
