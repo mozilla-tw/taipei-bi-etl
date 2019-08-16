@@ -3,7 +3,8 @@ import os
 import os.path
 import requests
 import datetime
-from google.cloud import bigquery
+import pandas_gbq as pdbq
+import pandas as pd
 
 
 def get_arg_parser():
@@ -37,52 +38,83 @@ class EtlTask:
     def __init__(self, date, period, dependencies):
         self.date = date
         self.period = period
+        self.current_date = date
+        self.last_month = date
+        self.init_dates()
         self.dependencies = dependencies
         self.extracted = dict()
-        self.bq = bigquery.Client()
 
-    def extract_via_api(self, dependency, config):
-        current_date = self.date
-        if None is current_date:
-            current_date = datetime.datetime.today()
+    def init_dates(self):
+        if None is self.current_date:
+            self.current_date = datetime.datetime.today()
         else:
-            current_date = datetime.datetime.strptime(self.date, '%Y-%m-%d')
+            self.current_date = datetime.datetime.strptime(self.date, '%Y-%m-%d')
         if None is self.period:
             self.period = 30
         else:
             self.period = int(self.period)
+        self.last_month = self.current_date - datetime.timedelta(days=self.period)
 
-        prev_month = current_date - datetime.timedelta(days=self.period)
+
+    def is_cached(self, dependency, config):
         fpath = './data/{}_latest.json'.format(dependency)
-        if not os.path.isfile(fpath):
-            url = config['url'].format(api_key=config['api_key'],
-                                       start_date=prev_month.strftime(config['date_format']),
-                                       end_date=current_date.strftime(config['date_format']))
-            print(url)
-            r = requests.get(url, allow_redirects=True)
-            extracted = r.content
-            with open(fpath, 'wb') as f:
-                f.write(r.content)
-                print('{} saved'.format(fpath))
-        else:
-            print('{} exists'.format(fpath))
-            with open(fpath, 'r') as f:
-                extracted = f.read()
+        return os.path.isfile(fpath)
+
+    def extract_via_filesystem(self, dependency, config):
+        fpath = './data/{}_latest.json'.format(dependency)
+        with open(fpath, 'r') as f:
+            extracted = f.read()
+        return extracted
+
+    def extract_via_api(self, dependency, config):
+
+        url = config['url'].format(api_key=config['api_key'],
+                                   start_date=self.last_month.strftime(config['date_format']),
+                                   end_date=self.current_date.strftime(config['date_format']))
+        r = requests.get(url, allow_redirects=True)
+        extracted = r.content
+
         return extracted
 
     def extract_via_bq(self, dependency, config):
-        print('Implement BigQuery data extraction here.')
-        return False
+        query = ''
+        if 'udf' in config:
+            for udf in config['udf']:
+                with open('udf/{}.sql'.format(udf)) as f:
+                    query += f.read()
+        if 'udf_js' in config:
+            for udf_js in config['udf_js']:
+                with open('udf_js/{}.sql'.format(udf_js)) as f:
+                    query += f.read()
+        if 'query' in config:
+            with open('sql/{}.sql'.format(config['query'])) as f:
+                query += f.read().format(from_date=self.last_month.strftime(config['date_format']))
+        df = pdbq.read_gbq(query)
+        return df
 
     def extract(self):
         for dependency in self.dependencies:
             if self.dependencies[dependency]['type'] == 'api':
-                self.extracted[dependency] = self.extract_via_api(dependency, self.dependencies[dependency])
+                config = self.dependencies[dependency]
+                if 'cache_file' in config and config['cache_file']:
+                    if not self.is_cached(dependency, config):
+                        self.extracted[dependency] = self.extract_via_api(dependency, config)
+                        self.load_to_filesystem(dependency, config)
+                    else:
+                        self.extracted[dependency] = self.extract_via_filesystem(dependency, config)
+                else:
+                    self.extracted[dependency] = self.extract_via_api(dependency, config)
             elif self.dependencies[dependency]['type'] == 'bq':
                 self.extracted[dependency] = self.extract_via_bq(dependency, self.dependencies[dependency])
 
     def transform(self):
         print('Transform data here.')
+
+    def load_to_filesystem(self, dependency, config):
+        fpath = './data/{}_latest.json'.format(dependency)
+        with open(fpath, 'wb') as f:
+            f.write(self.extracted[dependency])
+            print('{} saved'.format(fpath))
 
     def load_to_gcs(self):
         print('Load data to GCS here.')
