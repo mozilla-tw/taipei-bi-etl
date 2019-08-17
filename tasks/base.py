@@ -4,7 +4,6 @@ import os.path
 import requests
 import datetime
 import pandas_gbq as pdbq
-import pandas as pd
 from google.cloud import storage
 
 
@@ -32,7 +31,8 @@ def get_arg_parser():
     parser.add_argument(
         "--step",
         default=None,
-        help="The ETL step to run to, can be 'extract', 'transform', 'load', or just the first letter. \n"
+        help="The ETL step to run to, "
+             "can be 'extract', 'transform', 'load', or just the first letter. \n"
              "Default is 'load', which means go through the whole ETL process.",
     )
     parser.add_argument(
@@ -75,7 +75,8 @@ class EtlTask:
         self.last_month = self.current_date - datetime.timedelta(days=self.period)
 
     def get_filepath(self, source, config, stage, dest):
-        return '{}{}'.format(self.destinations[dest]['prefix'], self.get_filename(source, config, stage))
+        return '{}{}'.format(self.destinations[dest]['prefix'],
+                             self.get_filename(source, config, stage))
 
     def get_filename(self, source, config, stage):
         ftype = 'json' if 'load_type' not in config else config['load_type']
@@ -97,8 +98,10 @@ class EtlTask:
     def extract_via_api(self, source, config):
 
         url = config['url'].format(api_key=config['api_key'],
-                                   start_date=self.last_month.strftime(config['date_format']),
-                                   end_date=self.current_date.strftime(config['date_format']))
+                                   start_date=self.last_month.strftime(
+                                       config['date_format']),
+                                   end_date=self.current_date.strftime(
+                                       config['date_format']))
         r = requests.get(url, allow_redirects=True)
         extracted = r.content
         print('%s extracted from API' % source)
@@ -116,7 +119,8 @@ class EtlTask:
                     query += f.read()
         if 'query' in config:
             with open('sql/{}.sql'.format(config['query'])) as f:
-                query += f.read().format(from_date=self.last_month.strftime(config['date_format']))
+                query += f.read().format(
+                    from_date=self.last_month.strftime(config['date_format']))
         df = pdbq.read_gbq(query)
         print('%s extracted from BigQuery' % source)
         return df
@@ -126,18 +130,22 @@ class EtlTask:
             if not self.args.source or self.args.source == source:
                 if self.sources[source]['type'] == 'api':
                     config = self.sources[source]
+                    # use file cache to prevent calling partner API too many times
                     if 'cache_file' in config and config['cache_file']:
                         if not self.is_cached(source, config):
-                            self.extracted[source] = self.extract_via_api(source, config)
+                            self.extracted[source] = self.extract_via_api(
+                                source, config)
                             self.load_to_fs(source, config)
-                            if self.args.dest is not 'fs':
+                            if self.args.dest != 'fs':
                                 self.load_to_gcs(source, config)
                         else:
-                            self.extracted[source] = self.extract_via_fs(source, config)
+                            self.extracted[source] = self.extract_via_fs(
+                                source, config)
                     else:
                         self.extracted[source] = self.extract_via_api(source, config)
                 elif self.sources[source]['type'] == 'bq':
-                    self.extracted[source] = self.extract_via_bq(source, self.sources[source])
+                    self.extracted[source] = self.extract_via_bq(
+                        source, self.sources[source])
 
     def transform(self):
         for source in self.sources:
@@ -164,7 +172,7 @@ class EtlTask:
             if not self.args.source or self.args.source == source:
                 config = self.sources[source]
                 self.load_to_fs(source, config, self.stage)
-                if self.args.dest is not 'fs':
+                if self.args.dest != 'fs':
                     self.load_to_gcs(source, config, self.stage)
 
     def run(self):

@@ -1,1 +1,7 @@
+*.pyc
+*.swp
+*.swo
+venv/
+data/
+.idea/
 settings.py

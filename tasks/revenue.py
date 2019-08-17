@@ -5,7 +5,7 @@ import settings
 class RevenueEtlTask(base.EtlTask):
 
     def __init__(self, args, sources, destinations):
-        super().__init__(args, sources, destinations, 'staging')    # define the stage of final output here
+        super().__init__(args, sources, destinations, 'staging')
 
     def transform(self):
         super().transform()
