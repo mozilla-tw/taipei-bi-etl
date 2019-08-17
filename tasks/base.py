@@ -23,7 +23,7 @@ def get_arg_parser():
         "--date",
         type=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d'),
         default=datetime.datetime.today(),
-        help="The base (latest) date of the data.",
+        help="The base (latest) date of the data in YYYY-MM-DD format.",
     )
     parser.add_argument(
         "--period",
