@@ -12,8 +12,11 @@ It will run in tempfs (in-memory storage), and won't left anything on your hardd
 * If you need to check/persist the intermediate output on your file system, 
 <br>you can run with [bind mount](https://docs.docker.com/storage/bind-mounts/).
 <br>`docker run -v {path on your filesystem}:/app/data taipei-bi-etl-img`
+* If you only need a persist inetermediate output, use [volumes](https://docs.docker.com/storage/volumes/).
 * To be able to authenticate gcloud when testing locally, 
 <br>you may want to mount your local gcloud config:
 <br>`docker run -v {path of your ~/.config folder}:/root/.config -v {path on your filesystem}:/app/data taipei-bi-etl-img`
-* If you only need a persist inetermediate output, use [volumes](https://docs.docker.com/storage/volumes/).
+* Note that the default timezone of the Docker container is UTC,
+<br> use `-e` run option to adjust the container timezone: 
+<br>`docker run -e="Asia/Taipei" taipei-bi-etl-img` 
 * For other available ETL options (e.g. specify date rage), run `docker run taipei-bi-etl-img --help`
