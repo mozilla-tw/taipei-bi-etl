@@ -13,7 +13,7 @@ arg_parser = base.get_arg_parser()
 
 
 def main(args):
-    task = RevenueEtlTask(args.date, args.period, settings.SOURCES)
+    task = RevenueEtlTask(args, settings.SOURCES)
     task.extract()
 
 

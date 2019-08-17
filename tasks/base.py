@@ -15,6 +15,11 @@ def get_arg_parser():
         help="The ETL task to run.",
     )
     parser.add_argument(
+        "--data-source",
+        default=None,
+        help="The ETL data source to extract.",
+    )
+    parser.add_argument(
         "--date",
         type=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d'),
         default=datetime.datetime.today(),
@@ -37,10 +42,11 @@ def get_arg_parser():
 
 class EtlTask:
 
-    def __init__(self, date, period, dependencies):
-        self.period = period
-        self.current_date = date
-        self.last_month = date
+    def __init__(self, args, dependencies):
+        self.args = args
+        self.period = args.period
+        self.current_date = args.date
+        self.last_month = args.date
         self.init_dates()
         self.dependencies = dependencies
         self.extracted = dict()
@@ -56,6 +62,7 @@ class EtlTask:
         fpath = './data/{}_latest.json'.format(dependency)
         with open(fpath, 'r') as f:
             extracted = f.read()
+        print('{} exists, extracted from filesystem'.format(fpath))
         return extracted
 
     def extract_via_api(self, dependency, config):
@@ -86,18 +93,19 @@ class EtlTask:
 
     def extract(self):
         for dependency in self.dependencies:
-            if self.dependencies[dependency]['type'] == 'api':
-                config = self.dependencies[dependency]
-                if 'cache_file' in config and config['cache_file']:
-                    if not self.is_cached(dependency, config):
-                        self.extracted[dependency] = self.extract_via_api(dependency, config)
-                        self.load_to_filesystem(dependency, config)
+            if not self.args.data_source or self.args.data_source == dependency:
+                if self.dependencies[dependency]['type'] == 'api':
+                    config = self.dependencies[dependency]
+                    if 'cache_file' in config and config['cache_file']:
+                        if not self.is_cached(dependency, config):
+                            self.extracted[dependency] = self.extract_via_api(dependency, config)
+                            self.load_to_filesystem(dependency, config)
+                        else:
+                            self.extracted[dependency] = self.extract_via_filesystem(dependency, config)
                     else:
-                        self.extracted[dependency] = self.extract_via_filesystem(dependency, config)
-                else:
-                    self.extracted[dependency] = self.extract_via_api(dependency, config)
-            elif self.dependencies[dependency]['type'] == 'bq':
-                self.extracted[dependency] = self.extract_via_bq(dependency, self.dependencies[dependency])
+                        self.extracted[dependency] = self.extract_via_api(dependency, config)
+                elif self.dependencies[dependency]['type'] == 'bq':
+                    self.extracted[dependency] = self.extract_via_bq(dependency, self.dependencies[dependency])
 
     def transform(self):
         print('Transform data here.')
