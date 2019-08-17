@@ -1,4 +1,4 @@
---dataset_id=taipei-bi
+--dataset_id=moz-fx-data-shar-nonprod-efed.telemetry
 [mk]
 --use_legacy_sql=false
 [query]

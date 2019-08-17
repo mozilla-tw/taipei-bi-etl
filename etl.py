@@ -13,7 +13,6 @@ arg_parser = base.get_arg_parser()
 
 
 def main(args):
-    os.system('gcloud config list')
     if args.rm:
         files = glob.glob('./data/*')
         for f in files:
