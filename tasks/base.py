@@ -16,12 +16,14 @@ def get_arg_parser():
     )
     parser.add_argument(
         "--date",
-        default=None,
+        type=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d'),
+        default=datetime.datetime.today(),
         help="The base (latest) date of the data.",
     )
     parser.add_argument(
         "--period",
-        default=None,
+        type=int,
+        default=30,
         help="Period of data in days.",
     )
     parser.add_argument(
@@ -36,7 +38,6 @@ def get_arg_parser():
 class EtlTask:
 
     def __init__(self, date, period, dependencies):
-        self.date = date
         self.period = period
         self.current_date = date
         self.last_month = date
@@ -45,16 +46,7 @@ class EtlTask:
         self.extracted = dict()
 
     def init_dates(self):
-        if None is self.current_date:
-            self.current_date = datetime.datetime.today()
-        else:
-            self.current_date = datetime.datetime.strptime(self.date, '%Y-%m-%d')
-        if None is self.period:
-            self.period = 30
-        else:
-            self.period = int(self.period)
         self.last_month = self.current_date - datetime.timedelta(days=self.period)
-
 
     def is_cached(self, dependency, config):
         fpath = './data/{}_latest.json'.format(dependency)
