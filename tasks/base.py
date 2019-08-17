@@ -130,7 +130,7 @@ class EtlTask:
                         if not self.is_cached(source, config):
                             self.extracted[source] = self.extract_via_api(source, config)
                             self.load_to_fs(source, config)
-                            self.load_to_gcs(source, config)    # copy to GCS
+                            # self.load_to_gcs(source, config)
                         else:
                             self.extracted[source] = self.extract_via_fs(source, config)
                     else:
