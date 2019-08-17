@@ -130,7 +130,8 @@ class EtlTask:
                         if not self.is_cached(source, config):
                             self.extracted[source] = self.extract_via_api(source, config)
                             self.load_to_fs(source, config)
-                            # self.load_to_gcs(source, config)
+                            if self.args.dest is not 'fs':
+                                self.load_to_gcs(source, config)
                         else:
                             self.extracted[source] = self.extract_via_fs(source, config)
                     else:
@@ -153,7 +154,7 @@ class EtlTask:
             print('%s loaded to file system.' % source)
 
     def load_to_gcs(self, source, config, stage='raw'):
-        bucket = self.gcs.get_bucket(self.destinations['gcs']['bucket'])    # FIXME: run into permimssion problem, may need to specify auth token explicitly
+        bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
         blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs'))
         blob.upload_from_filename(self.get_filepath(source, config, stage, 'fs'))
         print('%s loaded to GCS.' % source)
