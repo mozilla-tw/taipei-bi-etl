@@ -3,6 +3,7 @@ import os
 import os.path
 import requests
 import datetime
+import pandas as pd
 import pandas_gbq as pdbq
 from google.cloud import storage
 
@@ -105,7 +106,7 @@ class EtlTask:
         r = requests.get(url, allow_redirects=True)
         extracted = r.content
         print('%s extracted from API' % source)
-        return extracted
+        return pd.read_json(extracted)
 
     def extract_via_bq(self, source, config):
         query = ''
@@ -158,7 +159,15 @@ class EtlTask:
     def load_to_fs(self, source, config, stage='raw'):
         fpath = self.get_filepath(source, config, stage, 'fs')
         with open(fpath, 'wb') as f:
-            f.write(self.extracted[source])
+            if stage == 'raw':
+                f.write(self.extracted[source])
+            else:
+                output = ''
+                if self.destinations[source]['file_format'] == 'json':
+                    output = self.transformed[source].to_json()
+                elif self.destinations[source]['file_format'] == 'csv':
+                    output = self.transformed[source].to_csv()
+                f.write(output)
             print('%s loaded to file system.' % source)
 
     def load_to_gcs(self, source, config, stage='raw'):
