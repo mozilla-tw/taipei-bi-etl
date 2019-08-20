@@ -1,4 +1,6 @@
 import errno
+import glob
+import time
 from argparse import ArgumentParser
 import os
 import os.path
@@ -62,6 +64,15 @@ def get_arg_parser():
 class EtlTask:
 
     def __init__(self, args, sources, destinations, stage):
+        if args.rm:
+            for source in sources:
+                files = glob.glob('{prefix}*-{task}-{source}/*'.format(
+                    prefix=destinations['fs']['prefix'],
+                    task=args.task, source=source))
+                print(files)
+                for f in files:
+                    os.remove(f)
+                print("Clean up cached files")
         self.stage = stage
         self.args = args
         self.period = args.period
@@ -78,19 +89,31 @@ class EtlTask:
     def init_dates(self):
         self.last_month = self.current_date - datetime.timedelta(days=self.period)
 
-    def get_filepath(self, source, config, stage, dest):
+    def get_filepaths(self, source, config, stage, dest):
+        return glob.glob('{prefix}{stage}-{task}-{source}/{filename}'.format(
+            stage=stage, task=self.args.task, source=source,
+            prefix=self.destinations[dest]['prefix'],
+            filename=self.get_filename(source, config, stage, '*')))
+
+    def get_filepath(self, source, config, stage, dest, page=None):
         return '{prefix}{stage}-{task}-{source}/{filename}'.format(
             stage=stage, task=self.args.task, source=source,
             prefix=self.destinations[dest]['prefix'],
-            filename=self.get_filename(source, config, stage))
+            filename=self.get_filename(source, config, stage, page))
 
-    def get_filename(self, source, config, stage):
+    def get_filename(self, source, config, stage, page=None):
         ftype = 'json' if 'file_format' not in config else config['file_format']
-        return '{date}.{ext}'.format(
-            date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
+        if stage == 'raw':
+            return '{date}.{page}.{ext}'.format(
+                date=self.current_date.strftime(DEFAULT_DATE_FORMAT),
+                ext=ftype,
+                page=1 if page is None else page)
+        else:
+            return '{date}.{ext}'.format(
+                date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
 
-    def get_or_create_filepath(self, source, config, stage, dest):
-        filename = self.get_filepath(source, config, stage, dest)
+    def get_or_create_filepath(self, source, config, stage, dest, page=None):
+        filename = self.get_filepath(source, config, stage, dest, page)
         if not os.path.exists(os.path.dirname(filename)):
             try:
                 os.makedirs(os.path.dirname(filename))
@@ -120,30 +143,78 @@ class EtlTask:
                     extracted,
                     None if 'json_path' not in config else config['json_path'])
             data = pd_json.loads(extracted_json)
+            # TODO: make sure this is BQ-friendly before transform
             return pd_json.json_normalize(data)
         elif ftype == 'csv':
             return pd.read_csv(extracted)
 
     def extract_via_fs(self, source, config, stage='raw'):
-        fpath = self.get_filepath(source, config, stage, 'fs')
-        with open(fpath, 'r') as f:
-            extracted = f.read()
-            self.raw[source] = extracted
-            print('%s extracted from file system' % source)
-            return self.convert_df(extracted, config)
+        # extract paged raw files
+        if stage == 'raw':
+            fpaths = self.get_filepaths(source, config, stage, 'fs')
+        else:
+            fpaths = [self.get_filepath(source, config, stage, 'fs')]
+        extracted = None
+        for fpath in fpaths:
+            with open(fpath, 'r') as f:
+                raw = f.read()
+                if extracted is None:
+                    self.raw[source] = [raw]
+                    extracted = self.convert_df(raw, config)
+                else:
+                    self.raw[source] += [raw]
+                    extracted = extracted.append(self.convert_df(raw, config))
+        extracted = extracted.reset_index(drop=True)
+        print('%s x %d pages extracted from file system' % (source, len(fpaths)))
+        return extracted
 
     def extract_via_api(self, source, config):
-        # TODO: add API paging
-        url = config['url'].format(api_key=config['api_key'],
-                                   start_date=self.last_month.strftime(
-                                       config['date_format']),
-                                   end_date=self.current_date.strftime(
-                                       config['date_format']))
-        r = requests.get(url, allow_redirects=True)
-        extracted = r.text
-        self.raw[source] = extracted
-        print('%s extracted from API' % source)
-        return self.convert_df(extracted, config)
+        # API paging
+        if 'page_size' in config:
+            limit = config['page_size']
+            url = config['url'].format(api_key=config['api_key'],
+                                       start_date=self.last_month.strftime(
+                                           config['date_format']),
+                                       end_date=self.current_date.strftime(
+                                           config['date_format']),
+                                       page=1, limit=limit)
+            r = requests.get(url, allow_redirects=True)
+            raw = [r.text]
+            extracted = self.convert_df(raw[0], config)
+            count = int(self.json_extract(raw[0], config['json_path_page_count']))
+            if count is None or int(count) <= 1:
+                self.raw[source] = raw
+                print('%s x 1 page extracted from API' % source)
+                return extracted
+            request_interval = \
+                config['request_interval'] if 'request_interval' in config else 1
+            for page in range(2, count):
+                print('waiting for %s page %d' % (source, page))
+                time.sleep(request_interval)
+                url = config['url'].format(api_key=config['api_key'],
+                                           start_date=self.last_month.strftime(
+                                               config['date_format']),
+                                           end_date=self.current_date.strftime(
+                                               config['date_format']),
+                                           page=page, limit=limit)
+                r = requests.get(url, allow_redirects=True)
+                raw += [r.text]
+                extracted = extracted.append(self.convert_df(raw[page-1], config))
+            extracted = extracted.reset_index(drop=True)
+            self.raw[source] = raw
+            print('%s x %d pages extracted from API' % (source, count))
+            return extracted
+        else:
+            url = config['url'].format(api_key=config['api_key'],
+                                       start_date=self.last_month.strftime(
+                                           config['date_format']),
+                                       end_date=self.current_date.strftime(
+                                           config['date_format']))
+            r = requests.get(url, allow_redirects=True)
+            raw = r.text
+            self.raw[source] = raw
+            print('%s extracted from API' % source)
+            return self.convert_df(raw, config)
 
     def extract_via_bq(self, source, config):
         query = ''
@@ -198,17 +269,29 @@ class EtlTask:
 
     def load_to_fs(self, source, config, stage='raw'):
         fpath = self.get_or_create_filepath(source, config, stage, 'fs')
-        with open(fpath, 'w') as f:
-            if stage == 'raw':
-                f.write(self.raw[source])
+        if stage == 'raw':
+            # write multiple raw files if paged
+            raw = self.raw[source]
+            if isinstance(raw, list):
+                for i, r in enumerate(raw):
+                    fpath = self.get_or_create_filepath(
+                        source, config, stage, 'fs', i+1)
+                    with open(fpath, 'w') as f:
+                        f.write(r)
+                print('%s x %d pages loaded to file system.' % (source, len(raw)))
             else:
+                with open(fpath, 'w') as f:
+                    f.write(raw)
+                    print('%s loaded to file system.' % source)
+        else:
+            with open(fpath, 'w') as f:
                 output = ''
                 if self.destinations['fs']['file_format'] == 'json':
                     output = self.transformed[source].to_json()
                 elif self.destinations['fs']['file_format'] == 'csv':
                     output = self.transformed[source].to_csv()
                 f.write(output)
-            print('%s loaded to file system.' % source)
+                print('%s loaded to file system.' % source)
 
     def load_to_gcs(self, source, config, stage='raw'):
         bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
