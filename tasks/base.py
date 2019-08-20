@@ -1,3 +1,4 @@
+import errno
 from argparse import ArgumentParser
 import os
 import os.path
@@ -78,14 +79,25 @@ class EtlTask:
         self.last_month = self.current_date - datetime.timedelta(days=self.period)
 
     def get_filepath(self, source, config, stage, dest):
-        return '{}{}'.format(self.destinations[dest]['prefix'],
-                             self.get_filename(source, config, stage))
+        return '{prefix}{stage}-{task}-{source}/{filename}'.format(
+            stage=stage, task=self.args.task, source=source,
+            prefix=self.destinations[dest]['prefix'],
+            filename=self.get_filename(source, config, stage))
 
     def get_filename(self, source, config, stage):
         ftype = 'json' if 'file_format' not in config else config['file_format']
-        return '{stage}-{task}-{source}-{date}.{ext}'.format(
-            stage=stage, task=self.args.task, source=source,
+        return '{date}.{ext}'.format(
             date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
+
+    def get_or_create_filepath(self, source, config, stage, dest):
+        filename = self.get_filepath(source, config, stage, dest)
+        if not os.path.exists(os.path.dirname(filename)):
+            try:
+                os.makedirs(os.path.dirname(filename))
+            except OSError as exc:  # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
+        return filename
 
     def is_cached(self, source, config):
         fpath = self.get_filepath(source, config, 'raw', 'fs')
@@ -169,6 +181,9 @@ class EtlTask:
                                 source, config)
                     else:
                         self.extracted[source] = self.extract_via_api(source, config)
+                        if self.args.dest != 'fs' \
+                                and 'force_load' in config and config['force_load']:
+                            self.load_to_gcs(source, config)
                 elif self.sources[source]['type'] == 'bq':
                     self.extracted[source] = self.extract_via_bq(
                         source, self.sources[source])
@@ -182,7 +197,7 @@ class EtlTask:
                 print('%s transformed' % source)
 
     def load_to_fs(self, source, config, stage='raw'):
-        fpath = self.get_filepath(source, config, stage, 'fs')
+        fpath = self.get_or_create_filepath(source, config, stage, 'fs')
         with open(fpath, 'w') as f:
             if stage == 'raw':
                 f.write(self.raw[source])
