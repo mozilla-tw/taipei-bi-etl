@@ -128,7 +128,7 @@ class EtlTask:
                                    end_date=self.current_date.strftime(
                                        config['date_format']))
         r = requests.get(url, allow_redirects=True)
-        extracted = r.content
+        extracted = r.text
         self.raw[source] = extracted
         print('%s extracted from API' % source)
         return self.convert_df(extracted, config)
