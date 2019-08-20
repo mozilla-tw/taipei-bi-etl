@@ -80,7 +80,7 @@ class EtlTask:
                              self.get_filename(source, config, stage))
 
     def get_filename(self, source, config, stage):
-        ftype = 'json' if 'load_type' not in config else config['load_type']
+        ftype = 'json' if 'file_format' not in config else config['file_format']
         return '{stage}-{task}-{source}-{date}.{ext}'.format(
             stage=stage, task=self.args.task, source=source,
             date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
@@ -89,12 +89,19 @@ class EtlTask:
         fpath = self.get_filepath(source, config, 'raw', 'fs')
         return os.path.isfile(fpath)
 
+    def convert_df(self, extracted, config):
+        ftype = 'json' if 'file_format' not in config else config['file_format']
+        if ftype == 'json':
+            return pd.read_json(extracted)
+        elif ftype == 'csv':
+            return pd.read_csv(extracted)
+
     def extract_via_fs(self, source, config, stage='raw'):
         fpath = self.get_filepath(source, config, stage, 'fs')
         with open(fpath, 'r') as f:
             extracted = f.read()
-        print('%s extracted from file system' % source)
-        return extracted
+            print('%s extracted from file system' % source)
+            return self.convert_df(extracted, config)
 
     def extract_via_api(self, source, config):
 
@@ -106,7 +113,7 @@ class EtlTask:
         r = requests.get(url, allow_redirects=True)
         extracted = r.content
         print('%s extracted from API' % source)
-        return pd.read_json(extracted)
+        return self.convert_df(extracted, config)
 
     def extract_via_bq(self, source, config):
         query = ''
