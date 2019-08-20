@@ -6,7 +6,8 @@ import datetime
 import pandas as pd
 import pandas_gbq as pdbq
 from google.cloud import storage
-
+import json
+import pandas.io.json as pd_json
 
 DEFAULT_DATE_FORMAT = '%Y-%m-%d'
 
@@ -89,10 +90,24 @@ class EtlTask:
         fpath = self.get_filepath(source, config, 'raw', 'fs')
         return os.path.isfile(fpath)
 
+    def json_extract(self, json_str, path):
+        j = json.loads(json_str)
+        if path:
+            for i in path.split("."):
+                if i in j:
+                    j = j[i]
+                else:
+                    return None
+        return json.dumps(j)
+
     def convert_df(self, extracted, config):
         ftype = 'json' if 'file_format' not in config else config['file_format']
         if ftype == 'json':
-            return pd.read_json(extracted)
+            extracted_json = self.json_extract(
+                    extracted,
+                    None if 'json_path' not in config else config['json_path'])
+            data = pd_json.loads(extracted_json)
+            return pd_json.json_normalize(data)
         elif ftype == 'csv':
             return pd.read_csv(extracted)
 
