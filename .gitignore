@@ -4,4 +4,5 @@
 venv/
 data/
 .idea/
+configs/*.py
 settings.py

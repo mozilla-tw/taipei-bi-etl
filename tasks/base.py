@@ -133,7 +133,7 @@ class EtlTask:
             return self.convert_df(extracted, config)
 
     def extract_via_api(self, source, config):
-
+        # TODO: add API paging
         url = config['url'].format(api_key=config['api_key'],
                                    start_date=self.last_month.strftime(
                                        config['date_format']),
