@@ -69,6 +69,7 @@ class EtlTask:
         self.init_dates()
         self.sources = sources
         self.destinations = destinations
+        self.raw = dict()
         self.extracted = dict()
         self.transformed = dict()
         self.gcs = storage.Client()
@@ -115,6 +116,7 @@ class EtlTask:
         fpath = self.get_filepath(source, config, stage, 'fs')
         with open(fpath, 'r') as f:
             extracted = f.read()
+            self.raw[source] = extracted
             print('%s extracted from file system' % source)
             return self.convert_df(extracted, config)
 
@@ -180,14 +182,14 @@ class EtlTask:
 
     def load_to_fs(self, source, config, stage='raw'):
         fpath = self.get_filepath(source, config, stage, 'fs')
-        with open(fpath, 'wb') as f:
+        with open(fpath, 'w') as f:
             if stage == 'raw':
-                f.write(self.extracted[source])
+                f.write(self.raw[source])
             else:
                 output = ''
-                if self.destinations[source]['file_format'] == 'json':
+                if self.destinations['fs']['file_format'] == 'json':
                     output = self.transformed[source].to_json()
-                elif self.destinations[source]['file_format'] == 'csv':
+                elif self.destinations['fs']['file_format'] == 'csv':
                     output = self.transformed[source].to_csv()
                 f.write(output)
             print('%s loaded to file system.' % source)
