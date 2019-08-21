@@ -31,7 +31,8 @@ def get_arg_parser():
         "--dest",
         default=None,
         help="The place to load transformed data to, can be 'fs' or 'gcs'.\n"
-             "Default is 'gcs', which the intermediate output will still write to 'fs'",
+             "Default is 'gcs', "
+             "which the intermediate output will still write to 'fs'.",
     )
     parser.add_argument(
         "--step",
@@ -287,6 +288,7 @@ class EtlTask:
             with open(fpath, 'w') as f:
                 output = ''
                 if self.destinations['fs']['file_format'] == 'json':
+                    # TODO: make sure this is BQ-friendly before load
                     output = self.transformed[source].to_json()
                 elif self.destinations['fs']['file_format'] == 'csv':
                     output = self.transformed[source].to_csv()
