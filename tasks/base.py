@@ -283,7 +283,6 @@ class EtlTask:
 
         i = 0
         for i, blob in enumerate(blobs):
-            print(blob.name)
             page = re.search(ext_regex, blob.name).group(1)
             blob.download_to_filename(
                 self.get_filepath(source, config, stage, 'fs', page, date))
