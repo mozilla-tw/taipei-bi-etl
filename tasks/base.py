@@ -142,7 +142,7 @@ class EtlTask:
         this is to be converted to DataFrame
         :param config: the config of the data source specified in task config,
         see `configs/*.py`
-        :return: converted DataFrame
+        :return: the converted DataFrame
         """
         ftype = 'json' if 'file_format' not in config else config['file_format']
         if ftype == 'json':
@@ -166,8 +166,9 @@ class EtlTask:
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param dest: name of the destination to load data to,
         specified in task config, see `configs/*.py`
-        :param date: the date part of the data file name
-        :return:
+        :param date: the date part of the data file name,
+        will use self.current_date if not specified
+        :return: a list of data file paths
         """
         return glob.glob('{prefix}{stage}-{task}-{source}/{filename}'.format(
             stage=stage, task=self.task, source=source,
@@ -187,8 +188,9 @@ class EtlTask:
         :param dest: name of the destination to load data to,
         specified in task config, see `configs/*.py`
         :param page: the page part of the data file name
-        :param date: the date part of the data file name
-        :return:
+        :param date: the date part of the data file name,
+        will use self.current_date if not specified
+        :return: the data file path
         """
         return '{prefix}{stage}-{task}-{source}/{filename}'.format(
             stage=stage, task=self.task, source=source,
@@ -208,8 +210,9 @@ class EtlTask:
         specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param page: the page part of the data file name
-        :param date: the date part of the data file name
-        :return:
+        :param date: the date part of the data file name,
+        will use self.current_date if not specified
+        :return: the data file name
         """
         date = self.current_date if date is None else date
         ftype = 'json' if 'file_format' not in config else config['file_format']
@@ -236,7 +239,7 @@ class EtlTask:
         :param dest: name of the destination to load data to,
         specified in task config, see `configs/*.py`
         :param page: the page part of the data file name
-        :return:
+        :return: the data file path
         """
         filename = self.get_filepath(source, config, stage, dest, page)
         if not os.path.exists(os.path.dirname(filename)):
@@ -248,25 +251,32 @@ class EtlTask:
         return filename
 
     def is_cached(self, source, config) -> bool:
-        """
+        """Check whether a raw data is cached,
+        currently only used for raw data extracted from API.
 
         :rtype: bool
-        :param source:
-        :param config:
-        :return:
+        :param source: name of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :return: whether a data file is cached in local file system
         """
         fpath = self.get_filepath(source, config, 'raw', 'fs')
         return os.path.isfile(fpath)
 
     def extract_via_fs(self, source, config, stage='raw', date=None) -> DataFrame:
-        """
+        """Extract data from file system and convert into DataFrame
+        based on task config, see `configs/*.py`
 
         :rtype: DataFrame
-        :param source:
-        :param config:
-        :param stage:
-        :param date:
-        :return:
+        :param source: name of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param stage: the stage of the loaded data, could be raw/staging/production.
+        :param date: the date part of the data file name,
+        will use self.current_date if not specified
+        :return: the extracted DataFrame
         """
         # extract paged raw files
         if stage == 'raw':
@@ -290,14 +300,19 @@ class EtlTask:
         return extracted
 
     def extract_via_gcs(self, source, config, stage='raw', date=None) -> DataFrame:
-        """Downloads a blob from the bucket.
+        """Downloads blobs from Google Cloud Storage bucket,
+        extract them from file system and convert into DataFrame
+        based on task config, see `configs/*.py`
 
         :rtype: DataFrame
-        :param source:
-        :param config:
-        :param stage:
-        :param date:
-        :return:
+        :param source: name of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param stage: the stage of the loaded data, could be raw/staging/production.
+        :param date: the date part of the data file name,
+        will use self.current_date if not specified
+        :return: the extracted DataFrame
         """
 
         prefix = self.get_filepath(source, config, stage, 'gcs', '*', date)
@@ -318,12 +333,15 @@ class EtlTask:
         return self.extract_via_fs(source, config, stage, date)
 
     def extract_via_api(self, source, config) -> DataFrame:
-        """
+        """Extract data from API and convert into DataFrame
+        based on task config, see `configs/*.py`
 
         :rtype: DataFrame
-        :param source:
-        :param config:
-        :return:
+        :param source: name of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :return: the extracted DataFrame
         """
         # API paging
         if 'page_size' in config:
@@ -379,12 +397,15 @@ class EtlTask:
             return self.convert_df(raw, config)
 
     def extract_via_bq(self, source, config) -> DataFrame:
-        """
+        """Extract data from Google BigQuery and convert into DataFrame
+        based on task config, see `configs/*.py`
 
         :rtype: DataFrame
-        :param source:
-        :param config:
-        :return:
+        :param source: name of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :return: the extracted DataFrame
         """
         query = ''
         if 'udf' in config:
@@ -409,7 +430,9 @@ class EtlTask:
         return df
 
     def extract(self):
-        """
+        """Iterate through data source settings in task config (see `configs/*.py`)
+        and extract them accordingly based on source type and the source argument.
+        see also `get_arg_parser()`.
 
         """
         for source in self.sources:
@@ -445,12 +468,21 @@ class EtlTask:
                         source, self.sources[source])
 
     def transform(self):
-        """
+        """Iterate through data source settings in task config (see `configs/*.py`)
+        and transform extracted DataFrames accordingly
+        based on the source argument (see also `get_arg_parser()`),
+        will need to create a function for each data source when inheriting this class.
+        e.g. def transform_google_search(source, config) for google_search data source.
+        source: name of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        config: config of the data source to be extracted,
+        specified in task config, see `configs/*.py`
 
         """
         for source in self.sources:
             if not self.args.source or self.args.source == source:
                 config = self.sources[source]
+                assert self.extracted is not None
                 transform_method = getattr(self, 'transform_{}'.format(source))
                 self.transformed[source] = transform_method(source, config)
                 print('%s-%s-%s/%s w/t %d records transformed'
@@ -458,11 +490,14 @@ class EtlTask:
                          self.current_date.date(), len(self.transformed[source].index)))
 
     def load_to_fs(self, source, config, stage='raw'):
-        """
+        """Load data into file system based on destination settings
+        in task config (see `configs/*.py`).
 
-        :param source:
-        :param config:
-        :param stage:
+        :param source: name of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param stage: the stage of the loaded data, could be raw/staging/production.
         """
         fpath = self.get_or_create_filepath(source, config, stage, 'fs')
         if stage == 'raw':
@@ -494,11 +529,14 @@ class EtlTask:
                       (stage, self.task, source, self.current_date.date()))
 
     def load_to_gcs(self, source, config, stage='raw'):
-        """
+        """Load data into Google Cloud Storage based on destination settings
+        in task config (see `configs/*.py`).
 
-        :param source:
-        :param config:
-        :param stage:
+        :param source: name of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param stage: the stage of the loaded data, could be raw/staging/production.
         """
         bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
         blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs'))
@@ -507,18 +545,22 @@ class EtlTask:
               (stage, self.task, source, self.current_date.date()))
 
     def load(self):
-        """
+        """Iterate through data source settings in task config (see `configs/*.py`)
+        and load transformed data accordingly based on the destination argument,
+        see also `get_arg_parser()`.
 
         """
         for source in self.sources:
             if not self.args.source or self.args.source == source:
                 config = self.sources[source]
+                assert self.transformed[source] is not None
                 self.load_to_fs(source, config, self.stage)
                 if self.args.dest != 'fs':
                     self.load_to_gcs(source, config, self.stage)
 
     def run(self):
-        """
+        """Run the whole ETL process based on the step argument.
+        see `get_arg_parser()`.
 
         """
         if self.args.step and self.args.step[0].upper() not in ['E', 'T', 'L']:
