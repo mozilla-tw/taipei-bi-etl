@@ -8,6 +8,10 @@ from tasks import base, revenue
 
 
 def main(args):
+    """Determine which task to run based on args.task
+
+    :param args: args passed from command line, see `base.get_arg_parser()`
+    """
     if args.task == 'revenue':
         revenue.main(args)
 

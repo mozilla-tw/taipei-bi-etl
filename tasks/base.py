@@ -1,5 +1,6 @@
 import errno
 import glob
+import re
 import time
 from argparse import ArgumentParser
 import os
@@ -7,15 +8,23 @@ import os.path
 import requests
 import datetime
 import pandas as pd
+from pandas import DataFrame
 import pandas_gbq as pdbq
 from google.cloud import storage
 import json
 import pandas.io.json as pd_json
+from typing import List, Optional
 
 DEFAULT_DATE_FORMAT = '%Y-%m-%d'
 
 
-def get_arg_parser():
+def get_arg_parser() -> ArgumentParser:
+    """ Parse arguments passed in EtlTask,
+    --help will list all argument descriptions
+
+    :rtype: ArgumentParser
+    :return: properly configured argument parser to accept arguments
+    """
     parser = ArgumentParser(description=__doc__)
     parser.add_argument(
         "--task",
@@ -65,6 +74,14 @@ def get_arg_parser():
 class EtlTask:
 
     def __init__(self, args, sources, destinations, stage):
+        """Initiate parameters and client libraries for ETL task.
+
+        :param args: args passed from command line, see `get_arg_parser()`
+        :param sources: data source to be extracted, specified in task config
+        :param destinations: destinations to load data to, specified in task config.
+        :param stage: the stage of the loaded data, could be staging/production.
+        """
+        # Clear cached files
         if args.rm:
             for source in sources:
                 files = glob.glob('{prefix}*-{task}-{source}/*'.format(
@@ -78,56 +95,31 @@ class EtlTask:
         self.args = args
         self.period = args.period
         self.current_date = args.date
-        self.last_month = args.date
-        self.init_dates()
+        self.last_month = self.lookback_dates(args.date, args.period)
         self.sources = sources
         self.destinations = destinations
         self.raw = dict()
+        self.extracted_base = dict()
         self.extracted = dict()
         self.transformed = dict()
         self.gcs = storage.Client()
 
-    def init_dates(self):
-        self.last_month = self.current_date - datetime.timedelta(days=self.period)
+    @staticmethod
+    def lookback_dates(date, period):
+        """Subtract date by period
+        """
+        return date - datetime.timedelta(days=period)
 
-    def get_filepaths(self, source, config, stage, dest):
-        return glob.glob('{prefix}{stage}-{task}-{source}/{filename}'.format(
-            stage=stage, task=self.args.task, source=source,
-            prefix=self.destinations[dest]['prefix'],
-            filename=self.get_filename(source, config, stage, '*')))
+    @staticmethod
+    def json_extract(json_str, path) -> Optional[str]:
+        """Extract nested json element by path,
+        currently dont' support nested json array in path
 
-    def get_filepath(self, source, config, stage, dest, page=None):
-        return '{prefix}{stage}-{task}-{source}/{filename}'.format(
-            stage=stage, task=self.args.task, source=source,
-            prefix=self.destinations[dest]['prefix'],
-            filename=self.get_filename(source, config, stage, page))
-
-    def get_filename(self, source, config, stage, page=None):
-        ftype = 'json' if 'file_format' not in config else config['file_format']
-        if stage == 'raw':
-            return '{date}.{page}.{ext}'.format(
-                date=self.current_date.strftime(DEFAULT_DATE_FORMAT),
-                ext=ftype,
-                page=1 if page is None else page)
-        else:
-            return '{date}.{ext}'.format(
-                date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
-
-    def get_or_create_filepath(self, source, config, stage, dest, page=None):
-        filename = self.get_filepath(source, config, stage, dest, page)
-        if not os.path.exists(os.path.dirname(filename)):
-            try:
-                os.makedirs(os.path.dirname(filename))
-            except OSError as exc:  # Guard against race condition
-                if exc.errno != errno.EEXIST:
-                    raise
-        return filename
-
-    def is_cached(self, source, config):
-        fpath = self.get_filepath(source, config, 'raw', 'fs')
-        return os.path.isfile(fpath)
-
-    def json_extract(self, json_str, path):
+        :rtype: str
+        :param json_str: original json in string format
+        :param path: path of the element in string format, e.g. 'response.data'
+        :return: the extracted json element in string format
+        """
         j = json.loads(json_str)
         if path:
             for i in path.split("."):
@@ -137,10 +129,18 @@ class EtlTask:
                     return None
         return json.dumps(j)
 
-    def convert_df(self, extracted, config):
+    @staticmethod
+    def convert_df(extracted, config) -> DataFrame:
+        """Convert raw format to DataFrame, currently only supports json/csv.
+
+        :rtype: DataFrame
+        :param extracted:
+        :param config:
+        :return:
+        """
         ftype = 'json' if 'file_format' not in config else config['file_format']
         if ftype == 'json':
-            extracted_json = self.json_extract(
+            extracted_json = EtlTask.json_extract(
                     extracted,
                     None if 'json_path' not in config else config['json_path'])
             data = pd_json.loads(extracted_json)
@@ -149,12 +149,107 @@ class EtlTask:
         elif ftype == 'csv':
             return pd.read_csv(extracted)
 
-    def extract_via_fs(self, source, config, stage='raw'):
+    def get_filepaths(self, source, config, stage, dest, date=None) -> List[str]:
+        """
+
+        :rtype: list[str]
+        :param source:
+        :param config:
+        :param stage:
+        :param dest:
+        :param date:
+        :return:
+        """
+        return glob.glob('{prefix}{stage}-{task}-{source}/{filename}'.format(
+            stage=stage, task=self.args.task, source=source,
+            prefix=self.destinations[dest]['prefix'],
+            filename=self.get_filename(source, config, stage, '*', date)))
+
+    def get_filepath(self, source, config, stage, dest, page=None, date=None) -> str:
+        """
+
+        :rtype: str
+        :param source:
+        :param config: 
+        :param stage: 
+        :param dest: 
+        :param page: 
+        :param date:
+        :return:
+        """
+        return '{prefix}{stage}-{task}-{source}/{filename}'.format(
+            stage=stage, task=self.args.task, source=source,
+            prefix=self.destinations[dest]['prefix'],
+            filename=self.get_filename(source, config, stage, page, date))
+
+    def get_filename(self, source, config, stage, page=None, date=None) -> str:
+        """
+
+        :rtype: str
+        :param source:
+        :param config:
+        :param stage:
+        :param page:
+        :param date:
+        :return:
+        """
+        date = self.current_date if date is None else date
+        ftype = 'json' if 'file_format' not in config else config['file_format']
+        if stage == 'raw':
+            return '{date}.{page}.{ext}'.format(
+                date=date.strftime(DEFAULT_DATE_FORMAT),
+                ext=ftype,
+                page=1 if page is None else page)
+        else:
+            return '{date}.{ext}'.format(
+                date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
+
+    def get_or_create_filepath(self, source, config, stage, dest, page=None) -> str:
+        """
+
+        :rtype: str
+        :param source:
+        :param config:
+        :param stage:
+        :param dest:
+        :param page:
+        :return:
+        """
+        filename = self.get_filepath(source, config, stage, dest, page)
+        if not os.path.exists(os.path.dirname(filename)):
+            try:
+                os.makedirs(os.path.dirname(filename))
+            except OSError as exc:  # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
+        return filename
+
+    def is_cached(self, source, config) -> bool:
+        """
+
+        :rtype: bool
+        :param source:
+        :param config:
+        :return:
+        """
+        fpath = self.get_filepath(source, config, 'raw', 'fs')
+        return os.path.isfile(fpath)
+
+    def extract_via_fs(self, source, config, stage='raw', date=None) -> DataFrame:
+        """
+
+        :rtype: DataFrame
+        :param source:
+        :param config:
+        :param stage:
+        :param date:
+        :return:
+        """
         # extract paged raw files
         if stage == 'raw':
-            fpaths = self.get_filepaths(source, config, stage, 'fs')
+            fpaths = self.get_filepaths(source, config, stage, 'fs', date)
         else:
-            fpaths = [self.get_filepath(source, config, stage, 'fs')]
+            fpaths = [self.get_filepath(source, config, stage, 'fs', date)]
         extracted = None
         for fpath in fpaths:
             with open(fpath, 'r') as f:
@@ -169,7 +264,41 @@ class EtlTask:
         print('%s x %d pages extracted from file system' % (source, len(fpaths)))
         return extracted
 
-    def extract_via_api(self, source, config):
+    def extract_via_gcs(self, source, config, stage='raw', date=None) -> DataFrame:
+        """Downloads a blob from the bucket.
+
+        :rtype: DataFrame
+        :param source:
+        :param config:
+        :param stage:
+        :param date:
+        :return:
+        """
+
+        prefix = self.get_filepath(source, config, stage, 'gcs', '*', date)
+        ext_regex = '([*0-9]+)\\.[A-z0-9]+$'
+        ext_search = re.search(ext_regex, prefix)
+        prefix = prefix[:ext_search.start()]
+        blobs = self.gcs.list_blobs(self.destinations['gcs']['bucket'], prefix=prefix)
+
+        i = 0
+        for i, blob in enumerate(blobs):
+            print(blob.name)
+            page = re.search(ext_regex, blob.name).group(1)
+            blob.download_to_filename(
+                self.get_filepath(source, config, stage, 'fs', page, date))
+
+        print('%s x %d pages extracted from gcs' % (source, i+1))
+        return self.extract_via_fs(source, config, stage, date)
+
+    def extract_via_api(self, source, config) -> DataFrame:
+        """
+
+        :rtype: DataFrame
+        :param source:
+        :param config:
+        :return:
+        """
         # API paging
         if 'page_size' in config:
             limit = config['page_size']
@@ -217,7 +346,14 @@ class EtlTask:
             print('%s extracted from API' % source)
             return self.convert_df(raw, config)
 
-    def extract_via_bq(self, source, config):
+    def extract_via_bq(self, source, config) -> DataFrame:
+        """
+
+        :rtype: DataFrame
+        :param source:
+        :param config:
+        :return:
+        """
         query = ''
         if 'udf' in config:
             for udf in config['udf']:
@@ -236,6 +372,9 @@ class EtlTask:
         return df
 
     def extract(self):
+        """
+
+        """
         for source in self.sources:
             if not self.args.source or self.args.source == source:
                 if self.sources[source]['type'] == 'api':
@@ -256,11 +395,22 @@ class EtlTask:
                         if self.args.dest != 'fs' \
                                 and 'force_load' in config and config['force_load']:
                             self.load_to_gcs(source, config)
+                    # Extract data from previous date for validation
+                    yesterday = EtlTask.lookback_dates(self.current_date, 1)
+                    if self.args.dest != 'fs':
+                        self.extracted_base[source] = self.extract_via_gcs(
+                            source, config, 'raw', yesterday)
+                    else:
+                        self.extracted_base[source] = self.extract_via_fs(
+                            source, config, 'raw', yesterday)
                 elif self.sources[source]['type'] == 'bq':
                     self.extracted[source] = self.extract_via_bq(
                         source, self.sources[source])
 
     def transform(self):
+        """
+
+        """
         for source in self.sources:
             if not self.args.source or self.args.source == source:
                 config = self.sources[source]
@@ -269,6 +419,12 @@ class EtlTask:
                 print('%s transformed' % source)
 
     def load_to_fs(self, source, config, stage='raw'):
+        """
+
+        :param source:
+        :param config:
+        :param stage:
+        """
         fpath = self.get_or_create_filepath(source, config, stage, 'fs')
         if stage == 'raw':
             # write multiple raw files if paged
@@ -296,12 +452,21 @@ class EtlTask:
                 print('%s loaded to file system.' % source)
 
     def load_to_gcs(self, source, config, stage='raw'):
+        """
+
+        :param source:
+        :param config:
+        :param stage:
+        """
         bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
         blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs'))
         blob.upload_from_filename(self.get_filepath(source, config, stage, 'fs'))
         print('%s loaded to GCS.' % source)
 
     def load(self):
+        """
+
+        """
         for source in self.sources:
             if not self.args.source or self.args.source == source:
                 config = self.sources[source]
@@ -310,6 +475,9 @@ class EtlTask:
                     self.load_to_gcs(source, config, self.stage)
 
     def run(self):
+        """
+
+        """
         if self.args.step and self.args.step[0].upper() not in ['E', 'T', 'L']:
             raise ValueError('Invalid argument specified.')
         if not self.args.step or self.args.step[0].upper() in ['E', 'T', 'L']:
