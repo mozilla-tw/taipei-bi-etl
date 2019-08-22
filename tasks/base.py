@@ -73,7 +73,7 @@ def get_arg_parser() -> ArgumentParser:
 
 class EtlTask:
 
-    def __init__(self, args, sources, destinations, stage):
+    def __init__(self, args, sources, destinations, stage, task):
         """Initiate parameters and client libraries for ETL task.
 
         :param args: args passed from command line, see `get_arg_parser()`
@@ -91,6 +91,7 @@ class EtlTask:
                 for f in files:
                     os.remove(f)
                 print("Clean up cached files")
+        self.task = task
         self.stage = stage
         self.args = args
         self.period = args.period
@@ -170,10 +171,10 @@ class EtlTask:
 
         :rtype: str
         :param source:
-        :param config: 
-        :param stage: 
-        :param dest: 
-        :param page: 
+        :param config:
+        :param stage:
+        :param dest:
+        :param page:
         :param date:
         :return:
         """
@@ -261,7 +262,9 @@ class EtlTask:
                     self.raw[source] += [raw]
                     extracted = extracted.append(self.convert_df(raw, config))
         extracted = extracted.reset_index(drop=True)
-        print('%s x %d pages extracted from file system' % (source, len(fpaths)))
+        print('%s-%s-%s/%s x %d pages extracted from file system'
+              % (stage, self.task, source,
+                 (self.current_date if date is None else date).date(), len(fpaths)))
         return extracted
 
     def extract_via_gcs(self, source, config, stage='raw', date=None) -> DataFrame:
@@ -287,7 +290,9 @@ class EtlTask:
             blob.download_to_filename(
                 self.get_filepath(source, config, stage, 'fs', page, date))
 
-        print('%s x %d pages extracted from gcs' % (source, i+1))
+        print('%s-%s-%s/%s x %d pages extracted from google cloud storage'
+              % (stage, self.task, source,
+                 (self.current_date if date is None else date).date(), i+1))
         return self.extract_via_fs(source, config, stage, date)
 
     def extract_via_api(self, source, config) -> DataFrame:
@@ -313,7 +318,9 @@ class EtlTask:
             count = int(self.json_extract(raw[0], config['json_path_page_count']))
             if count is None or int(count) <= 1:
                 self.raw[source] = raw
-                print('%s x 1 page extracted from API' % source)
+                print('%s-%s-%s/%s x 1 page extracted from API'
+                      % ('raw', self.task, source,
+                         self.current_date.date()))
                 return extracted
             request_interval = \
                 config['request_interval'] if 'request_interval' in config else 1
@@ -331,7 +338,9 @@ class EtlTask:
                 extracted = extracted.append(self.convert_df(raw[page-1], config))
             extracted = extracted.reset_index(drop=True)
             self.raw[source] = raw
-            print('%s x %d pages extracted from API' % (source, count))
+            print('%s-%s-%s/%s x %d pages extracted from API'
+                  % ('raw', self.task, source,
+                     self.current_date.date(), count))
             return extracted
         else:
             url = config['url'].format(api_key=config['api_key'],
@@ -342,7 +351,9 @@ class EtlTask:
             r = requests.get(url, allow_redirects=True)
             raw = r.text
             self.raw[source] = raw
-            print('%s extracted from API' % source)
+            print('%s-%s-%s/%s extracted from API'
+                  % ('raw', self.task, source,
+                     self.current_date.date()))
             return self.convert_df(raw, config)
 
     def extract_via_bq(self, source, config) -> DataFrame:
@@ -365,9 +376,14 @@ class EtlTask:
         if 'query' in config:
             with open('sql/{}.sql'.format(config['query'])) as f:
                 query += f.read().format(
-                    from_date=self.last_month.strftime(config['date_format']))
+                    project=config['project'],
+                    dataset=config['dataset'],
+                    from_date=self.last_month.strftime(config['date_format']),
+                    to_date=self.current_date.strftime(config['date_format']))
         df = pdbq.read_gbq(query)
-        print('%s extracted from BigQuery' % source)
+        print('%s-%s-%s/%s w/t %d records extracted from BigQuery'
+              % ('raw', self.task, source,
+                 self.current_date.date(), len(df.index)))
         return df
 
     def extract(self):
@@ -415,7 +431,9 @@ class EtlTask:
                 config = self.sources[source]
                 transform_method = getattr(self, 'transform_{}'.format(source))
                 self.transformed[source] = transform_method(source, config)
-                print('%s transformed' % source)
+                print('%s-%s-%s/%s w/t %d records transformed'
+                      % (self.stage, self.task, source,
+                         self.current_date.date(), len(self.transformed[source].index)))
 
     def load_to_fs(self, source, config, stage='raw'):
         """
@@ -434,11 +452,13 @@ class EtlTask:
                         source, config, stage, 'fs', i+1)
                     with open(fpath, 'w') as f:
                         f.write(r)
-                print('%s x %d pages loaded to file system.' % (source, len(raw)))
+                print('%s-%s-%s/%s x %d pages loaded to file system.' %
+                      (stage, self.task, source, self.current_date.date(), len(raw)))
             else:
                 with open(fpath, 'w') as f:
                     f.write(raw)
-                    print('%s loaded to file system.' % source)
+                    print('%s-%s-%s/%s x 1 page loaded to file system.' %
+                          (stage, self.task, source, self.current_date.date()))
         else:
             with open(fpath, 'w') as f:
                 output = ''
@@ -448,7 +468,8 @@ class EtlTask:
                 elif self.destinations['fs']['file_format'] == 'csv':
                     output = self.transformed[source].to_csv()
                 f.write(output)
-                print('%s loaded to file system.' % source)
+                print('%s-%s-%s/%s loaded to file system.' %
+                      (stage, self.task, source, self.current_date.date()))
 
     def load_to_gcs(self, source, config, stage='raw'):
         """
@@ -460,7 +481,8 @@ class EtlTask:
         bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
         blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs'))
         blob.upload_from_filename(self.get_filepath(source, config, stage, 'fs'))
-        print('%s loaded to GCS.' % source)
+        print('%s-%s-%s/%s loaded to GCS.' %
+              (stage, self.task, source, self.current_date.date()))
 
     def load(self):
         """
