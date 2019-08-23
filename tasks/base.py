@@ -142,7 +142,7 @@ class EtlTask:
             this is to be converted to DataFrame
         :param config: the config of the data source specified in task config,
             see `configs/*.py`
-        :return: the converted DataFrame
+        :return: the converted `DataFrame`
         """
         ftype = 'json' if 'file_format' not in config else config['file_format']
         if ftype == 'json':
@@ -166,7 +166,7 @@ class EtlTask:
         :param dest: name of the destination to load data to,
             specified in task config, see `configs/*.py`
         :param date: the date part of the data file name,
-            will use self.current_date if not specified
+            will use `self.current_date` if not specified
         :return: a list of data file paths
         """
         return glob.glob('{prefix}{stage}-{task}-{source}/{filename}'.format(
@@ -188,7 +188,7 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param page: the page part of the data file name
         :param date: the date part of the data file name,
-            will use self.current_date if not specified
+            will use `self.current_date` if not specified
         :return: the data file path
         """
         return '{prefix}{stage}-{task}-{source}/{filename}'.format(
@@ -201,7 +201,6 @@ class EtlTask:
         which the format would be {date}.{page}.{ext} for raw data,
         or {date}.{ext} otherwise.
 
-
         :rtype: str
         :param source: name of the data source to be extracted,
             specified in task config, see `configs/*.py`
@@ -210,7 +209,7 @@ class EtlTask:
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param page: the page part of the data file name
         :param date: the date part of the data file name,
-            will use self.current_date if not specified
+            will use `self.current_date` if not specified
         :return: the data file name
         """
         date = self.current_date if date is None else date
@@ -276,7 +275,7 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param date: the date part of the data file name,
-            will use self.current_date if not specified
+            will use `self.current_date` if not specified
         :return: the extracted DataFrame
         """
         # extract paged raw files
@@ -312,8 +311,8 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param date: the date part of the data file name,
-            will use self.current_date if not specified
-        :return: the extracted DataFrame
+            will use `self.current_date` if not specified
+        :return: the extracted `DataFrame`
         """
 
         prefix = self.get_filepath(source, config, stage, 'gcs', '*', date)
@@ -342,7 +341,7 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
             specified in task config, see `configs/*.py`
-        :return: the extracted DataFrame
+        :return: the extracted `DataFrame`
         """
         # API paging
         if 'page_size' in config:
@@ -406,7 +405,7 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
             specified in task config, see `configs/*.py`
-        :return: the extracted DataFrame
+        :return: the extracted `DataFrame`
         """
         query = ''
         if 'udf' in config:
@@ -473,12 +472,11 @@ class EtlTask:
         and transform extracted DataFrames accordingly
         based on the source argument (see also `get_arg_parser()`),
         will need to create a function for each data source when inheriting this class.
-        e.g. def transform_google_search(source, config) for google_search data source.
-        source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
-        config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
-
+        e.g. `def transform_google_search(source, config)`
+        for google_search data source, which the `source` represents the name of the
+        data source to be extracted,
+        `config` is the config of the data source to be extracted,
+        both specified in task config, see `configs/*.py`
         """
         for source in self.sources:
             if not self.args.source or self.args.source == source:
