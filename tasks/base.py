@@ -139,9 +139,9 @@ class EtlTask:
 
         :rtype: DataFrame
         :param raw: the raw source string in json/csv format,
-        this is to be converted to DataFrame
+            this is to be converted to DataFrame
         :param config: the config of the data source specified in task config,
-        see `configs/*.py`
+            see `configs/*.py`
         :return: the converted DataFrame
         """
         ftype = 'json' if 'file_format' not in config else config['file_format']
@@ -160,14 +160,14 @@ class EtlTask:
 
         :rtype: list[str]
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param dest: name of the destination to load data to,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param date: the date part of the data file name,
-        will use self.current_date if not specified
+            will use self.current_date if not specified
         :return: a list of data file paths
         """
         return glob.glob('{prefix}{stage}-{task}-{source}/{filename}'.format(
@@ -181,15 +181,15 @@ class EtlTask:
 
         :rtype: str
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param dest: name of the destination to load data to,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param page: the page part of the data file name
         :param date: the date part of the data file name,
-        will use self.current_date if not specified
+            will use self.current_date if not specified
         :return: the data file path
         """
         return '{prefix}{stage}-{task}-{source}/{filename}'.format(
@@ -205,13 +205,13 @@ class EtlTask:
 
         :rtype: str
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param page: the page part of the data file name
         :param date: the date part of the data file name,
-        will use self.current_date if not specified
+            will use self.current_date if not specified
         :return: the data file name
         """
         date = self.current_date if date is None else date
@@ -222,6 +222,8 @@ class EtlTask:
                 ext=ftype,
                 page=1 if page is None else page)
         else:
+            if ftype == 'json':
+                ftype = 'jsonl'     # enforce jsonl for BigQuery
             return '{date}.{ext}'.format(
                 date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
 
@@ -232,12 +234,12 @@ class EtlTask:
 
         :rtype: str
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param dest: name of the destination to load data to,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param page: the page part of the data file name
         :return: the data file path
         """
@@ -256,9 +258,9 @@ class EtlTask:
 
         :rtype: bool
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :return: whether a data file is cached in local file system
         """
         fpath = self.get_filepath(source, config, 'raw', 'fs')
@@ -270,12 +272,12 @@ class EtlTask:
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param date: the date part of the data file name,
-        will use self.current_date if not specified
+            will use self.current_date if not specified
         :return: the extracted DataFrame
         """
         # extract paged raw files
@@ -306,12 +308,12 @@ class EtlTask:
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         :param date: the date part of the data file name,
-        will use self.current_date if not specified
+            will use self.current_date if not specified
         :return: the extracted DataFrame
         """
 
@@ -338,9 +340,9 @@ class EtlTask:
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :return: the extracted DataFrame
         """
         # API paging
@@ -402,9 +404,9 @@ class EtlTask:
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :return: the extracted DataFrame
         """
         query = ''
@@ -494,9 +496,9 @@ class EtlTask:
         in task config (see `configs/*.py`).
 
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         """
         fpath = self.get_or_create_filepath(source, config, stage, 'fs')
@@ -520,8 +522,10 @@ class EtlTask:
             with open(fpath, 'w') as f:
                 output = ''
                 if self.destinations['fs']['file_format'] == 'json':
-                    # TODO: make sure this is BQ-friendly before load
-                    output = self.transformed[source].to_json()
+                    output = ''
+                    # build json lines
+                    for row in self.transformed[source].iterrows():
+                        output += row[1].to_json() + '\n'
                 elif self.destinations['fs']['file_format'] == 'csv':
                     output = self.transformed[source].to_csv()
                 f.write(output)
@@ -533,9 +537,9 @@ class EtlTask:
         in task config (see `configs/*.py`).
 
         :param source: name of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
-        specified in task config, see `configs/*.py`
+            specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         """
         bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
