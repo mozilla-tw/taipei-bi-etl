@@ -150,7 +150,6 @@ class EtlTask:
                 raw,
                 None if 'json_path' not in config else config['json_path'])
             data = pd_json.loads(extracted_json)
-            # TODO: make sure this is BQ-friendly before transform
             return pd_json.json_normalize(data)
         elif ftype == 'csv':
             return pd.read_csv(raw)
