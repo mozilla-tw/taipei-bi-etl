@@ -322,15 +322,20 @@ class EtlTask:
         blobs = self.gcs.list_blobs(self.destinations['gcs']['bucket'], prefix=prefix)
 
         i = 0
+        is_empty = True
         for i, blob in enumerate(blobs):
+            is_empty = False
             page = re.search(ext_regex, blob.name).group(1)
             blob.download_to_filename(
                 self.get_filepath(source, config, stage, 'fs', page, date))
 
-        print('%s-%s-%s/%s x %d pages extracted from google cloud storage'
-              % (stage, self.task, source,
-                 (self.current_date if date is None else date).date(), i + 1))
-        return self.extract_via_fs(source, config, stage, date)
+        if not is_empty:
+            print('%s-%s-%s/%s x %d pages extracted from google cloud storage'
+                  % (stage, self.task, source,
+                     (self.current_date if date is None else date).date(), i + 1))
+            return self.extract_via_fs(source, config, stage, date)
+        else:
+            return DataFrame()
 
     def extract_via_api(self, source, config) -> DataFrame:
         """Extract data from API and convert into DataFrame
@@ -554,10 +559,11 @@ class EtlTask:
         for source in self.sources:
             if not self.args.source or self.args.source == source:
                 config = self.sources[source]
-                assert self.transformed[source] is not None
-                self.load_to_fs(source, config, self.stage)
-                if self.args.dest != 'fs':
-                    self.load_to_gcs(source, config, self.stage)
+                if 'load' in config or config['load']:
+                    assert self.transformed[source] is not None
+                    self.load_to_fs(source, config, self.stage)
+                    if self.args.dest != 'fs':
+                        self.load_to_gcs(source, config, self.stage)
 
     def run(self):
         """Run the whole ETL process based on the step argument.

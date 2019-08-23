@@ -1,5 +1,7 @@
 SELECT
   TIMESTAMP_TRUNC(submission_timestamp, DAY) AS day,
+  normalized_country_code AS country_code,
+  normalized_os AS os,
   count(client_id) AS events
 FROM
   `{project}.{dataset}.focus_event`
@@ -11,4 +13,4 @@ WHERE
   normalized_app_name = 'Zerda' AND
   normalized_channel = 'release' AND
   event.event_method IN('type_query', 'select_query')
-GROUP BY 1
+GROUP BY 1, 2, 3
