@@ -1,5 +1,7 @@
 import datetime
 
+from pandas import DataFrame
+
 from tasks import base
 from configs import rps
 from configs.debug import rps as rps_dbg
@@ -17,6 +19,8 @@ class RpsEtlTask(base.EtlTask):
         self.extracted_idx = dict()
 
     def extract(self):
+        """ Inherit from super class and extract latest fb_index for later use.
+        """
         super().extract()
         source = 'fb_index'
         config = self.sources[source]
@@ -24,8 +28,23 @@ class RpsEtlTask(base.EtlTask):
             source, config, 'raw',
             RpsEtlTask.lookfoward_dates(self.current_date, self.period))[0]
 
-    def transform_google_search_rps(self, source, config):
-
+    def transform_google_search_rps(self, source, config) -> DataFrame:
+        """Calculate revenue per search with existing CPI index and total package.
+        Country RPS = Country CPI Index * Revenue Share Factor
+            (Assume the same for all Countries)
+        Revenue Share Factor = Country RPS / Country CPI Index
+            = (Country Revenue / Country Searches) / Country CPI Index
+            = ((Total Revenue * Country Searches * Country CPI Index
+                / Σ(Country Searches * Country CPI Index))
+                / Country Searches) / Country CPI Index
+            = Total Revenue / Σ(Country Searches * Country CPI Index)
+        :rtype: DataFrame
+        :param source: name of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :return: the transformed DataFrame
+        """
         def map_country_3_to_2(alpha_3):
             c = pycountry.countries.get(alpha_3=alpha_3)
             if c:

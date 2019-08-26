@@ -12,11 +12,30 @@ class RevenueEtlTask(base.EtlTask):
         super().__init__(args, sources, destinations, 'staging', 'revenue')
 
     def transform_bukalapak(self, source, config):
+        """ Transform data from bukalapak into unified format for revenue reference
+
+        :rtype: DataFrame
+        :param source: name of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :return: the transformed DataFrame
+        """
         df = self.extracted[source]
         # transform here
         return df
 
     def transform_google_search(self, source, config):
+        """ Transform search data from telemetry into unified format
+        for revenue reference
+
+        :rtype: DataFrame
+        :param source: name of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :return: the transformed DataFrame
+        """
         df = self.extracted[source]
         # transform here
         return df
