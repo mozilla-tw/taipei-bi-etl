@@ -8,8 +8,8 @@ FROM
 CROSS JOIN
   UNNEST(udf_js_json_extract_events(JSON_EXTRACT(additional_properties, '$.events'))) AS event
 WHERE
-  DATE(submission_timestamp) >= DATE '{from_date}' AND
-  DATE(submission_timestamp) <= DATE '{to_date}' AND
+  DATE(submission_timestamp) >= DATE '{start_date}' AND
+  DATE(submission_timestamp) <= DATE '{end_date}' AND
   normalized_app_name = 'Zerda' AND
   normalized_channel = 'release' AND
   event.event_method IN('type_query', 'select_query')

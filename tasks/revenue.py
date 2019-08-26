@@ -1,11 +1,15 @@
 from tasks import base
-import settings
+from configs import revenue
+from configs.debug import revenue as revenue_dbg
+
+
+DEFAULTS = {}
 
 
 class RevenueEtlTask(base.EtlTask):
 
     def __init__(self, args, sources, destinations):
-        super().__init__(args, sources, destinations, 'staging')
+        super().__init__(args, sources, destinations, 'staging', 'revenue')
 
     def transform_bukalapak(self, source, config):
         df = self.extracted[source]
@@ -18,13 +22,13 @@ class RevenueEtlTask(base.EtlTask):
         return df
 
 
-arg_parser = base.get_arg_parser()
-
-
 def main(args):
-    task = RevenueEtlTask(args, settings.SOURCES, settings.DESTINATIONS)
+    srcs = revenue.SOURCES if not args.debug else revenue_dbg.SOURCES
+    dests = revenue.DESTINATIONS if not args.debug else revenue_dbg.DESTINATIONS
+    task = RevenueEtlTask(args, srcs, dests)
     task.run()
 
 
 if __name__ == "__main__":
+    arg_parser = base.get_arg_parser()
     main(arg_parser.parse_args())
