@@ -5,4 +5,5 @@ venv/
 data/
 .idea/
 configs/*.py
+configs/debug/*.py
 settings.py

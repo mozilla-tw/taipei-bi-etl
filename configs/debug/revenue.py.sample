@@ -1,0 +1,10 @@
+from configs import revenue
+
+SOURCES = revenue.SOURCES
+
+DESTINATIONS = revenue.DESTINATIONS
+
+# Override debugging settings here
+
+DESTINATIONS['gcs']['bucket'] = 'moz-taipei-bi-datasets'
+DESTINATIONS['gcs']['prefix'] = 'mango/'
