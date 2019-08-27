@@ -96,7 +96,7 @@ class RevenueEtlTask(base.EtlTask):
             print('>>> Pass checking invalid null value...')
             
         
-        # which to update (update 交集 append 新資料) key=source'+'Stat.datetime'
+        # which to update (update & append) key=source + Stat.datetime
         def do_updates_inserts():
             inner = pd.merge(last_df, new_df, on=['source','Stat.datetime'], how='inner')
             print('>>> Done updates...')
@@ -112,29 +112,17 @@ class RevenueEtlTask(base.EtlTask):
         print('>>> Done data validation...')
 
         
-        如果沒有 extracted_base 就直接 return
-        do_updates_inserts()
-        # load_to_gcs()
-        
-        
-        
-        
+        # 如果沒有 extracted_base 就直接 return
+        if last_df is None:
+            new_df.columns = revenue_df.columns
+            df = revenue_df.append(new_df, ignore_index = True)
+        else:    
+            new_df.columns = revenue_df.columns
+            df = revenue_df.append(new_df, ignore_index = True)
+            do_updates_inserts()
 
-        
-        # is ok to update
-        # do update
-        # do insert
-        
-        
-        new_df.columns = revenue_df.columns
-        df = revenue_df.append(new_df, ignore_index = True)
-        
-        # df = 
         df = df[df['conversion_status']=='approved']
         print(df.head(4).drop(columns='conversion_status').to_string())
-        
-
-
         return df
     
     
