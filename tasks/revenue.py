@@ -18,6 +18,18 @@ class RevenueEtlTask(base.EtlTask):
         super().__init__(args, sources, destinations, 'staging', 'revenue')
 
     def transform_bukalapak(self, source, config):
+
+        """ Transform data from bukalapak into unified format for revenue reference
+
+        :rtype: DataFrame
+        :param source: name of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :return: the transformed DataFrame
+        """
+        df = self.extracted[source]
+
         
         # define revenue schema
         revenue_dtype = np.dtype([
@@ -37,6 +49,7 @@ class RevenueEtlTask(base.EtlTask):
             np.empty(0, dtype=revenue_dtype))
         
         
+
         # transform here
         # https://developers.tune.com/affiliate/affiliate_report-getconversions/
         map_cols = [
@@ -112,7 +125,7 @@ class RevenueEtlTask(base.EtlTask):
         print('>>> Done data validation...')
 
         
-        # 如果沒有 extracted_base 就直接 return
+        # 
         if last_df is None:
             new_df.columns = revenue_df.columns
             df = revenue_df.append(new_df, ignore_index = True)
@@ -130,6 +143,16 @@ class RevenueEtlTask(base.EtlTask):
     
 
     def transform_google_search(self, source, config):
+        """ Transform search data from telemetry into unified format
+        for revenue reference
+
+        :rtype: DataFrame
+        :param source: name of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :param config: config of the data source to be extracted,
+            specified in task config, see `configs/*.py`
+        :return: the transformed DataFrame
+        """
         df = self.extracted[source]
         # transform here
         return df
