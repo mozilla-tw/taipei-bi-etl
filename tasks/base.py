@@ -13,8 +13,11 @@ from pandas import DataFrame
 import pandas_gbq as pdbq
 from google.cloud import storage
 import json
+import numpy as np
 import pandas.io.json as pd_json
 from typing import List, Optional, Tuple, Union, Dict
+from pandas_schema import Column, Schema
+from pandas_schema.validation import IsDtypeValidation
 
 DEFAULT_DATE_FORMAT = '%Y-%m-%d'
 EXT_REGEX = '([*0-9A-z]+)\\.[A-z0-9]+$'
@@ -82,7 +85,7 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
 
 class EtlTask:
 
-    def __init__(self, args, sources, destinations, stage, task):
+    def __init__(self, args, sources, schema, destinations, stage, task):
         """Initiate parameters and client libraries for ETL task.
 
         :param args: args passed from command line,
@@ -113,6 +116,11 @@ class EtlTask:
         self.current_date = args.date
         self.last_month = self.lookback_dates(args.date, args.period)
         self.sources = sources
+        coltypes = []
+        for coltype in schema:
+            coltypes += [Column(coltype[0], [IsDtypeValidation(coltype[1])])]
+        self.schema = Schema(coltypes)
+        self.raw_schema = schema
         self.destinations = destinations
         self.raw = dict()
         self.extracted_base = dict()
@@ -317,6 +325,17 @@ class EtlTask:
         """
         fpath = self.get_filepath(source, config, 'raw', 'fs')
         return os.path.isfile(fpath)
+
+    def get_target_dataframe(self, schema=None) -> DataFrame:
+        """Get an empty DataFrame with target schema
+
+        :param schema: list of tuples(column name, numpy data type),
+            see `configs/*.py`
+        :rtype: DataFrame
+        :return: an empty DataFrame with target schema
+        """
+        return DataFrame(
+            np.empty(0, dtype=np.dtype(self.raw_schema if schema is None else schema)))
 
     def extract_via_fs(self, source, config, stage='raw', date=None) -> DataFrame:
         """Extract data from file system and convert into DataFrame
@@ -621,6 +640,11 @@ class EtlTask:
                     assert self.extracted is not None
                     transform_method = getattr(self, 'transform_{}'.format(source))
                     self.transformed[source] = transform_method(source, config)
+                    errors = self.schema.validate(self.transformed[source])
+                    error_msg = ''
+                    for error in errors:
+                        error_msg += error.message + '\n'
+                    assert len(errors) == 0, error_msg
                     print('%s-%s-%s/%s w/t %d records transformed'
                           % (self.stage, self.task, source,
                              self.current_date.date(), len(self.transformed[source].index)))
@@ -696,8 +720,8 @@ class EtlTask:
             fpaths = self.get_filepaths(source, config, stage, 'fs')
         else:
             fpaths = [self.get_filepath(source, config, stage, 'fs')]
+        bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
         for fpath in fpaths:
-            bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
             blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs',
                                                  EtlTask.get_page_ext(fpath)))
             blob.upload_from_filename(fpath)

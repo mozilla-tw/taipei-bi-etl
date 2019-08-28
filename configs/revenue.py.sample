@@ -15,6 +15,22 @@ SOURCES = {
         }
     }
 
+SCHEMA = [
+    ('source', np.dtype(object).type),
+    ('country', np.dtype(object).type),
+    ('os', np.dtype(object).type),
+    ('local_datetime', np.datetime64),
+    ('currency', np.dtype(object).type),
+    ('sales_amount', np.dtype(float).type),
+    ('payout', np.dtype(float).type),
+    ('fx_defined1', np.dtype(object).type),
+    ('fx_defined2', np.dtype(object).type),
+    ('fx_defined3', np.dtype(object).type),
+    ('fx_defined4', np.dtype(object).type),
+    ('fx_defined5', np.dtype(object).type),
+    ('conversion_status', np.dtype(object).type),
+]
+
 DESTINATIONS = {
     'gcs': {
         'bucket': 'some-bucket-name',

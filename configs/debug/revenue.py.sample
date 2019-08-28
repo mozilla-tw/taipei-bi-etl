@@ -1,10 +1,12 @@
+from copy import deepcopy
 from configs import revenue
 
-SOURCES = revenue.SOURCES
+SOURCES = deepcopy(revenue.SOURCES)
 
-DESTINATIONS = revenue.DESTINATIONS
+SOURCES['google_search_rps']['bucket'] = 'moz-taipei-bi-test'
+SOURCES['google_search_rps']['prefix'] = 'test/'
 
-# Override debugging settings here
+DESTINATIONS = deepcopy(revenue.DESTINATIONS)
 
-DESTINATIONS['gcs']['bucket'] = 'moz-taipei-bi-datasets'
-DESTINATIONS['gcs']['prefix'] = 'mango/'
+DESTINATIONS['gcs']['bucket'] = 'moz-taipei-bi-test'
+DESTINATIONS['gcs']['prefix'] = 'test/'
