@@ -720,8 +720,8 @@ class EtlTask:
             fpaths = self.get_filepaths(source, config, stage, 'fs')
         else:
             fpaths = [self.get_filepath(source, config, stage, 'fs')]
+        bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
         for fpath in fpaths:
-            bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
             blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs',
                                                  EtlTask.get_page_ext(fpath)))
             blob.upload_from_filename(fpath)
