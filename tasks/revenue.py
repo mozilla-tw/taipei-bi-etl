@@ -28,7 +28,6 @@ class RevenueEtlTask(base.EtlTask):
             specified in task config, see `configs/*.py`
         :return: the transformed DataFrame
         """
-        df = self.extracted[source]
 
         
         # define revenue schema
@@ -68,25 +67,25 @@ class RevenueEtlTask(base.EtlTask):
         new_df = self.extracted[source]
         new_df = new_df.replace('', np.nan)
         new_df['source'] = source
+        new_df = new_df[map_cols]
         
         last_df = self.extracted_base[source]
-        last_df['source'] = source
+        if last_df.empty == False:
+            last_df['source'] = source
+            last_df = last_df[map_cols]
+            
         
-        # map cols only
-        new_df = new_df[map_cols]
-        last_df = last_df[map_cols]
-        
-        
-        
-        # check functions
+        # checking functions
         # new df date range vs. args
         def check_dt_range():
             print('>>> Checking date range...')
             new_df_dt = pd.to_datetime(new_df['Stat.datetime'], format='%Y-%m-%d %H:%M:%S')
             dt_start, dt_end = min(new_df_dt), max(new_df_dt)
             arg_start, arg_end = self.last_month, self.current_date
+            print(dt_start, dt_end)
+            print(arg_start, arg_end)
             assert dt_end <= arg_end, f'>>> From {source}, Max(Date) greater then arg setting.'
-            assert dt_start >= arg_start, f'>>> From {source}, Min(Date) less then arg setting.'
+            #assert dt_start >= arg_start, f'>>> From {source}, Min(Date) less then arg setting.'
             print('>>> Pass date range checking...')
         
         
@@ -109,13 +108,25 @@ class RevenueEtlTask(base.EtlTask):
             print('>>> Pass checking invalid null value...')
             
         
-        # which to update (update & append) key=source + Stat.datetime
+        # which to update (update & insert)
         def do_updates_inserts():
-            inner = pd.merge(last_df, new_df, on=['source','Stat.datetime'], how='inner')
-            print('>>> Done updates...')
-            print('>>> Done inserts...')
-            print(inner.head(4).to_string())
+            left = last_df.set_index(['source','Stat.datetime'])
+            right = new_df.set_index(['source','Stat.datetime'])
             
+            #update_df = left.reindex(columns=left.columns.union(right.columns))
+            #update_df.update(right)
+            #update_df.reset_index(inplace=True)
+            
+            res = left.reindex(columns=list(left.columns.union(right.columns)))
+            print(res.head(4).to_string())
+            print(right.head(4).to_string())
+            res.update(right)
+            #res.reset_index(inplace=True)
+
+            
+            print('>>> Done updates and inserts...')
+
+                        
         
         for check in [check_dt_range, check_schema, check_null]:
             try:
@@ -126,15 +137,21 @@ class RevenueEtlTask(base.EtlTask):
 
         
         # 
-        if last_df is None:
+        if last_df.empty == True:
             new_df.columns = revenue_df.columns
             df = revenue_df.append(new_df, ignore_index = True)
+            print('init first batch')
+
         else:    
+            do_updates_inserts()
             new_df.columns = revenue_df.columns
             df = revenue_df.append(new_df, ignore_index = True)
-            do_updates_inserts()
+            print('load new batch')
+
+            
 
         df = df[df['conversion_status']=='approved']
+        
         print(df.head(4).drop(columns='conversion_status').to_string())
         return df
     
