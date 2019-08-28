@@ -14,8 +14,8 @@ DEFAULTS = {'date': datetime.datetime(2018, 1, 1), 'period': 365}
 
 class RpsEtlTask(base.EtlTask):
 
-    def __init__(self, args, sources, destinations):
-        super().__init__(args, sources, destinations, 'staging', 'rps')
+    def __init__(self, args, sources, schema, destinations):
+        super().__init__(args, sources, schema, destinations, 'staging', 'rps')
         self.extracted_idx = dict()
 
     def extract(self):
@@ -125,7 +125,7 @@ class RpsEtlTask(base.EtlTask):
 def main(args):
     srcs = rps.SOURCES if not args.debug else rps_dbg.SOURCES
     dests = rps.DESTINATIONS if not args.debug else rps_dbg.DESTINATIONS
-    task = RpsEtlTask(args, srcs, dests)
+    task = RpsEtlTask(args, srcs, rps.SCHEMA, dests)
     task.run()
 
 
