@@ -326,13 +326,16 @@ class EtlTask:
         fpath = self.get_filepath(source, config, 'raw', 'fs')
         return os.path.isfile(fpath)
 
-    def get_target_dataframe(self) -> DataFrame:
+    def get_target_dataframe(self, schema=None) -> DataFrame:
         """Get an empty DataFrame with target schema
 
+        :param schema: list of tuples(column name, numpy data type),
+            see `configs/*.py`
         :rtype: DataFrame
         :return: an empty DataFrame with target schema
         """
-        return DataFrame(np.empty(0, dtype=np.dtype(self.raw_schema)))
+        return DataFrame(
+            np.empty(0, dtype=np.dtype(self.raw_schema if schema is None else schema)))
 
     def extract_via_fs(self, source, config, stage='raw', date=None) -> DataFrame:
         """Extract data from file system and convert into DataFrame
