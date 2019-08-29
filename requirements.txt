@@ -7,3 +7,4 @@ pandas==0.25.0
 pandas-gbq==0.11.0
 pandas-schema==0.3.4
 pycountry==19.8.18
+pandasql==0.7.3

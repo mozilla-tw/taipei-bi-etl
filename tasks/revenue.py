@@ -10,6 +10,8 @@ DEFAULTS = {}
 import numpy as np
 import pandas as pd
 import datetime
+import pandasql as ps
+
 
 class RevenueEtlTask(base.EtlTask):
 
@@ -28,30 +30,15 @@ class RevenueEtlTask(base.EtlTask):
         :return: the transformed DataFrame
         """
 
+        # get revenue schema
+        revenue_df = self.get_target_dataframe()
         
-        # define revenue schema
-        revenue_dtype = np.dtype([
-            ('source', str),
-            ('local_datetime', np.datetime64),
-            ('currency', str),
-            ('sales_amount', float),
-            ('payout', float),
-            ('fx_defined1', str),
-            ('fx_defined2', str),
-            ('fx_defined3', str),
-            ('fx_defined4', str),
-            ('fx_defined5', str),
-            ('conversion_status', str)
-        ])
-        revenue_df = pd.DataFrame(
-            np.empty(0, dtype=revenue_dtype))
-        
-        
-
-        # transform here
+        # prepare data set
         # https://developers.tune.com/affiliate/affiliate_report-getconversions/
         map_cols = [
             'source',
+            'Country.name',
+            'ConversionsMobile.device_os',
             'Stat.datetime',
             'Stat.currency',
             'Stat.sale_amount',
@@ -62,29 +49,34 @@ class RevenueEtlTask(base.EtlTask):
             'Stat.affiliate_info4',
             'Stat.affiliate_info5',
             'Stat.conversion_status'
-        ]   
+        ]
+        
+        # extract new data
         new_df = self.extracted[source]
         new_df = new_df.replace('', np.nan)
         new_df['source'] = source
+        new_df['Country.name'] = ['ID' if x=='Indonesia' else '' for x in new_df['Country.name']]
         new_df = new_df[map_cols]
         
+        # extract old data
         last_df = self.extracted_base[source]
         if last_df.empty == False:
             last_df['source'] = source
             last_df = last_df[map_cols]
+
             
-        
-        # checking functions
+            
+        # checking functions        
         # new df date range vs. args
         def check_dt_range():
             print('>>> Checking date range...')
-            new_df_dt = pd.to_datetime(new_df['Stat.datetime'], format='%Y-%m-%d %H:%M:%S')
+            new_df_dt = pd.to_datetime(new_df['Stat.datetime']).dt.date
             dt_start, dt_end = min(new_df_dt), max(new_df_dt)
-            arg_start, arg_end = self.last_month, self.current_date
+            arg_start, arg_end = self.last_month.date(), self.current_date.date() + datetime.timedelta(days=1)
             print(dt_start, dt_end)
             print(arg_start, arg_end)
-            assert dt_end <= arg_end, f'>>> From {source}, Max(Date) greater then arg setting.'
-            #assert dt_start >= arg_start, f'>>> From {source}, Min(Date) less then arg setting.'
+            assert dt_end <= arg_end, f'>>> From {source}, Max(Date)={dt_end} greater then arg+1d={arg_end}.'
+            assert dt_start >= arg_start, f'>>> From {source}, Min(Date)={dt_start} less then arg+1d={arg_start}.'
             print('>>> Pass date range checking...')
         
         
@@ -93,7 +85,7 @@ class RevenueEtlTask(base.EtlTask):
             print('>>> Checking data schema matched...')
             match = list(set(map_cols) & set(new_df.columns))
             not_match = ', '.join(set(map_cols) - set(match))
-            assert len(match) == len(map_cols), f'>>> Missing column [ {not_match}  ] from {source}.'
+            assert len(match) == len(map_cols), f'>>> Missing column [ {not_match} ] from {source}.'
             print('>>> Pass data schema matched...')
         
         
@@ -101,7 +93,7 @@ class RevenueEtlTask(base.EtlTask):
         def check_null():
             print('>>> Checking invalid null value...')
             na_cols = new_df.columns[new_df.isna().any()].tolist()
-            match = list(set(map_cols[0:5]) & set(na_cols))
+            match = list(set(map_cols[0:7]) & set(na_cols))
             not_null = ', '.join(match)
             assert len(match) == 0, f'>>> From {source}, values in column [ {not_null} ] should not be N/A.'
             print('>>> Pass checking invalid null value...')
@@ -109,24 +101,32 @@ class RevenueEtlTask(base.EtlTask):
         
         # which to update (update & insert)
         def do_updates_inserts():
-            left = last_df.set_index(['source','Stat.datetime'])
-            right = new_df.set_index(['source','Stat.datetime'])
+            new = new_df
+            new['dt'] = self.current_date.date()
+            old = last_df
+            old['dt'] = self.current_date.date() - datetime.timedelta(days=1)
+            comb = old.append(new) 
             
-            #update_df = left.reindex(columns=left.columns.union(right.columns))
-            #update_df.update(right)
-            #update_df.reset_index(inplace=True)
+            q = """
+                SELECT source, max(`Stat.datetime`) as updated_key
+                FROM comb
+            """
+            to_update = ps.sqldf(q)
             
-            res = left.reindex(columns=list(left.columns.union(right.columns)))
-            print(res.head(4).to_string())
-            print(right.head(4).to_string())
-            res.update(right)
-            #res.reset_index(inplace=True)
-
-            
+            q = """
+                SELECT comb.*
+                FROM comb left join to_update 
+                on comb.source = to_update.source
+                and comb.`Stat.datetime` = to_update.updated_key
+            """
+            do_update = ps.sqldf(q).drop(columns='dt')
             print('>>> Done updates and inserts...')
+            return do_update
 
                         
-        
+                
+        # transform here ------
+        # do check
         for check in [check_dt_range, check_schema, check_null]:
             try:
                 check()
@@ -135,23 +135,26 @@ class RevenueEtlTask(base.EtlTask):
         print('>>> Done data validation...')
 
         
-        # 
+        # do updates and inserts
         if last_df.empty == True:
             new_df.columns = revenue_df.columns
             df = revenue_df.append(new_df, ignore_index = True)
             print('init first batch')
 
         else:    
-            do_updates_inserts()
-            new_df.columns = revenue_df.columns
-            df = revenue_df.append(new_df, ignore_index = True)
+            df = do_updates_inserts()
+            df.columns = revenue_df.columns
+            df = revenue_df.append(df, ignore_index = True)
             print('load new batch')
-
-            
 
         df = df[df['conversion_status']=='approved']
         
-        print(df.head(4).drop(columns='conversion_status').to_string())
+        
+        # reformat data types
+        df['local_datetime'] = df['local_datetime'].astype('datetime64[ns]')
+        df['sales_amount'] = df['sales_amount'].astype('float')
+        df['payout'] = df['payout'].astype('float')
+        print(df.head(4).to_string())
         return df
     
     
