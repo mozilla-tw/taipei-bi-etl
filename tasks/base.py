@@ -2,10 +2,13 @@ import errno
 import glob
 import re
 import time
+from collections import Counter
 from io import StringIO
 from argparse import ArgumentParser
 import os
 import os.path
+from statistics import mode
+
 import requests
 import datetime
 import pandas as pd
@@ -18,8 +21,11 @@ import pandas.io.json as pd_json
 from typing import List, Optional, Tuple, Union, Dict
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
+import pytz
 
 DEFAULT_DATE_FORMAT = '%Y-%m-%d'
+DEFAULT_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+DEFAULT_TZ_FORMAT = '%+03d:00'
 EXT_REGEX = '([*0-9A-z]+)\\.[A-z0-9]+$'
 DEFAULT_PATH_FORMAT = '{prefix}{stage}-{task}-{source}'
 
@@ -129,6 +135,58 @@ class EtlTask:
         self.gcs = storage.Client()
 
     @staticmethod
+    def get_country_tz(country_code) -> pytz.UTC:
+        """Get the default timezone for specified country code,
+        if covered multiple timezone, pick the most common one.
+
+        :rtype: pytz.UTC
+        :return: the default (major) timezone of the country
+        :param country_code: the 2 digit country code to get timezone
+        """
+        if country_code not in pytz.country_timezones:
+            # FIXME: workaround here for pytz doesn't support XK for now.
+            tzmap = {'XK': 'CET'}
+            if country_code in tzmap:
+                return pytz.timezone(tzmap[country_code])
+            print('WARNING: timezone not found for %s, return UTC' % country_code)
+            return pytz.utc
+        timezones = pytz.country_timezones[country_code]
+        offsets = []
+        for timezone in timezones:
+            offsets += [pytz.timezone(timezone).utcoffset(
+                datetime.datetime.now()).seconds / 3600]
+        offset_count = Counter(offsets)
+        max_count = -1
+        max_offset = None
+        for k, v in offset_count.items():
+            if v > max_count:
+                max_count = v
+                max_offset = k
+        return pytz.timezone(timezones[offsets.index(max_offset)])
+
+    @staticmethod
+    def get_country_tz_str(country_code) -> str:
+        """Get the default timezone string (e.g. +08:00) for specified country code,
+        if covered multiple timezone, pick the most common one.
+
+        :rtype: str
+        :param country_code: the 2 digit country code to get timezone
+        :return: the default (major) timezone string of the country in +08:00 format.
+        """
+        return EtlTask.get_tz_str(EtlTask.get_country_tz(country_code))
+
+    @staticmethod
+    def get_tz_str(timezone) -> str:
+        """Convert timezone to offset string (e.g. +08:00)
+
+        :rtype: str
+        :param timezone: pytz.UTC
+        :return: the timezone offset string in +08:00 format.
+        """
+        return DEFAULT_TZ_FORMAT % \
+               (timezone.utcoffset(datetime.datetime.now()).seconds / 3600)
+
+    @staticmethod
     def lookback_dates(date, period):
         """Subtract date by period
         """
@@ -171,17 +229,30 @@ class EtlTask:
         :return: the converted `DataFrame`
         """
         ftype = 'json' if 'file_format' not in config else config['file_format']
+        df = None
         if ftype == 'json':
             extracted_json = EtlTask.json_extract(
                 raw,
                 None if 'json_path' not in config else config['json_path'])
             data = pd_json.loads(extracted_json)
-            return pd_json.json_normalize(data)
+            df = pd_json.json_normalize(data)
         elif ftype == 'csv':
             if 'header' in config:
-                return pd.read_csv(StringIO(raw), names=config['header'])
+                df = pd.read_csv(StringIO(raw), names=config['header'])
             else:
-                return pd.read_csv(StringIO(raw))
+                df = pd.read_csv(StringIO(raw))
+        # convert timezone according to config
+        tz = None
+        if 'timezone' in config:
+            tz = pytz.timezone(config['timezone'])
+        elif 'country_code' in config:
+            tz = EtlTask.get_country_tz(config['country_code'])
+        # TODO: support multiple countries/timezones in the future if needed
+        if tz is not None and 'date_fields' in config:
+            df['tz'] = EtlTask.get_tz_str(tz)
+            for date_field in config['date_fields']:
+                df[date_field].dt.tz_localize(tz).dt.tz_convert(pytz.utc)
+        return df
 
     @staticmethod
     def get_page_ext(fpath):
@@ -283,7 +354,8 @@ class EtlTask:
                 page=1 if page is None else page)
         else:
             dest_config = self.destinations['fs']
-            ftype = 'jsonl' if 'file_format' not in dest_config else dest_config['file_format']
+            ftype = 'jsonl' if 'file_format' not in dest_config \
+                else dest_config['file_format']
             return '{date}.{ext}'.format(
                 date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
 
@@ -423,8 +495,8 @@ class EtlTask:
                       % (prefix, i + 1))
             else:
                 print('%s-%s-%s/%s x %d pages extracted from google cloud storage'
-                  % (stage, self.task, source,
-                     (self.current_date if date is None else date).date(), i + 1))
+                      % (stage, self.task, source,
+                         (self.current_date if date is None else date).date(), i + 1))
             return self.extract_via_fs(source, config, stage, date)
         else:
             return DataFrame()
@@ -647,7 +719,8 @@ class EtlTask:
                     assert len(errors) == 0, error_msg
                     print('%s-%s-%s/%s w/t %d records transformed'
                           % (self.stage, self.task, source,
-                             self.current_date.date(), len(self.transformed[source].index)))
+                             self.current_date.date(),
+                             len(self.transformed[source].index)))
 
     def load_to_fs(self, source, config, stage='raw'):
         """Load data into file system based on destination settings
@@ -687,6 +760,12 @@ class EtlTask:
         else:
             with open(fpath, 'w') as f:
                 output = ''
+                # Fix date format for BigQuery (only support dashed notation)
+                for rs in self.raw_schema:
+                    if rs[1] == np.datetime64:
+                        df = self.transformed[source]
+                        df[rs[0]] = df[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
+                # TODO: Fix multiple files loading
                 if self.destinations['fs']['file_format'] == 'jsonl':
                     output = ''
                     # build json lines
@@ -715,10 +794,10 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         """
-        # TODO: Fix multiple files loading
         if stage == 'raw':
             fpaths = self.get_filepaths(source, config, stage, 'fs')
         else:
+            # TODO: Fix multiple files loading
             fpaths = [self.get_filepath(source, config, stage, 'fs')]
         bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
         for fpath in fpaths:

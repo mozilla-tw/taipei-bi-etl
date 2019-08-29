@@ -1,5 +1,5 @@
 -c constraints.txt
-pytz==2019.1
+pytz==2019.2
 requests==2.22.0
 google-cloud-bigquery==1.17.0
 google-cloud-storage==1.18.0
