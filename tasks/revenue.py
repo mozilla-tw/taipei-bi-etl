@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import datetime
 import pandasql as ps
@@ -63,8 +62,8 @@ class RevenueEtlTask(base.EtlTask):
         last_df = self.extracted_base[source]
         if not last_df.empty:
             last_df['source'] = source
-            last_df['Country.name'] = ['ID' if x == 'Indonesia' else '' for x in
-                                      last_df['Country.name']]
+            last_df['Country.name'] = [
+                'ID' if x == 'Indonesia' else '' for x in last_df['Country.name']]
             last_df['tz'] = last_df['Country.name'].apply(
                 lambda x: RevenueEtlTask.get_country_tz_str(x))
             last_df = last_df[map_cols]
@@ -75,8 +74,9 @@ class RevenueEtlTask(base.EtlTask):
             print('>>> Checking date range...')
             new_df_dt = pd.to_datetime(new_df['Stat.datetime']).dt.date
             dt_start, dt_end = min(new_df_dt), max(new_df_dt)
-            arg_start, arg_end = self.last_month.date(), \
-                                 self.current_date.date() + datetime.timedelta(days=1)
+            arg_start, arg_end = \
+                self.last_month.date(), \
+                self.current_date.date() + datetime.timedelta(days=1)
             print(dt_start, dt_end)
             print(arg_start, arg_end)
             assert dt_end <= arg_end, \
@@ -110,17 +110,17 @@ class RevenueEtlTask(base.EtlTask):
             new['dt'] = self.current_date.date()
             old = last_df
             old['dt'] = self.current_date.date() - datetime.timedelta(days=1)
-            comb = old.append(new)
+            # comb = old.append(new)
 
             q = """
                 SELECT source, max(`Stat.datetime`) as updated_key
                 FROM comb
             """
-            to_update = ps.sqldf(q)
+            # to_update = ps.sqldf(q)
 
             q = """
                 SELECT comb.*
-                FROM comb left join to_update 
+                FROM comb left join to_update
                 on comb.source = to_update.source
                 and comb.`Stat.datetime` = to_update.updated_key
             """
@@ -138,7 +138,7 @@ class RevenueEtlTask(base.EtlTask):
         print('>>> Done data validation...')
 
         # do updates and inserts
-        if last_df.empty == True:
+        if last_df.empty:
             new_df.columns = revenue_df.columns
             df = revenue_df.append(new_df, ignore_index=True)
             print('init first batch')

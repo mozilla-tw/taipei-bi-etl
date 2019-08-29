@@ -7,8 +7,6 @@ from io import StringIO
 from argparse import ArgumentParser
 import os
 import os.path
-from statistics import mode
-
 import requests
 import datetime
 import pandas as pd
@@ -183,8 +181,8 @@ class EtlTask:
         :param timezone: pytz.UTC
         :return: the timezone offset string in +08:00 format.
         """
-        return DEFAULT_TZ_FORMAT % \
-               (timezone.utcoffset(datetime.datetime.now()).seconds / 3600)
+        return DEFAULT_TZ_FORMAT % (timezone.utcoffset(
+            datetime.datetime.now()).seconds / 3600)
 
     @staticmethod
     def lookback_dates(date, period):
