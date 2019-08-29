@@ -650,6 +650,7 @@ class EtlTask:
                 query += f.read().format(
                     project=config['project'],
                     dataset=config['dataset'],
+                    table=config['table'],
                     start_date=self.last_month.strftime(config['date_format']),
                     end_date=self.current_date.strftime(config['date_format']))
         df = pdbq.read_gbq(query)

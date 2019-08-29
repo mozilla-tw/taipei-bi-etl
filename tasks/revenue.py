@@ -110,14 +110,13 @@ class RevenueEtlTask(base.EtlTask):
             new['dt'] = self.current_date.date()
             old = last_df
             old['dt'] = self.current_date.date() - datetime.timedelta(days=1)
-            # comb = old.append(new)
-
+            comb = old.append(new)
             q = """
                 SELECT source, max(`Stat.datetime`) as updated_key
                 FROM comb
             """
-            # to_update = ps.sqldf(q)
 
+            to_update = ps.sqldf(q)
             q = """
                 SELECT comb.*
                 FROM comb left join to_update

@@ -3,6 +3,7 @@
 *.swo
 venv/
 data/
+debug-data/
 .idea/
 configs/*.py
 configs/debug/*.py
