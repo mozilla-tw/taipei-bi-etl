@@ -355,9 +355,10 @@ class EtlTask:
             ftype = 'jsonl' if 'file_format' not in dest_config \
                 else dest_config['file_format']
             return '{date}.{ext}'.format(
-                date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
+                date=date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
 
-    def get_or_create_filepath(self, source, config, stage, dest, page=None) -> str:
+    def get_or_create_filepath(self, source, config, stage, dest,
+                               page=None, date=None) -> str:
         """Get data file path for loading,
         which the format would be {prefix}{stage}-{task}-{source}/{filename}.
         Folders will be created if doesn't exist.
@@ -371,9 +372,11 @@ class EtlTask:
         :param dest: name of the destination to load data to,
             specified in task config, see `configs/*.py`
         :param page: the page part of the data file name
+        :param date: the date part of the data file name,
+            will use `self.current_date` if not specified
         :return: the data file path
         """
-        filename = self.get_filepath(source, config, stage, dest, page)
+        filename = self.get_filepath(source, config, stage, dest, page, date)
         if not os.path.exists(os.path.dirname(filename)):
             try:
                 os.makedirs(os.path.dirname(filename))
@@ -731,8 +734,8 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         """
-        fpath = self.get_or_create_filepath(source, config, stage, 'fs')
         if stage == 'raw':
+            fpath = self.get_or_create_filepath(source, config, stage, 'fs')
             # write multiple raw files if paged
             raw = self.raw[source]
             if isinstance(raw, list):
@@ -757,31 +760,36 @@ class EtlTask:
                     print('%s-%s-%s/%s x 1 page loaded to file system.' %
                           (stage, self.task, source, self.current_date.date()))
         else:
-            with open(fpath, 'w') as f:
-                output = ''
-                # Fix date format for BigQuery (only support dashed notation)
+            df = self.transformed[source]
+            ds = df['utc_datetime'].dt.date.unique()
+            # load files by date
+            for d in ds:
+                ddf = df[df['utc_datetime'].dt.date == d]
+                # Fix date format for BigQuery (only support dash notation)
                 for rs in self.raw_schema:
                     if rs[1] == np.datetime64:
-                        df = self.transformed[source]
-                        df[rs[0]] = df[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
-                # TODO: Fix multiple files loading
-                if self.destinations['fs']['file_format'] == 'jsonl':
+                        ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
+                fpath = self.get_or_create_filepath(
+                    source, config, stage, 'fs', None, d)
+                with open(fpath, 'w') as f:
                     output = ''
-                    # build json lines
-                    for row in self.transformed[source].iterrows():
-                        output += row[1].to_json() + '\n'
-                elif self.destinations['fs']['file_format'] == 'json':
-                    output = '['
-                    # build json
-                    for row in self.transformed[source].iterrows():
-                        output += row[1].to_json() + ',\n'
-                    if len(output) > 2:
-                        output = output[0:-2] + '\n]'
-                elif self.destinations['fs']['file_format'] == 'csv':
-                    output = self.transformed[source].to_csv(index=False)
-                f.write(output)
-                print('%s-%s-%s/%s loaded to file system.' %
-                      (stage, self.task, source, self.current_date.date()))
+                    if self.destinations['fs']['file_format'] == 'jsonl':
+                        output = ''
+                        # build json lines
+                        for row in ddf.iterrows():
+                            output += row[1].to_json() + '\n'
+                    elif self.destinations['fs']['file_format'] == 'json':
+                        output = '['
+                        # build json
+                        for row in ddf.iterrows():
+                            output += row[1].to_json() + ',\n'
+                        if len(output) > 2:
+                            output = output[0:-2] + '\n]'
+                    elif self.destinations['fs']['file_format'] == 'csv':
+                        output = ddf.to_csv(index=False)
+                    f.write(output)
+            print('%s-%s-%s/%s x %d files loaded to file system.' %
+                  (stage, self.task, source, self.current_date.date(), len(ds)))
 
     def load_to_gcs(self, source, config, stage='raw'):
         """Load data into Google Cloud Storage based on destination settings
@@ -793,18 +801,27 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         """
+        bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
+        fl = 0
         if stage == 'raw':
             fpaths = self.get_filepaths(source, config, stage, 'fs')
+            fl = len(fpaths)
+            for fpath in fpaths:
+                blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs',
+                                                     EtlTask.get_page_ext(fpath)))
+                blob.upload_from_filename(fpath)
         else:
-            # TODO: Fix multiple files loading
-            fpaths = [self.get_filepath(source, config, stage, 'fs')]
-        bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
-        for fpath in fpaths:
-            blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs',
-                                                 EtlTask.get_page_ext(fpath)))
-            blob.upload_from_filename(fpath)
+            # load files by date
+            df = self.transformed[source]
+            ds = df['utc_datetime'].dt.date.unique()
+            fl = len(ds)
+            for d in ds:
+                blob = bucket.blob(
+                    self.get_filepath(source, config, stage, 'gcs', None, d))
+                blob.upload_from_filename(
+                    self.get_filepath(source, config, stage, 'fs', None, d))
         print('%s-%s-%s/%s x %d files loaded to GCS.' %
-              (stage, self.task, source, self.current_date.date(), len(fpaths)))
+              (stage, self.task, source, self.current_date.date(), fl))
 
     def load(self):
         """Iterate through data source settings in task config (see `configs/*.py`)
