@@ -47,27 +47,19 @@ class RevenueEtlTask(base.EtlTask):
             'Stat.affiliate_info5',
             'Stat.conversion_status'
         ]
-
-        # extract new data
-        new_df = self.extracted[source]
-        new_df = new_df.replace('', np.nan)
-        new_df['Country.name'] = ['ID' if x == 'Indonesia' else '' for x in
-                                  new_df['Country.name']]
-        new_df['source'] = source
-        new_df['tz'] = new_df['Country.name'].apply(
-            lambda x: RevenueEtlTask.get_country_tz_str(x))
-
-        new_df = new_df[map_cols]
-
-        # extract old data
-        last_df = self.extracted_base[source]
-        if not last_df.empty:
-            last_df['source'] = source
-            last_df['Country.name'] = [
-                'ID' if x == 'Indonesia' else '' for x in last_df['Country.name']]
-            last_df['tz'] = last_df['Country.name'].apply(
+        
+        # data pre-precessing: add common column
+        def data_prep(d):
+            print('>>> Start data preparation...')
+            d['source'] = source
+            d = d.replace('', np.nan)
+            d['Country.name'] = [
+                'ID' if x == 'Indonesia' else '' for x in d['Country.name']]
+            d['tz'] = d['Country.name'].apply(
                 lambda x: RevenueEtlTask.get_country_tz_str(x))
-            last_df = last_df[map_cols]
+            d = d[map_cols]
+            print('>>> Done data preparation...')
+            return d
 
         # checking functions
         # new df date range vs. args
@@ -126,6 +118,13 @@ class RevenueEtlTask(base.EtlTask):
             print('>>> Done updates and inserts...')
             return do_update
 
+        
+        # extract new & old data
+        new_df = data_prep(self.extracted[source])
+        last_df = self.extracted_base[source]        
+        if not last_df.empty:
+            last_df = data_prep(self.extracted_base[source]) 
+            
         # transform here ------
         # do check
         for check in [check_dt_range, check_schema, check_null]:
@@ -144,7 +143,7 @@ class RevenueEtlTask(base.EtlTask):
         else:
             df = do_updates_inserts()
             df.columns = revenue_df.columns
-            df = revenue_df.append(df, ignore_index=True)
+            df = revenue_df.append(df, ignore_index=True).drop_duplicates()
             print('load new batch')
 
         df = df[df['conversion_status'] == 'approved']
