@@ -108,7 +108,7 @@ class RevenueEtlTask(base.EtlTask):
         def do_updates_inserts():
             new = new_df
             new['dt'] = self.current_date.date()
-            old = last_df
+            old = last_df.copy()
             old['dt'] = self.current_date.date() - datetime.timedelta(days=1)
             comb = old.append(new)
             q = """

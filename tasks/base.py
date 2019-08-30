@@ -250,6 +250,7 @@ class EtlTask:
             df['tz'] = EtlTask.get_tz_str(tz)
             for date_field in config['date_fields']:
                 df[date_field].dt.tz_localize(tz).dt.tz_convert(pytz.utc)
+                df[date_field] = df[date_field].astype('datetime64[ns]')
         return df
 
     @staticmethod
@@ -764,7 +765,7 @@ class EtlTask:
             ds = df['utc_datetime'].dt.date.unique()
             # load files by date
             for d in ds:
-                ddf = df[df['utc_datetime'].dt.date == d]
+                ddf = df[df['utc_datetime'].dt.date == d].copy()
                 # Fix date format for BigQuery (only support dash notation)
                 for rs in self.raw_schema:
                     if rs[1] == np.datetime64:
