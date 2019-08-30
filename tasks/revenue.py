@@ -2,15 +2,11 @@ from tasks import base
 from configs import revenue
 from configs.debug import revenue as revenue_dbg
 import numpy as np
-
-DEFAULTS = {}
-
-
-
-import numpy as np
 import pandas as pd
 import datetime
 import pandasql as ps
+
+DEFAULTS = {}
 
 
 class RevenueEtlTask(base.EtlTask):
@@ -154,7 +150,6 @@ class RevenueEtlTask(base.EtlTask):
         df['local_datetime'] = df['local_datetime'].astype('datetime64[ns]')
         df['sales_amount'] = df['sales_amount'].astype('float')
         df['payout'] = df['payout'].astype('float')
-        print(df.head(4).to_string())
         return df
     
     
