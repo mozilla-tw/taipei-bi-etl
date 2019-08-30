@@ -6,7 +6,7 @@ SELECT
   normalized_os AS os,
   additional_properties
 FROM
-  `{project}.{dataset}.focus_event`
+  `{project}.{dataset}.{table}`
 WHERE
   DATE(submission_timestamp) >= DATE '{start_date}' AND
   DATE(submission_timestamp) <= DATE '{end_date}' AND

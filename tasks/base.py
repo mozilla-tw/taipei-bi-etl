@@ -2,6 +2,7 @@ import errno
 import glob
 import re
 import time
+from collections import Counter
 from io import StringIO
 from argparse import ArgumentParser
 import os
@@ -18,8 +19,11 @@ import pandas.io.json as pd_json
 from typing import List, Optional, Tuple, Union, Dict
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
+import pytz
 
 DEFAULT_DATE_FORMAT = '%Y-%m-%d'
+DEFAULT_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+DEFAULT_TZ_FORMAT = '%+03d:00'
 EXT_REGEX = '([*0-9A-z]+)\\.[A-z0-9]+$'
 DEFAULT_PATH_FORMAT = '{prefix}{stage}-{task}-{source}'
 
@@ -129,6 +133,58 @@ class EtlTask:
         self.gcs = storage.Client()
 
     @staticmethod
+    def get_country_tz(country_code) -> pytz.UTC:
+        """Get the default timezone for specified country code,
+        if covered multiple timezone, pick the most common one.
+
+        :rtype: pytz.UTC
+        :return: the default (major) timezone of the country
+        :param country_code: the 2 digit country code to get timezone
+        """
+        if country_code not in pytz.country_timezones:
+            # FIXME: workaround here for pytz doesn't support XK for now.
+            tzmap = {'XK': 'CET'}
+            if country_code in tzmap:
+                return pytz.timezone(tzmap[country_code])
+            print('WARNING: timezone not found for %s, return UTC' % country_code)
+            return pytz.utc
+        timezones = pytz.country_timezones[country_code]
+        offsets = []
+        for timezone in timezones:
+            offsets += [pytz.timezone(timezone).utcoffset(
+                datetime.datetime.now()).seconds / 3600]
+        offset_count = Counter(offsets)
+        max_count = -1
+        max_offset = None
+        for k, v in offset_count.items():
+            if v > max_count:
+                max_count = v
+                max_offset = k
+        return pytz.timezone(timezones[offsets.index(max_offset)])
+
+    @staticmethod
+    def get_country_tz_str(country_code) -> str:
+        """Get the default timezone string (e.g. +08:00) for specified country code,
+        if covered multiple timezone, pick the most common one.
+
+        :rtype: str
+        :param country_code: the 2 digit country code to get timezone
+        :return: the default (major) timezone string of the country in +08:00 format.
+        """
+        return EtlTask.get_tz_str(EtlTask.get_country_tz(country_code))
+
+    @staticmethod
+    def get_tz_str(timezone) -> str:
+        """Convert timezone to offset string (e.g. +08:00)
+
+        :rtype: str
+        :param timezone: pytz.UTC
+        :return: the timezone offset string in +08:00 format.
+        """
+        return DEFAULT_TZ_FORMAT % (timezone.utcoffset(
+            datetime.datetime.now()).seconds / 3600)
+
+    @staticmethod
     def lookback_dates(date, period):
         """Subtract date by period
         """
@@ -171,17 +227,31 @@ class EtlTask:
         :return: the converted `DataFrame`
         """
         ftype = 'json' if 'file_format' not in config else config['file_format']
+        df = None
         if ftype == 'json':
             extracted_json = EtlTask.json_extract(
                 raw,
                 None if 'json_path' not in config else config['json_path'])
             data = pd_json.loads(extracted_json)
-            return pd_json.json_normalize(data)
+            df = pd_json.json_normalize(data)
         elif ftype == 'csv':
             if 'header' in config:
-                return pd.read_csv(StringIO(raw), names=config['header'])
+                df = pd.read_csv(StringIO(raw), names=config['header'])
             else:
-                return pd.read_csv(StringIO(raw))
+                df = pd.read_csv(StringIO(raw))
+        # convert timezone according to config
+        tz = None
+        if 'timezone' in config:
+            tz = pytz.timezone(config['timezone'])
+        elif 'country_code' in config:
+            tz = EtlTask.get_country_tz(config['country_code'])
+        # TODO: support multiple countries/timezones in the future if needed
+        if tz is not None and 'date_fields' in config:
+            df['tz'] = EtlTask.get_tz_str(tz)
+            for date_field in config['date_fields']:
+                df[date_field].dt.tz_localize(tz).dt.tz_convert(pytz.utc)
+                df[date_field] = df[date_field].astype('datetime64[ns]')
+        return df
 
     @staticmethod
     def get_page_ext(fpath):
@@ -283,11 +353,13 @@ class EtlTask:
                 page=1 if page is None else page)
         else:
             dest_config = self.destinations['fs']
-            ftype = 'jsonl' if 'file_format' not in dest_config else dest_config['file_format']
+            ftype = 'jsonl' if 'file_format' not in dest_config \
+                else dest_config['file_format']
             return '{date}.{ext}'.format(
-                date=self.current_date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
+                date=date.strftime(DEFAULT_DATE_FORMAT), ext=ftype)
 
-    def get_or_create_filepath(self, source, config, stage, dest, page=None) -> str:
+    def get_or_create_filepath(self, source, config, stage, dest,
+                               page=None, date=None) -> str:
         """Get data file path for loading,
         which the format would be {prefix}{stage}-{task}-{source}/{filename}.
         Folders will be created if doesn't exist.
@@ -301,9 +373,11 @@ class EtlTask:
         :param dest: name of the destination to load data to,
             specified in task config, see `configs/*.py`
         :param page: the page part of the data file name
+        :param date: the date part of the data file name,
+            will use `self.current_date` if not specified
         :return: the data file path
         """
-        filename = self.get_filepath(source, config, stage, dest, page)
+        filename = self.get_filepath(source, config, stage, dest, page, date)
         if not os.path.exists(os.path.dirname(filename)):
             try:
                 os.makedirs(os.path.dirname(filename))
@@ -423,8 +497,8 @@ class EtlTask:
                       % (prefix, i + 1))
             else:
                 print('%s-%s-%s/%s x %d pages extracted from google cloud storage'
-                  % (stage, self.task, source,
-                     (self.current_date if date is None else date).date(), i + 1))
+                      % (stage, self.task, source,
+                         (self.current_date if date is None else date).date(), i + 1))
             return self.extract_via_fs(source, config, stage, date)
         else:
             return DataFrame()
@@ -580,6 +654,7 @@ class EtlTask:
                 query += f.read().format(
                     project=config['project'],
                     dataset=config['dataset'],
+                    table=config['table'],
                     start_date=self.last_month.strftime(config['date_format']),
                     end_date=self.current_date.strftime(config['date_format']))
         df = pdbq.read_gbq(query)
@@ -647,7 +722,8 @@ class EtlTask:
                     assert len(errors) == 0, error_msg
                     print('%s-%s-%s/%s w/t %d records transformed'
                           % (self.stage, self.task, source,
-                             self.current_date.date(), len(self.transformed[source].index)))
+                             self.current_date.date(),
+                             len(self.transformed[source].index)))
 
     def load_to_fs(self, source, config, stage='raw'):
         """Load data into file system based on destination settings
@@ -659,8 +735,8 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         """
-        fpath = self.get_or_create_filepath(source, config, stage, 'fs')
         if stage == 'raw':
+            fpath = self.get_or_create_filepath(source, config, stage, 'fs')
             # write multiple raw files if paged
             raw = self.raw[source]
             if isinstance(raw, list):
@@ -685,25 +761,36 @@ class EtlTask:
                     print('%s-%s-%s/%s x 1 page loaded to file system.' %
                           (stage, self.task, source, self.current_date.date()))
         else:
-            with open(fpath, 'w') as f:
-                output = ''
-                if self.destinations['fs']['file_format'] == 'jsonl':
+            df = self.transformed[source]
+            ds = df['utc_datetime'].dt.date.unique()
+            # load files by date
+            for d in ds:
+                ddf = df[df['utc_datetime'].dt.date == d].copy()
+                # Fix date format for BigQuery (only support dash notation)
+                for rs in self.raw_schema:
+                    if rs[1] == np.datetime64:
+                        ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
+                fpath = self.get_or_create_filepath(
+                    source, config, stage, 'fs', None, d)
+                with open(fpath, 'w') as f:
                     output = ''
-                    # build json lines
-                    for row in self.transformed[source].iterrows():
-                        output += row[1].to_json() + '\n'
-                elif self.destinations['fs']['file_format'] == 'json':
-                    output = '['
-                    # build json
-                    for row in self.transformed[source].iterrows():
-                        output += row[1].to_json() + ',\n'
-                    if len(output) > 2:
-                        output = output[0:-2] + '\n]'
-                elif self.destinations['fs']['file_format'] == 'csv':
-                    output = self.transformed[source].to_csv(index=False)
-                f.write(output)
-                print('%s-%s-%s/%s loaded to file system.' %
-                      (stage, self.task, source, self.current_date.date()))
+                    if self.destinations['fs']['file_format'] == 'jsonl':
+                        output = ''
+                        # build json lines
+                        for row in ddf.iterrows():
+                            output += row[1].to_json() + '\n'
+                    elif self.destinations['fs']['file_format'] == 'json':
+                        output = '['
+                        # build json
+                        for row in ddf.iterrows():
+                            output += row[1].to_json() + ',\n'
+                        if len(output) > 2:
+                            output = output[0:-2] + '\n]'
+                    elif self.destinations['fs']['file_format'] == 'csv':
+                        output = ddf.to_csv(index=False)
+                    f.write(output)
+            print('%s-%s-%s/%s x %d files loaded to file system.' %
+                  (stage, self.task, source, self.current_date.date(), len(ds)))
 
     def load_to_gcs(self, source, config, stage='raw'):
         """Load data into Google Cloud Storage based on destination settings
@@ -715,18 +802,27 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param stage: the stage of the loaded data, could be raw/staging/production.
         """
-        # TODO: Fix multiple files loading
+        bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
+        fl = 0
         if stage == 'raw':
             fpaths = self.get_filepaths(source, config, stage, 'fs')
+            fl = len(fpaths)
+            for fpath in fpaths:
+                blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs',
+                                                     EtlTask.get_page_ext(fpath)))
+                blob.upload_from_filename(fpath)
         else:
-            fpaths = [self.get_filepath(source, config, stage, 'fs')]
-        bucket = self.gcs.bucket(self.destinations['gcs']['bucket'])
-        for fpath in fpaths:
-            blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs',
-                                                 EtlTask.get_page_ext(fpath)))
-            blob.upload_from_filename(fpath)
+            # load files by date
+            df = self.transformed[source]
+            ds = df['utc_datetime'].dt.date.unique()
+            fl = len(ds)
+            for d in ds:
+                blob = bucket.blob(
+                    self.get_filepath(source, config, stage, 'gcs', None, d))
+                blob.upload_from_filename(
+                    self.get_filepath(source, config, stage, 'fs', None, d))
         print('%s-%s-%s/%s x %d files loaded to GCS.' %
-              (stage, self.task, source, self.current_date.date(), len(fpaths)))
+              (stage, self.task, source, self.current_date.date(), fl))
 
     def load(self):
         """Iterate through data source settings in task config (see `configs/*.py`)
