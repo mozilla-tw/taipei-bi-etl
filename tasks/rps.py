@@ -52,6 +52,7 @@ class RpsEtlTask(base.EtlTask):
             return None
 
         def transform_fb_idx(idx):
+            assert len(idx.index) > 200, 'Too few rows in FB index'
             country_2 = idx['country_code'].apply(map_country_3_to_2)
             idx['country'] = country_2
             return idx.drop_duplicates('country').set_index('country')
@@ -117,6 +118,9 @@ class RpsEtlTask(base.EtlTask):
         df['rps'] = df['cost_idx_latest'] * rps_factor
         df['rps_cb'] = df['cost_idx_cb'] * cb_rps_factor
         df['cb_rps_ratio'] = df['rps_cb'] / df['rps']
+        assert len(df.index) > 200, 'Too few rows in transformed data'
+        for col in ['country', 'volume', 'rps', 'cost_idx_latest']:
+            assert not df[col].isnull().values.any(), 'Null value in %s' % col
         print(df)
         print(df[df['country'].isin(['IN', 'ID', 'TW', 'HK', 'SG', 'US', 'DE'])])
         return df
