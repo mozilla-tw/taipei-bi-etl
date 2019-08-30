@@ -97,7 +97,7 @@ class RevenueEtlTask(base.EtlTask):
         def check_null():
             print('>>> Checking invalid null value...')
             na_cols = new_df.columns[new_df.isna().any()].tolist()
-            match = list(set(map_cols[0:7]) & set(na_cols))
+            match = list(set(map_cols[0:8]) & set(na_cols))
             not_null = ', '.join(match)
             assert len(match) == 0, \
                 f'>>> From {source}, values in column [ {not_null} ] should not be N/A.'
