@@ -78,8 +78,6 @@ class RevenueEtlTask(base.EtlTask):
             arg_start, arg_end = \
                 self.last_month.date(), \
                 self.current_date.date() + datetime.timedelta(days=1)
-            print(dt_start, dt_end)
-            print(arg_start, arg_end)
             assert dt_end <= arg_end, \
                 f'>>> From {source}, Max(Date)={dt_end} greater then arg+1d={arg_end}.'
             assert dt_start >= arg_start, \
@@ -140,7 +138,7 @@ class RevenueEtlTask(base.EtlTask):
         # do updates and inserts
         if last_df.empty:
             new_df.columns = revenue_df.columns
-            df = revenue_df.append(new_df, ignore_index=True)
+            df = revenue_df.append(new_df, ignore_index=True).drop_duplicates()
             print('init first batch')
 
         else:
