@@ -4,7 +4,7 @@
 """
 This script loads market data from various sources and combine them into one big file.
 """
-from tasks import base, rps, revenue, rfe
+from tasks import base, rps, revenue    #, rfe
 
 
 def main():
@@ -19,8 +19,8 @@ def main():
         task = rps
     if args.task == 'revenue':
         task = revenue
-    if args.task == 'rfe':
-        task = rfe
+    # if args.task == 'rfe':
+    #     task = rfe
     if task:
         arg_parser = base.get_arg_parser(**task.DEFAULTS)
         task.main(arg_parser.parse_args())
