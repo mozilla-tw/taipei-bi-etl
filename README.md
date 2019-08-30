@@ -1,5 +1,5 @@
 # taipei-bi-etl
-Docker image for taipei-bi team ETL.
+Docker image for taipei-bi team ETL tasks.
 
 ## Getting Started
 1. [Install docker](https://docs.docker.com/install/)
@@ -21,6 +21,6 @@ It will run in tempfs (in-memory storage), and won't left anything on your hardd
 <br>`docker run -e="Asia/Taipei" taipei-bi-etl-img` 
 * For other available ETL options (e.g. specify date rage), run `docker run taipei-bi-etl-img --help`
 * A full example of the docker command would be like:<br>
-`docker build -t taipei-bi-etl-img . && docker run -v /Users/eddielin/taipei-bi-etl/data:/app/data -v /Users/eddielin/.config:/root/.config --name taipei-bi-etl -e TZ=Asia/Taipei taipei-bi-etl-img --task revenue --step e --source google_search`
+`docker build -t taipei-bi-etl-img . && docker run -v /Users/eddielin/taipei-bi-etl/data:/app/data -v /Users/eddielin/.config:/root/.config --name taipei-bi-etl taipei-bi-etl-img --task revenue --step e --source google_search`
 * For more options of the etl tasks, run:<br>
-`docker build -t taipei-bi-etl-img . && docker run -v /Users/eddielin/taipei-bi-etl/data:/app/data -v /Users/eddielin/.config:/root/.config --name taipei-bi-etl -e TZ=Asia/Taipei taipei-bi-etl-img --help`
+`docker build -t taipei-bi-etl-img . && docker run -v /Users/eddielin/taipei-bi-etl/data:/app/data -v /Users/eddielin/.config:/root/.config --name taipei-bi-etl taipei-bi-etl-img --help`
