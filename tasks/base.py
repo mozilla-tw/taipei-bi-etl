@@ -762,35 +762,45 @@ class EtlTask:
                           (stage, self.task, source, self.current_date.date()))
         else:
             df = self.transformed[source]
-            ds = df['utc_datetime'].dt.date.unique()
-            # load files by date
-            for d in ds:
-                ddf = df[df['utc_datetime'].dt.date == d].copy()
-                # Fix date format for BigQuery (only support dash notation)
-                for rs in self.raw_schema:
-                    if rs[1] == np.datetime64:
-                        ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
-                fpath = self.get_or_create_filepath(
-                    source, config, stage, 'fs', None, d)
-                with open(fpath, 'w') as f:
-                    output = ''
-                    if self.destinations['fs']['file_format'] == 'jsonl':
-                        output = ''
-                        # build json lines
-                        for row in ddf.iterrows():
-                            output += row[1].to_json() + '\n'
-                    elif self.destinations['fs']['file_format'] == 'json':
-                        output = '['
-                        # build json
-                        for row in ddf.iterrows():
-                            output += row[1].to_json() + ',\n'
-                        if len(output) > 2:
-                            output = output[0:-2] + '\n]'
-                    elif self.destinations['fs']['file_format'] == 'csv':
-                        output = ddf.to_csv(index=False)
-                    f.write(output)
-            print('%s-%s-%s/%s x %d files loaded to file system.' %
-                  (stage, self.task, source, self.current_date.date(), len(ds)))
+            if 'date_field' in self.destinations['fs']:
+                ds = df[self.destinations['fs']['date_field']].dt.date.unique()
+                # load files by date
+                for d in ds:
+                    ddf = df[
+                        df[self.destinations['fs']['date_field']].dt.date == d].copy()
+                    # Fix date format for BigQuery (only support dash notation)
+                    for rs in self.raw_schema:
+                        if rs[1] == np.datetime64:
+                            ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
+                    self.convert_file(ddf, config, source, stage, d)
+                print('%s-%s-%s/%s x %d files loaded to file system.' %
+                      (stage, self.task, source, self.current_date.date(), len(ds)))
+            else:
+                self.convert_file(df, config, source, stage)
+                print('%s-%s-%s/%s x 1 files loaded to file system.' %
+                      (stage, self.task, source, self.current_date.date()))
+
+    def convert_file(self, df, config, source, stage, date=None):
+        date = self.current_date if date is None else date
+        fpath = self.get_or_create_filepath(
+            source, config, stage, 'fs', None, date)
+        with open(fpath, 'w') as f:
+            output = ''
+            if self.destinations['fs']['file_format'] == 'jsonl':
+                output = ''
+                # build json lines
+                for row in df.iterrows():
+                    output += row[1].to_json() + '\n'
+            elif self.destinations['fs']['file_format'] == 'json':
+                output = '['
+                # build json
+                for row in df.iterrows():
+                    output += row[1].to_json() + ',\n'
+                if len(output) > 2:
+                    output = output[0:-2] + '\n]'
+            elif self.destinations['fs']['file_format'] == 'csv':
+                output = df.to_csv(index=False)
+            f.write(output)
 
     def load_to_gcs(self, source, config, stage='raw'):
         """Load data into Google Cloud Storage based on destination settings
@@ -814,13 +824,19 @@ class EtlTask:
         else:
             # load files by date
             df = self.transformed[source]
-            ds = df['utc_datetime'].dt.date.unique()
-            fl = len(ds)
-            for d in ds:
-                blob = bucket.blob(
-                    self.get_filepath(source, config, stage, 'gcs', None, d))
-                blob.upload_from_filename(
-                    self.get_filepath(source, config, stage, 'fs', None, d))
+
+            if 'date_field' in self.destinations['fs']:
+                ds = df[self.destinations['fs']['date_field']].dt.date.unique()
+                fl = len(ds)
+                for d in ds:
+                    blob = bucket.blob(
+                        self.get_filepath(source, config, stage, 'gcs', None, d))
+                    blob.upload_from_filename(
+                        self.get_filepath(source, config, stage, 'fs', None, d))
+            else:
+                fl = 1
+                blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs'))
+                blob.upload_from_filename(self.get_filepath(source, config, stage, 'fs'))
         print('%s-%s-%s/%s x %d files loaded to GCS.' %
               (stage, self.task, source, self.current_date.date(), fl))
 
