@@ -1,13 +1,14 @@
 import datetime
-
 from pandas import DataFrame
-
 from tasks import base
 from configs import rps
 from configs.debug import rps as rps_dbg
 import pycountry
 import pandas as pd
 import numpy as np
+import logging
+
+log = logging.getLogger(__name__)
 
 DEFAULTS = {'date': datetime.datetime(2018, 1, 1), 'period': 365}
 
@@ -111,10 +112,10 @@ class RpsEtlTask(base.EtlTask):
                 & (df['cost_idx_base'] > 0) & (df['volume'] > 0)]
         rps_factor = get_rps_factor(
             df['volume'], df['cost_idx_base'], pkg['package'][0])
-        print('Facebook RPS Factor: %d' % rps_factor)
+        log.info('Facebook RPS Factor: %d' % rps_factor)
         cb_rps_factor = get_rps_factor(
             df['volume'], df['cost_idx_cb'], pkg['package'][0])
-        print('Chartboost RPS Factor: %d' % cb_rps_factor)
+        log.info('Chartboost RPS Factor: %d' % cb_rps_factor)
         df['rps'] = df['cost_idx_latest'] * rps_factor
         df['rps_cb'] = df['cost_idx_cb'] * cb_rps_factor
         df['cb_rps_ratio'] = df['rps_cb'] / df['rps']

@@ -5,6 +5,7 @@
 This script loads market data from various sources and combine them into one big file.
 """
 from tasks import base, rps, revenue  # , rfe
+import logging as log
 
 
 def main():
@@ -14,6 +15,8 @@ def main():
     """
     arg_parser = base.get_arg_parser()
     args = arg_parser.parse_args()
+    if args.debug:
+        log.basicConfig(level=log.DEBUG)
     task = None
     if args.task == 'rps':
         task = rps

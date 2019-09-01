@@ -20,6 +20,9 @@ from typing import List, Optional, Tuple, Union, Dict
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
 import pytz
+import logging
+
+log = logging.getLogger(__name__)
 
 DEFAULT_DATE_FORMAT = '%Y-%m-%d'
 DEFAULT_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -111,7 +114,7 @@ class EtlTask:
                     prefix=destinations['fs']['prefix'],
                     stage=stage, task=args.task, source=source))
                 for f in files:
-                    print("Removing cached file: %s" % f)
+                    log.info("Removing cached file: %s" % f)
                     os.remove(f)
         self.task = task
         self.stage = stage
@@ -146,7 +149,7 @@ class EtlTask:
             tzmap = {'XK': 'CET'}
             if country_code in tzmap:
                 return pytz.timezone(tzmap[country_code])
-            print('WARNING: timezone not found for %s, return UTC' % country_code)
+            log.warn('timezone not found for %s, return UTC' % country_code)
             return pytz.utc
         timezones = pytz.country_timezones[country_code]
         offsets = []
@@ -438,7 +441,7 @@ class EtlTask:
                     it = EtlTask.get_page_ext(fpath)
                     self.raw[it] = raw
                     extracted[it] = self.convert_df(raw, config)
-            print('%s-%s-%s/%s x %d iterators extracted from file system'
+            log.info('%s-%s-%s/%s x %d iterators extracted from file system'
                   % (stage, self.task, source,
                      (self.current_date if date is None else date).date(),
                      len(fpaths)))
@@ -454,7 +457,7 @@ class EtlTask:
                         self.raw[source] += [raw]
                         extracted = extracted.append(self.convert_df(raw, config))
             extracted = extracted.reset_index(drop=True)
-            print('%s-%s-%s/%s x %d pages extracted from file system'
+            log.info('%s-%s-%s/%s x %d pages extracted from file system'
                   % (stage, self.task, source,
                      (self.current_date if date is None else date).date(), len(fpaths)))
         return extracted
@@ -493,10 +496,10 @@ class EtlTask:
 
         if not is_empty:
             if config['type'] == 'gcs':
-                print('%s x %d pages extracted from google cloud storage'
+                log.info('%s x %d pages extracted from google cloud storage'
                       % (prefix, i + 1))
             else:
-                print('%s-%s-%s/%s x %d pages extracted from google cloud storage'
+                log.info('%s-%s-%s/%s x %d pages extracted from google cloud storage'
                       % (stage, self.task, source,
                          (self.current_date if date is None else date).date(), i + 1))
             return self.extract_via_fs(source, config, stage, date)
@@ -529,7 +532,7 @@ class EtlTask:
             raw = dict()
             extracted = dict()
             for it in config['iterator']:
-                print('waiting for %s iterator %d' % (source, it))
+                log.debug('waiting for %s iterator %d' % (source, it))
                 time.sleep(request_interval)
                 it = str(it)
                 url = config['url'].format(api_key=config['api_key'],
@@ -540,7 +543,7 @@ class EtlTask:
                 raw[it] = r.text
                 extracted[it] = self.convert_df(raw[it], config)
             self.raw[source] = raw
-            print('%s-%s-%s/%s x %d iterators extracted from API'
+            log.info('%s-%s-%s/%s x %d iterators extracted from API'
                   % (stage, self.task, source,
                      self.current_date.date(), len(extracted)))
             return extracted
@@ -556,12 +559,12 @@ class EtlTask:
             count = int(self.json_extract(raw[0], config['json_path_page_count']))
             if count is None or int(count) <= 1:
                 self.raw[source] = raw
-                print('%s-%s-%s/%s x 1 page extracted from API'
+                log.info('%s-%s-%s/%s x 1 page extracted from API'
                       % (stage, self.task, source,
                          self.current_date.date()))
                 return extracted
             for page in range(2, count):
-                print('waiting for %s page %d' % (source, page))
+                log.debug('waiting for %s page %d' % (source, page))
                 time.sleep(request_interval)
                 url = config['url'].format(api_key=config['api_key'],
                                            start_date=start_date,
@@ -572,7 +575,7 @@ class EtlTask:
                 extracted = extracted.append(self.convert_df(raw[page - 1], config))
             extracted = extracted.reset_index(drop=True)
             self.raw[source] = raw
-            print('%s-%s-%s/%s x %d pages extracted from API'
+            log.info('%s-%s-%s/%s x %d pages extracted from API'
                   % (stage, self.task, source,
                      self.current_date.date(), count))
             return extracted
@@ -583,7 +586,7 @@ class EtlTask:
             r = requests.get(url, allow_redirects=True)
             raw = r.text
             self.raw[source] = raw
-            print('%s-%s-%s/%s extracted from API'
+            log.info('%s-%s-%s/%s extracted from API'
                   % ('raw', self.task, source,
                      self.current_date.date()))
             return self.convert_df(raw, config)
@@ -658,7 +661,7 @@ class EtlTask:
                     start_date=self.last_month.strftime(config['date_format']),
                     end_date=self.current_date.strftime(config['date_format']))
         df = pdbq.read_gbq(query)
-        print('%s-%s-%s/%s w/t %d records extracted from BigQuery'
+        log.info('%s-%s-%s/%s w/t %d records extracted from BigQuery'
               % ('raw', self.task, source,
                  self.current_date.date(), len(df.index)))
         return df
@@ -720,7 +723,7 @@ class EtlTask:
                     for error in errors:
                         error_msg += error.message + '\n'
                     assert len(errors) == 0, error_msg
-                    print('%s-%s-%s/%s w/t %d records transformed'
+                    log.info('%s-%s-%s/%s w/t %d records transformed'
                           % (self.stage, self.task, source,
                              self.current_date.date(),
                              len(self.transformed[source].index)))
@@ -745,7 +748,7 @@ class EtlTask:
                         source, config, stage, 'fs', i + 1)
                     with open(fpath, 'w') as f:
                         f.write(r)
-                print('%s-%s-%s/%s x %d pages loaded to file system.' %
+                log.info('%s-%s-%s/%s x %d pages loaded to file system.' %
                       (stage, self.task, source, self.current_date.date(), len(raw)))
             elif isinstance(raw, dict):
                 for i, r in raw.items():
@@ -753,12 +756,12 @@ class EtlTask:
                         source, config, stage, 'fs', i)
                     with open(fpath, 'w') as f:
                         f.write(r)
-                print('%s-%s-%s/%s x %d pages loaded to file system.' %
+                log.info('%s-%s-%s/%s x %d pages loaded to file system.' %
                       (stage, self.task, source, self.current_date.date(), len(raw)))
             else:
                 with open(fpath, 'w') as f:
                     f.write(raw)
-                    print('%s-%s-%s/%s x 1 page loaded to file system.' %
+                    log.info('%s-%s-%s/%s x 1 page loaded to file system.' %
                           (stage, self.task, source, self.current_date.date()))
         else:
             df = self.transformed[source]
@@ -773,11 +776,11 @@ class EtlTask:
                         if rs[1] == np.datetime64:
                             ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
                     self.convert_file(ddf, config, source, stage, d)
-                print('%s-%s-%s/%s x %d files loaded to file system.' %
+                log.info('%s-%s-%s/%s x %d files loaded to file system.' %
                       (stage, self.task, source, self.current_date.date(), len(ds)))
             else:
                 self.convert_file(df, config, source, stage)
-                print('%s-%s-%s/%s x 1 files loaded to file system.' %
+                log.info('%s-%s-%s/%s x 1 files loaded to file system.' %
                       (stage, self.task, source, self.current_date.date()))
 
     def convert_file(self, df, config, source, stage, date=None):
@@ -837,7 +840,7 @@ class EtlTask:
                 fl = 1
                 blob = bucket.blob(self.get_filepath(source, config, stage, 'gcs'))
                 blob.upload_from_filename(self.get_filepath(source, config, stage, 'fs'))
-        print('%s-%s-%s/%s x %d files loaded to GCS.' %
+        log.info('%s-%s-%s/%s x %d files loaded to GCS.' %
               (stage, self.task, source, self.current_date.date(), fl))
 
     def load(self):

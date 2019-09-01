@@ -5,7 +5,9 @@ from tasks import base
 from configs import revenue
 from configs.debug import revenue as revenue_dbg
 import numpy as np
+import logging
 
+log = logging.getLogger(__name__)
 
 DEFAULTS = {}
 
@@ -50,7 +52,7 @@ class RevenueEtlTask(base.EtlTask):
         
         # data pre-precessing: add common column
         def data_prep(d):
-            print('>>> Start data preparation...')
+            log.info('>>> Start data preparation...')
             d['source'] = source
             d = d.replace('', np.nan)
             d['Country.name'] = [
@@ -58,13 +60,13 @@ class RevenueEtlTask(base.EtlTask):
             d['tz'] = d['Country.name'].apply(
                 lambda x: RevenueEtlTask.get_country_tz_str(x))
             d = d[map_cols]
-            print('>>> Done data preparation...')
+            log.info('>>> Done data preparation...')
             return d
 
         # checking functions
         # new df date range vs. args
         def check_dt_range():
-            print('>>> Checking date range...')
+            log.info('>>> Checking date range...')
             new_df_dt = pd.to_datetime(new_df['Stat.datetime']).dt.date
             dt_start, dt_end = min(new_df_dt), max(new_df_dt)
             arg_start, arg_end = \
@@ -74,26 +76,26 @@ class RevenueEtlTask(base.EtlTask):
                 f'>>> From {source}, Max(Date)={dt_end} greater then arg+1d={arg_end}.'
             assert dt_start >= arg_start, \
                 f'>>> From {source}, Min(Date)={dt_start} less then arg+1d={arg_start}.'
-            print('>>> Pass date range checking...')
+            log.info('>>> Pass date range checking...')
 
         # schema match
         def check_schema():
-            print('>>> Checking data schema matched...')
+            log.info('>>> Checking data schema matched...')
             match = list(set(map_cols) & set(new_df.columns))
             not_match = ', '.join(set(map_cols) - set(match))
             assert len(match) == len(
                 map_cols), f'>>> Missing column [ {not_match} ] from {source}.'
-            print('>>> Pass data schema matched...')
+            log.info('>>> Pass data schema matched...')
 
         # invalid null value
         def check_null():
-            print('>>> Checking invalid null value...')
+            log.info('>>> Checking invalid null value...')
             na_cols = new_df.columns[new_df.isna().any()].tolist()
             match = list(set(map_cols[0:8]) & set(na_cols))
             not_null = ', '.join(match)
             assert len(match) == 0, \
                 f'>>> From {source}, values in column [ {not_null} ] should not be N/A.'
-            print('>>> Pass checking invalid null value...')
+            log.info('>>> Pass checking invalid null value...')
 
         # which to update (update & insert)
         def do_updates_inserts():
@@ -115,7 +117,7 @@ class RevenueEtlTask(base.EtlTask):
                 and comb.`Stat.datetime` = to_update.updated_key
             """
             do_update = ps.sqldf(q).drop(columns='dt')
-            print('>>> Done updates and inserts...')
+            log.info('>>> Done updates and inserts...')
             return do_update
 
         
@@ -132,19 +134,19 @@ class RevenueEtlTask(base.EtlTask):
                 check()
             except AssertionError as e:
                 raise e
-        print('>>> Done data validation...')
+        log.info('>>> Done data validation...')
 
         # do updates and inserts
         if last_df.empty:
             new_df.columns = revenue_df.columns
             df = revenue_df.append(new_df, ignore_index=True).drop_duplicates()
-            print('init first batch')
+            log.info('init first batch')
 
         else:
             df = do_updates_inserts()
             df.columns = revenue_df.columns
             df = revenue_df.append(df, ignore_index=True).drop_duplicates()
-            print('load new batch')
+            log.info('load new batch')
 
         df = df[df['conversion_status'] == 'approved']
 
