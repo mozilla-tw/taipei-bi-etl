@@ -6,5 +6,7 @@ data/
 debug-data/
 .idea/
 configs/*.py
+!configs/__init__.py
 configs/debug/*.py
+!configs/debug/__init__.py
 settings.py

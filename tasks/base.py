@@ -48,6 +48,11 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
         help="Run tasks in DEBUG mode, will use debugging configs in /configs/debug/*",
     )
     parser.add_argument(
+        "--loglevel",
+        default=None if "loglevel" not in kwargs else kwargs["loglevel"],
+        help="Set log level by name.",
+    )
+    parser.add_argument(
         "--task",
         default=None if "task" not in kwargs else kwargs["task"],
         help="The ETL task to run.",
