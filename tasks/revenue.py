@@ -14,6 +14,8 @@ DEFAULTS = {}
 
 
 class RevenueEtlTask(base.EtlTask):
+    """ETL task to generate estimated revenue data for each market."""
+
     def __init__(self, args, sources, schema, destinations):
         """Initialize Revenue ETL task.
 
@@ -28,7 +30,7 @@ class RevenueEtlTask(base.EtlTask):
         super().__init__(args, sources, schema, destinations, "staging", "revenue")
 
     def transform_bukalapak(self, source, config):
-        """ Transform data from bukalapak into unified format for revenue reference
+        """Transform data from bukalapak for revenue reference.
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
@@ -37,7 +39,6 @@ class RevenueEtlTask(base.EtlTask):
             specified in task config, see `configs/*.py`
         :return: the transformed DataFrame
         """
-
         # get revenue schema
         revenue_df = self.get_target_dataframe()
 
@@ -86,10 +87,10 @@ class RevenueEtlTask(base.EtlTask):
                 self.current_date.date() + datetime.timedelta(days=1),
             )
             assert (
-                dt_end <= arg_end,
+                dt_end <= arg_end
             ), f">>> From {source}, Max(Date)={dt_end} greater then arg+1d={arg_end}."
             assert (
-                dt_start >= arg_start,
+                dt_start >= arg_start
             ), f">>> From {source}, Min(Date)={dt_start} less then arg+1d={arg_start}."
             log.info(">>> Pass date range checking...")
 
@@ -98,8 +99,8 @@ class RevenueEtlTask(base.EtlTask):
             log.info(">>> Checking data schema matched...")
             match = list(set(map_cols) & set(new_df.columns))
             not_match = ", ".join(set(map_cols) - set(match))
-            assert (
-                len(match) == len(map_cols),
+            assert len(match) == len(
+                map_cols
             ), f">>> Missing column [ {not_match} ] from {source}."
             log.info(">>> Pass data schema matched...")
 
@@ -110,7 +111,7 @@ class RevenueEtlTask(base.EtlTask):
             match = list(set(map_cols[0:8]) & set(na_cols))
             not_null = ", ".join(match)
             assert (
-                len(match) == 0,
+                len(match) == 0
             ), f">>> From {source}, values in column [ {not_null} ] should not be N/A."
             log.info(">>> Pass checking invalid null value...")
 
@@ -174,8 +175,7 @@ class RevenueEtlTask(base.EtlTask):
         return df
 
     def transform_google_search(self, source, config):
-        """ Transform search data from telemetry into unified format
-        for revenue reference
+        """Transform search data from telemetry for revenue reference.
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
@@ -184,7 +184,6 @@ class RevenueEtlTask(base.EtlTask):
             specified in task config, see `configs/*.py`
         :return: the transformed DataFrame
         """
-
         df = self.extracted[source]
         df["country"] = df["country_code"]
         rps = self.extracted["google_search_rps"]
@@ -207,6 +206,10 @@ class RevenueEtlTask(base.EtlTask):
 
 
 def main(args):
+    """Take args and pass them to RevenueEtlTask.
+
+    :param args: args passed from command line, see `base.get_arg_parser()`
+    """
     srcs = revenue.SOURCES if not args.debug else revenue_dbg.SOURCES
     dests = revenue.DESTINATIONS if not args.debug else revenue_dbg.DESTINATIONS
     task = RevenueEtlTask(args, srcs, revenue.SCHEMA, dests)

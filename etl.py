@@ -9,10 +9,7 @@ import logging as log
 
 
 def main():
-    """Determine which task to run based on args.task.
-
-    :param args: args passed from command line, see `base.get_arg_parser()`
-    """
+    """Determine which task to run based on args.task."""
     arg_parser = base.get_arg_parser()
     args = arg_parser.parse_args()
     if args.debug:

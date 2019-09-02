@@ -33,7 +33,8 @@ DEFAULT_PATH_FORMAT = "{prefix}{stage}-{task}-{source}"
 
 
 def get_arg_parser(**kwargs) -> ArgumentParser:
-    """ Parse arguments passed in EtlTask,
+    """Parse arguments passed in EtlTask.
+
     --help will list all argument descriptions
 
     :rtype: ArgumentParser
@@ -96,6 +97,8 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
 
 
 class EtlTask:
+    """Base ETL task to serve common extract/load functions."""
+
     def __init__(self, args, sources, schema, destinations, stage, task):
         """Initiate parameters and client libraries for ETL task.
 
@@ -153,8 +156,9 @@ class EtlTask:
 
     @staticmethod
     def get_country_tz(country_code) -> pytz.UTC:
-        """Get the default timezone for specified country code,
-        if covered multiple timezone, pick the most common one.
+        """Get the default timezone for specified country code.
+
+        If covered multiple timezone, pick the most common one.
 
         :rtype: pytz.UTC
         :return: the default (major) timezone of the country
@@ -185,8 +189,9 @@ class EtlTask:
 
     @staticmethod
     def get_country_tz_str(country_code) -> str:
-        """Get the default timezone string (e.g. +08:00) for specified country code,
-        if covered multiple timezone, pick the most common one.
+        """Get the default timezone string (e.g. +08:00) for specified country code.
+
+        If covered multiple timezone, pick the most common one.
 
         :rtype: str
         :param country_code: the 2 digit country code to get timezone
@@ -196,7 +201,7 @@ class EtlTask:
 
     @staticmethod
     def get_tz_str(timezone) -> str:
-        """Convert timezone to offset string (e.g. +08:00)
+        """Convert timezone to offset string (e.g. +08:00).
 
         :rtype: str
         :param timezone: pytz.UTC
@@ -207,21 +212,32 @@ class EtlTask:
         )
 
     @staticmethod
-    def lookback_dates(date, period):
-        """Subtract date by period
+    def lookback_dates(date, period) -> datetime.datetime:
+        """Subtract date by period.
+
+        :rtype: datetime.datetime
+        :param date: the base date
+        :param period: the period to subtract
+        :return: the subtracted datetime
         """
         return date - datetime.timedelta(days=period)
 
     @staticmethod
-    def lookfoward_dates(date, period):
-        """Subtract date by period
+    def lookfoward_dates(date, period) -> datetime.datetime:
+        """Add date by period.
+
+        :rtype: datetime.datetime
+        :param date: the base date
+        :param period: the period to add
+        :return: the add datetime
         """
         return date + datetime.timedelta(days=period)
 
     @staticmethod
     def json_extract(json_str, path) -> Optional[str]:
-        """Extract nested json element by path,
-        currently dont' support nested json array in path
+        """Extract nested json element by path.
+
+        Note that this currently don't support nested json array in path.
 
         :rtype: str
         :param json_str: original json in string format
@@ -276,23 +292,41 @@ class EtlTask:
         return df
 
     @staticmethod
-    def get_page_ext(fpath):
+    def get_file_ext(fpath) -> str:
+        """Extract file extension from path.
+
+        :rtype: str
+        :param fpath: the path to extract
+        :return: the extracted file extension
+        """
         return re.search(EXT_REGEX, fpath).group(1)
 
     @staticmethod
-    def get_prefix(prefix):
-        ext_search = re.search(EXT_REGEX, prefix)
-        return prefix[: ext_search.start()]
+    def get_prefix(fpath) -> str:
+        """Extract prefix from path.
+
+        :rtype: str
+        :param fpath: the path to extract
+        :return: the extracted prefix
+        """
+        ext_search = re.search(EXT_REGEX, fpath)
+        return fpath[: ext_search.start()]
 
     @staticmethod
-    def get_path_format(wildcard=False):
+    def get_path_format(wildcard=False) -> str:
+        """Get the format string of file paths.
+
+        :rtype: str
+        :param wildcard: whether it's a wildcard path or not.
+        :return: the path format string
+        """
         if wildcard:
             return DEFAULT_PATH_FORMAT + "/*"
         else:
             return DEFAULT_PATH_FORMAT + "/{filename}"
 
     def get_filepaths(self, source, config, stage, dest, date=None) -> List[str]:
-        """Get existing data file paths with wildcard page number
+        """Get existing data file paths with wildcard page number.
 
         :rtype: list[str]
         :param source: name of the data source to be extracted,
@@ -324,8 +358,9 @@ class EtlTask:
             )
 
     def get_filepath(self, source, config, stage, dest, page=None, date=None) -> str:
-        """Get data file path,
-        which the format would be {prefix}{stage}-{task}-{source}/{filename}
+        """Get data file path.
+
+        The format would be {prefix}{stage}-{task}-{source}/{filename}
 
         :rtype: str
         :param source: name of the data source to be extracted,
@@ -359,8 +394,9 @@ class EtlTask:
             )
 
     def get_filename(self, source, config, stage, dest, page=None, date=None) -> str:
-        """Get data file name,
-        which the format would be {date}.{page}.{ext} for raw data,
+        """Get data file name.
+
+        The format would be {date}.{page}.{ext} for raw data,
         or {date}.{ext} otherwise.
 
         :rtype: str
@@ -396,8 +432,9 @@ class EtlTask:
     def get_or_create_filepath(
         self, source, config, stage, dest, page=None, date=None
     ) -> str:
-        """Get data file path for loading,
-        which the format would be {prefix}{stage}-{task}-{source}/{filename}.
+        """Get data file path for loading.
+
+        The format would be {prefix}{stage}-{task}-{source}/{filename}.
         Folders will be created if doesn't exist.
 
         :rtype: str
@@ -423,8 +460,9 @@ class EtlTask:
         return filename
 
     def is_cached(self, source, config) -> bool:
-        """Check whether a raw data is cached,
-        currently only used for raw data extracted from API.
+        """Check whether a raw data is cached.
+
+        Note that this currently only used for raw data extracted from API.
 
         :rtype: bool
         :param source: name of the data source to be extracted,
@@ -437,7 +475,7 @@ class EtlTask:
         return os.path.isfile(fpath)
 
     def get_target_dataframe(self, schema=None) -> DataFrame:
-        """Get an empty DataFrame with target schema
+        """Get an empty DataFrame with target schema.
 
         :param schema: list of tuples(column name, numpy data type),
             see `configs/*.py`
@@ -449,8 +487,9 @@ class EtlTask:
         )
 
     def extract_via_fs(self, source, config, stage="raw", date=None) -> DataFrame:
-        """Extract data from file system and convert into DataFrame
-        based on task config, see `configs/*.py`
+        """Extract data from file system and convert into DataFrame.
+
+        The logic is based on task config, see `configs/*.py`
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
@@ -472,7 +511,7 @@ class EtlTask:
             for fpath in fpaths:
                 with open(fpath, "r") as f:
                     raw = f.read()
-                    it = EtlTask.get_page_ext(fpath)
+                    it = EtlTask.get_file_ext(fpath)
                     self.raw[it] = raw
                     extracted[it] = self.convert_df(raw, config)
             log.info(
@@ -510,9 +549,9 @@ class EtlTask:
         return extracted
 
     def extract_via_gcs(self, source, config, stage="raw", date=None) -> DataFrame:
-        """Downloads blobs from Google Cloud Storage bucket,
-        extract them from file system and convert into DataFrame
-        based on task config, see `configs/*.py`
+        """Download blobs from Google Cloud Storage bucket and convert into DataFrame.
+
+        The logic is based on task config, see `configs/*.py`
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
@@ -537,7 +576,7 @@ class EtlTask:
         is_empty = True
         for i, blob in enumerate(blobs):
             is_empty = False
-            page = EtlTask.get_page_ext(blob.name)
+            page = EtlTask.get_file_ext(blob.name)
             filepath = self.get_filepath(source, config, stage, "fs", page, date)
             blob.download_to_filename(filepath)
 
@@ -565,8 +604,9 @@ class EtlTask:
     def extract_via_api(
         self, source, config, stage="raw", date=None
     ) -> Union[DataFrame, Dict[str, DataFrame]]:
-        """Extract data from API and convert into DataFrame
-        based on task config, see `configs/*.py`
+        """Extract data from API and convert into DataFrame.
+
+        The logic is based on task config, see `configs/*.py`
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
@@ -668,8 +708,9 @@ class EtlTask:
     def extract_via_api_or_cache(
         self, source, config, stage="raw", date=None
     ) -> Tuple[DataFrame, DataFrame]:
-        """Extract data from API and convert into DataFrame
-        based on task config, see `configs/*.py`
+        """Extract data from API and convert into DataFrame.
+
+        The logic is based on task config, see `configs/*.py`
 
         :rtype: tuple(DataFrame, DataFrame)
         :param source: name of the data source to be extracted,
@@ -707,8 +748,9 @@ class EtlTask:
         return extracted, extracted_base
 
     def extract_via_bq(self, source, config) -> DataFrame:
-        """Extract data from Google BigQuery and convert into DataFrame
-        based on task config, see `configs/*.py`
+        """Extract data from Google BigQuery and convert into DataFrame.
+
+        The logic is based on task config, see `configs/*.py`
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
@@ -744,8 +786,9 @@ class EtlTask:
 
     @staticmethod
     def extract_via_const(source, config) -> DataFrame:
-        """Extract data from Google BigQuery and convert into DataFrame
-        based on task config, see `configs/*.py`
+        """Extract data from Google BigQuery and convert into DataFrame.
+
+        The logic is based on task config, see `configs/*.py`
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
@@ -757,7 +800,10 @@ class EtlTask:
         return DataFrame(config["values"])
 
     def extract(self):
-        """Iterate through data source settings in task config (see `configs/*.py`)
+        """Extract data and convert into DataFrames based on settings.
+
+        This will iterate through data source settings in task config
+        (see `configs/*.py`)
         and extract them accordingly based on source type and the source argument.
         see also `get_arg_parser()`.
 
@@ -778,7 +824,10 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_const(source, config)
 
     def transform(self):
-        """Iterate through data source settings in task config (see `configs/*.py`)
+        """Transform extracted data into target format DataFrames.
+
+        This will iterate through data source settings in task config
+        (see `configs/*.py`)
         and transform extracted DataFrames accordingly
         based on the source argument (see also `get_arg_parser()`),
         will need to create a function for each data source when inheriting this class.
@@ -813,8 +862,9 @@ class EtlTask:
                     )
 
     def load_to_fs(self, source, config, stage="raw"):
-        """Load data into file system based on destination settings
-        in task config (see `configs/*.py`).
+        """Load data into file system based on destination settings.
+
+        The logic is based on task config (see `configs/*.py`).
 
         :param source: name of the data source to be extracted,
             specified in task config, see `configs/*.py`
@@ -879,6 +929,16 @@ class EtlTask:
                 )
 
     def convert_file(self, df, config, source, stage, date=None):
+        """Convert DataFrame into destination files.
+
+        The logic is based on task config (see `configs/*.py`).
+
+        :param df: the DataFrame to convert
+        :param config: the corresponding source config
+        :param source: the name of the data source
+        :param stage: the stage of the data
+        :param date: the date of the data
+        """
         date = self.current_date if date is None else date
         fpath = self.get_or_create_filepath(source, config, stage, "fs", None, date)
         with open(fpath, "w") as f:
@@ -900,8 +960,9 @@ class EtlTask:
             f.write(output)
 
     def load_to_gcs(self, source, config, stage="raw"):
-        """Load data into Google Cloud Storage based on destination settings
-        in task config (see `configs/*.py`).
+        """Load data into Google Cloud Storage based on destination settings.
+
+        The logic is based on task config (see `configs/*.py`).
 
         :param source: name of the data source to be extracted,
             specified in task config, see `configs/*.py`
@@ -917,7 +978,7 @@ class EtlTask:
             for fpath in fpaths:
                 blob = bucket.blob(
                     self.get_filepath(
-                        source, config, stage, "gcs", EtlTask.get_page_ext(fpath)
+                        source, config, stage, "gcs", EtlTask.get_file_ext(fpath)
                     )
                 )
                 blob.upload_from_filename(fpath)
@@ -947,7 +1008,10 @@ class EtlTask:
         )
 
     def load(self):
-        """Iterate through data source settings in task config (see `configs/*.py`)
+        """Load transformed files into destinations.
+
+        This will iterate through data source settings in task config
+        (see `configs/*.py`)
         and load transformed data accordingly based on the destination argument,
         see also `get_arg_parser()`.
 
@@ -963,7 +1027,8 @@ class EtlTask:
 
     def run(self):
         """Run the whole ETL process based on the step argument.
-        see `get_arg_parser()`.
+
+        See `get_arg_parser()`.
 
         """
         if self.args.step and self.args.step[0].upper() not in ["E", "T", "L"]:

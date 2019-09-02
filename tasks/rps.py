@@ -15,6 +15,8 @@ DEFAULTS = {"date": datetime.datetime(2018, 1, 1), "period": 365}
 
 
 class RpsEtlTask(base.EtlTask):
+    """ETL task to generate estimated revenue per search data for each market."""
+
     def __init__(self, args, sources, schema, destinations):
         """Initialize RPS ETL task.
 
@@ -30,8 +32,7 @@ class RpsEtlTask(base.EtlTask):
         self.extracted_idx = dict()
 
     def extract(self):
-        """ Inherit from super class and extract latest fb_index for later use.
-        """
+        """Inherit from super class and extract latest fb_index for later use."""
         super().extract()
         source = "fb_index"
         config = self.sources[source]
@@ -44,6 +45,7 @@ class RpsEtlTask(base.EtlTask):
 
     def transform_google_search_rps(self, source, config) -> DataFrame:
         """Calculate revenue per search with existing CPI index and total package.
+
         Country RPS = Country CPI Index * Revenue Share Factor
             (Assume the same for all Countries)
         Revenue Share Factor = Country RPS / Country CPI Index
@@ -59,7 +61,7 @@ class RpsEtlTask(base.EtlTask):
             specified in task config, see `configs/*.py`
         :return: the transformed DataFrame
         """
-
+        # shared functions to map/transform data
         def map_country_3_to_2(alpha_3):
             c = pycountry.countries.get(alpha_3=alpha_3)
             if c:
@@ -151,6 +153,10 @@ class RpsEtlTask(base.EtlTask):
 
 
 def main(args):
+    """Take args and pass them to RpsEtlTask.
+
+    :param args: args passed from command line, see `base.get_arg_parser()`
+    """
     srcs = rps.SOURCES if not args.debug else rps_dbg.SOURCES
     dests = rps.DESTINATIONS if not args.debug else rps_dbg.DESTINATIONS
     task = RpsEtlTask(args, srcs, rps.SCHEMA, dests)
