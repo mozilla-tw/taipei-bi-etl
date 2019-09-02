@@ -1,3 +1,4 @@
+"""RPS task."""
 import datetime
 from pandas import DataFrame
 from tasks import base
@@ -10,24 +11,36 @@ import logging
 
 log = logging.getLogger(__name__)
 
-DEFAULTS = {'date': datetime.datetime(2018, 1, 1), 'period': 365}
+DEFAULTS = {"date": datetime.datetime(2018, 1, 1), "period": 365}
 
 
 class RpsEtlTask(base.EtlTask):
-
     def __init__(self, args, sources, schema, destinations):
-        super().__init__(args, sources, schema, destinations, 'staging', 'rps')
+        """Initialize RPS ETL task.
+
+        :param args: args passed from command line,
+        see `get_arg_parser()`
+        :param sources: data source to be extracted,
+        specified in task config, see `configs/*.py`
+        :param schema: the target schema to load to.
+        :param destinations: destinations to load data to,
+        specified in task config, see `configs/*.py`
+        """
+        super().__init__(args, sources, schema, destinations, "staging", "rps")
         self.extracted_idx = dict()
 
     def extract(self):
         """ Inherit from super class and extract latest fb_index for later use.
         """
         super().extract()
-        source = 'fb_index'
+        source = "fb_index"
         config = self.sources[source]
         self.extracted_idx[source] = self.extract_via_api_or_cache(
-            source, config, 'raw',
-            RpsEtlTask.lookfoward_dates(self.current_date, self.period))[0]
+            source,
+            config,
+            "raw",
+            RpsEtlTask.lookfoward_dates(self.current_date, self.period),
+        )[0]
 
     def transform_google_search_rps(self, source, config) -> DataFrame:
         """Calculate revenue per search with existing CPI index and total package.
@@ -46,6 +59,7 @@ class RpsEtlTask(base.EtlTask):
             specified in task config, see `configs/*.py`
         :return: the transformed DataFrame
         """
+
         def map_country_3_to_2(alpha_3):
             c = pycountry.countries.get(alpha_3=alpha_3)
             if c:
@@ -53,10 +67,10 @@ class RpsEtlTask(base.EtlTask):
             return None
 
         def transform_fb_idx(idx):
-            assert len(idx.index) > 200, 'Too few rows in FB index'
-            country_2 = idx['country_code'].apply(map_country_3_to_2)
-            idx['country'] = country_2
-            return idx.drop_duplicates('country').set_index('country')
+            assert len(idx.index) > 200, "Too few rows in FB index"
+            country_2 = idx["country_code"].apply(map_country_3_to_2)
+            idx["country"] = country_2
+            return idx.drop_duplicates("country").set_index("country")
 
         def avg_idx(idxmap, col):
             cost_idx = None
@@ -74,20 +88,24 @@ class RpsEtlTask(base.EtlTask):
             android_share = 72.63
             ios_share = 19.65
             mobile_base = android_share + ios_share
-            android_idx = idx.copy()[(idx['platform'] == 'Google Play')
-                                     & (idx['category'] == 'Average')
-                                     & (idx['cpi'] > 0)]
-            android_idx['cpi'] = android_idx['cpi'] / mobile_base * android_share
-            android_idx['country'] = android_idx['country_code']
-            android_idx = android_idx.set_index('country')
-            ios_idx = idx.copy()[(idx['platform'] == 'iOS')
-                                 & (idx['category'] == 'Average')
-                                 & (idx['cpi'] > 0)]
-            ios_idx['cpi'] = ios_idx['cpi'] / mobile_base * ios_share
-            ios_idx['country'] = ios_idx['country_code']
-            ios_idx = ios_idx.set_index('country')
-            android_idx['cpi'] += ios_idx['cpi']
-            android_idx = android_idx[android_idx['cpi'] > 0]
+            android_idx = idx.copy()[
+                (idx["platform"] == "Google Play")
+                & (idx["category"] == "Average")
+                & (idx["cpi"] > 0)
+            ]
+            android_idx["cpi"] = android_idx["cpi"] / mobile_base * android_share
+            android_idx["country"] = android_idx["country_code"]
+            android_idx = android_idx.set_index("country")
+            ios_idx = idx.copy()[
+                (idx["platform"] == "iOS")
+                & (idx["category"] == "Average")
+                & (idx["cpi"] > 0)
+            ]
+            ios_idx["cpi"] = ios_idx["cpi"] / mobile_base * ios_share
+            ios_idx["country"] = ios_idx["country_code"]
+            ios_idx = ios_idx.set_index("country")
+            android_idx["cpi"] += ios_idx["cpi"]
+            android_idx = android_idx[android_idx["cpi"] > 0]
             return android_idx
 
         def get_rps_factor(volume, cost_idx, package):
@@ -95,35 +113,40 @@ class RpsEtlTask(base.EtlTask):
             return package / s.sum()
 
         df = self.extracted[source]
-        pkg = self.extracted['global_package']
+        pkg = self.extracted["global_package"]
         # use FB cost index as revenue index since it covers all os/categories/trends
-        cost_idx_base = avg_idx(self.extracted['fb_index'], 'cost_index')
-        cost_idx_latest = avg_idx(self.extracted_idx['fb_index'], 'cost_index')
-        # CB as reference only since it's only for mobile game.
-        cost_idx_cb = transform_cb_idx(self.extracted['cb_index'])
+        cost_idx_base = avg_idx(self.extracted["fb_index"], "cost_index")
+        cost_idx_latest = avg_idx(self.extracted_idx["fb_index"], "cost_index")
+        # CB as reference only since it"s only for mobile game.
+        cost_idx_cb = transform_cb_idx(self.extracted["cb_index"])
 
-        df = pd.pivot_table(df, index='country', values='volume', aggfunc=np.sum)
+        df = pd.pivot_table(df, index="country", values="volume", aggfunc=np.sum)
 
-        df['cost_idx_base'] = cost_idx_base
-        df['cost_idx_latest'] = cost_idx_latest
-        df['cost_idx_cb'] = cost_idx_cb['cpi']
+        df["cost_idx_base"] = cost_idx_base
+        df["cost_idx_latest"] = cost_idx_latest
+        df["cost_idx_cb"] = cost_idx_cb["cpi"]
         df = df.reset_index()
-        df = df[df['country'].str.match('^[0-9A-Z]{2}$')
-                & (df['cost_idx_base'] > 0) & (df['volume'] > 0)]
+        df = df[
+            df["country"].str.match("^[0-9A-Z]{2}$")
+            & (df["cost_idx_base"] > 0)
+            & (df["volume"] > 0)
+        ]
         rps_factor = get_rps_factor(
-            df['volume'], df['cost_idx_base'], pkg['package'][0])
-        log.info('Facebook RPS Factor: %d' % rps_factor)
+            df["volume"], df["cost_idx_base"], pkg["package"][0]
+        )
+        log.info("Facebook RPS Factor: %d" % rps_factor)
         cb_rps_factor = get_rps_factor(
-            df['volume'], df['cost_idx_cb'], pkg['package'][0])
-        log.info('Chartboost RPS Factor: %d' % cb_rps_factor)
-        df['rps'] = df['cost_idx_latest'] * rps_factor
-        df['rps_cb'] = df['cost_idx_cb'] * cb_rps_factor
-        df['cb_rps_ratio'] = df['rps_cb'] / df['rps']
-        assert len(df.index) > 200, 'Too few rows in transformed data'
-        for col in ['country', 'volume', 'rps', 'cost_idx_latest']:
-            assert not df[col].isnull().values.any(), 'Null value in %s' % col
-        print(df)
-        print(df[df['country'].isin(['IN', 'ID', 'TW', 'HK', 'SG', 'US', 'DE'])])
+            df["volume"], df["cost_idx_cb"], pkg["package"][0]
+        )
+        log.info("Chartboost RPS Factor: %d" % cb_rps_factor)
+        df["rps"] = df["cost_idx_latest"] * rps_factor
+        df["rps_cb"] = df["cost_idx_cb"] * cb_rps_factor
+        df["cb_rps_ratio"] = df["rps_cb"] / df["rps"]
+        assert len(df.index) > 200, "Too few rows in transformed data"
+        for col in ["country", "volume", "rps", "cost_idx_latest"]:
+            assert not df[col].isnull().values.any(), "Null value in %s" % col
+        # print(df)
+        # print(df[df["country"].isin(["IN", "ID", "TW", "HK", "SG", "US", "DE"])])
         return df
 
 

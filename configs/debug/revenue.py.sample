@@ -3,10 +3,10 @@ from configs import revenue
 
 SOURCES = deepcopy(revenue.SOURCES)
 
-SOURCES['google_search_rps']['bucket'] = 'moz-taipei-bi-test'
-SOURCES['google_search_rps']['prefix'] = 'test/'
+SOURCES["google_search_rps"]["bucket"] = "moz-taipei-bi-test"
+SOURCES["google_search_rps"]["prefix"] = "test/"
 
 DESTINATIONS = deepcopy(revenue.DESTINATIONS)
 
-DESTINATIONS['gcs']['bucket'] = 'moz-taipei-bi-test'
-DESTINATIONS['gcs']['prefix'] = 'test/'
+DESTINATIONS["gcs"]["bucket"] = "moz-taipei-bi-test"
+DESTINATIONS["gcs"]["prefix"] = "test/"

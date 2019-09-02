@@ -2,41 +2,41 @@
 SOURCES = {
     'partner1': {
         'type': 'api'
-        'url': 'https://partner1.com/?api_key={api_key}&start_date={start_date}&end_date={end_date}'
-        'api_key': '',
-        'request_interval': 1,
-        'cache_file': True,
-        'force_load': False,
-        'date_format': '%Y-%m-%d',
-        'file_format': 'json',
-        'json_path': 'response.data.data',
-        'json_path_page_count': 'response.data.pageCount',
-        'page_size': 100,
+        'url': 'https://partner1.com/?api_key={api_key}&start_date={start_date}&end_date={end_date}"
+        "api_key": "",
+        "request_interval": 1,
+        "cache_file": True,
+        "force_load": False,
+        "date_format": "%Y-%m-%d",
+        "file_format": "json",
+        "json_path": "response.data.data",
+        "json_path_page_count": "response.data.pageCount",
+        "page_size": 100,
         }
     }
 
 SCHEMA = [
-    ('source', np.dtype(object).type),
-    ('country', np.dtype(object).type),
-    ('os', np.dtype(object).type),
-    ('local_datetime', np.datetime64),
-    ('currency', np.dtype(object).type),
-    ('sales_amount', np.dtype(float).type),
-    ('payout', np.dtype(float).type),
-    ('fx_defined1', np.dtype(object).type),
-    ('fx_defined2', np.dtype(object).type),
-    ('fx_defined3', np.dtype(object).type),
-    ('fx_defined4', np.dtype(object).type),
-    ('fx_defined5', np.dtype(object).type),
-    ('conversion_status', np.dtype(object).type),
+    ("source", np.dtype(object).type),
+    ("country", np.dtype(object).type),
+    ("os", np.dtype(object).type),
+    ("local_datetime", np.datetime64),
+    ("currency", np.dtype(object).type),
+    ("sales_amount", np.dtype(float).type),
+    ("payout", np.dtype(float).type),
+    ("fx_defined1", np.dtype(object).type),
+    ("fx_defined2", np.dtype(object).type),
+    ("fx_defined3", np.dtype(object).type),
+    ("fx_defined4", np.dtype(object).type),
+    ("fx_defined5", np.dtype(object).type),
+    ("conversion_status", np.dtype(object).type),
 ]
 
 DESTINATIONS = {
-    'gcs': {
-        'bucket': 'some-bucket-name',
-        'prefix': 'some-object-prefix/'
+    "gcs": {
+        "bucket": "some-bucket-name",
+        "prefix": "some-object-prefix/",
     },
-    'fs': {
-        'prefix': './data/'
+    "fs": {
+        "prefix": "./data/",
     }
 }

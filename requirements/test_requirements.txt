@@ -1,0 +1,9 @@
+-c test_constraints.txt
+pytest==5.1.2
+pytest-black==0.3.7
+pytest-cov==2.7.1
+pytest-docstyle==1.5.0
+pytest-flake8==1.0.4
+pytest-forked==1.0.2
+pytest-mypy==0.4.0
+pytest-xdist==1.29.0

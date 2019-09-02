@@ -1,10 +1,12 @@
 ARG PYTHON_VERSION=3.7
 
 FROM python:3-slim
-COPY requirements.txt constraints.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements ./requirements
+RUN pip install --no-cache-dir -r requirements/requirements.txt
+RUN pip install --no-cache-dir -r requirements/test_requirements.txt
 RUN apt-get update -qqy && apt-get install -qqy gcc libc-dev && \
-    pip install -r requirements.txt
+    pip install -r requirements/requirements.txt && \
+    pip install -r requirements/test_requirements.txt
 
 FROM python:${PYTHON_VERSION}-slim
 # add bash for entrypoing and python2 for google-cloud-sdk

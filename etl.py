@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
+"""This is the entry script for all ETL tasks.
 
-
-"""
-This script loads market data from various sources and combine them into one big file.
+It will run task specified in args, or if not specified,
+run all tasks in the correct sequence.
 """
 from tasks import base, rps, revenue  # , rfe
 import logging as log
 
 
 def main():
-    """Determine which task to run based on args.task
+    """Determine which task to run based on args.task.
 
     :param args: args passed from command line, see `base.get_arg_parser()`
     """
@@ -18,9 +18,9 @@ def main():
     if args.debug:
         log.basicConfig(level=log.DEBUG)
     task = None
-    if args.task == 'rps':
+    if args.task == "rps":
         task = rps
-    if args.task == 'revenue':
+    if args.task == "revenue":
         task = revenue
     # if args.task == 'rfe':
     #     task = rfe
