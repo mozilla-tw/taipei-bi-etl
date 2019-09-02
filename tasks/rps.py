@@ -50,9 +50,13 @@ class RpsEtlTask(base.EtlTask):
             (Assume the same for all Countries)
         Revenue Share Factor = Country RPS / Country CPI Index
             = (Country Revenue / Country Searches) / Country CPI Index
-            = ((Total Revenue * Country Searches * Country CPI Index
-                / Σ(Country Searches * Country CPI Index))
-                / Country Searches) / Country CPI Index
+            = (
+                (
+                    Total Revenue * Country Searches * Country CPI Index
+                    / Σ(Country Searches * Country CPI Index
+                )
+            )
+            / Country Searches) / Country CPI Index
             = Total Revenue / Σ(Country Searches * Country CPI Index)
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
