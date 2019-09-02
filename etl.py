@@ -15,12 +15,15 @@ def main():
     if args.debug:
         log.basicConfig(level=log.DEBUG)
     task = None
-    if args.task == "rps":
-        task = rps
-    if args.task == "revenue":
-        task = revenue
-    # if args.task == 'rfe':
-    #     task = rfe
+    if args.task:
+        if args.task == "rps":
+            task = rps
+        elif args.task == "revenue":
+            task = revenue
+        # elif args.task == 'rfe':
+        #     task = rfe
+        else:
+            assert False, "Invalid task name %s" % args.task
     if task:
         arg_parser = base.get_arg_parser(**task.DEFAULTS)
         task.main(arg_parser.parse_args())
