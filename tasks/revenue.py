@@ -1,7 +1,12 @@
 """Revenue task."""
+from argparse import Namespace
+from typing import Dict, Any, List, Tuple
+
 import pandas as pd
 import datetime
 import pandasql as ps
+from pandas import DataFrame
+
 from tasks import base
 from configs import revenue
 from configs.debug import revenue as revenue_dbg
@@ -16,7 +21,13 @@ DEFAULTS = {}
 class RevenueEtlTask(base.EtlTask):
     """ETL task to generate estimated revenue data for each market."""
 
-    def __init__(self, args, sources, schema, destinations):
+    def __init__(
+        self,
+        args: Namespace,
+        sources: Dict[str, Any],
+        schema: List[Tuple[str, np.generic]],
+        destinations: Dict[str, Any],
+    ):
         """Initialize Revenue ETL task.
 
         :param args: args passed from command line,
@@ -29,7 +40,7 @@ class RevenueEtlTask(base.EtlTask):
         """
         super().__init__(args, sources, schema, destinations, "staging", "revenue")
 
-    def transform_bukalapak(self, source, config):
+    def transform_bukalapak(self, source: str, config: Dict[str, Any]) -> DataFrame:
         """Transform data from bukalapak for revenue reference.
 
         :rtype: DataFrame
@@ -174,7 +185,7 @@ class RevenueEtlTask(base.EtlTask):
         df["payout"] = df["payout"].astype("float")
         return df
 
-    def transform_google_search(self, source, config):
+    def transform_google_search(self, source: str, config: Dict[str, Any]) -> DataFrame:
         """Transform search data from telemetry for revenue reference.
 
         :rtype: DataFrame
@@ -205,7 +216,7 @@ class RevenueEtlTask(base.EtlTask):
         return td
 
 
-def main(args):
+def main(args: Namespace):
     """Take args and pass them to RevenueEtlTask.
 
     :param args: args passed from command line, see `base.get_arg_parser()`

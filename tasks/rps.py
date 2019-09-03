@@ -1,5 +1,8 @@
 """RPS task."""
 import datetime
+from argparse import Namespace
+from typing import Dict, Any, List, Tuple
+
 from pandas import DataFrame
 from tasks import base
 from configs import rps
@@ -17,7 +20,13 @@ DEFAULTS = {"date": datetime.datetime(2018, 1, 1), "period": 365}
 class RpsEtlTask(base.EtlTask):
     """ETL task to generate estimated revenue per search data for each market."""
 
-    def __init__(self, args, sources, schema, destinations):
+    def __init__(
+        self,
+        args: Namespace,
+        sources: Dict[str, Any],
+        schema: List[Tuple[str, np.generic]],
+        destinations: Dict[str, Any],
+    ):
         """Initialize RPS ETL task.
 
         :param args: args passed from command line,
@@ -43,7 +52,9 @@ class RpsEtlTask(base.EtlTask):
             RpsEtlTask.lookfoward_dates(self.current_date, self.period),
         )[0]
 
-    def transform_google_search_rps(self, source, config) -> DataFrame:
+    def transform_google_search_rps(
+        self, source: str, config: Dict[str, Any]
+    ) -> DataFrame:
         """Calculate revenue per search with existing CPI index and total package.
 
         Country RPS = Country CPI Index * Revenue Share Factor
@@ -156,7 +167,7 @@ class RpsEtlTask(base.EtlTask):
         return df
 
 
-def main(args):
+def main(args: Namespace):
     """Take args and pass them to RpsEtlTask.
 
     :param args: args passed from command line, see `base.get_arg_parser()`

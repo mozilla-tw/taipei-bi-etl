@@ -5,7 +5,7 @@ import re
 import time
 from collections import Counter
 from io import StringIO
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import os
 import os.path
 import requests
@@ -17,7 +17,7 @@ from google.cloud import storage
 import json
 import numpy as np
 import pandas.io.json as pd_json
-from typing import List, Optional, Tuple, Union, Dict
+from typing import List, Optional, Tuple, Union, Dict, Any
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
 import pytz
@@ -104,7 +104,15 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
 class EtlTask:
     """Base ETL task to serve common extract/load functions."""
 
-    def __init__(self, args, sources, schema, destinations, stage, task):
+    def __init__(
+        self,
+        args: Namespace,
+        sources: Dict[str, Any],
+        schema: List[Tuple[str, np.generic]],
+        destinations: Dict[str, Any],
+        stage: str,
+        task: str,
+    ):
         """Initiate parameters and client libraries for ETL task.
 
         :param args: args passed from command line,
@@ -160,7 +168,7 @@ class EtlTask:
         self.gcs = storage.Client()
 
     @staticmethod
-    def get_country_tz(country_code) -> pytz.UTC:
+    def get_country_tz(country_code: str) -> pytz.UTC:
         """Get the default timezone for specified country code.
 
         If covered multiple timezone, pick the most common one.
@@ -193,7 +201,7 @@ class EtlTask:
         return pytz.timezone(timezones[offsets.index(max_offset)])
 
     @staticmethod
-    def get_country_tz_str(country_code) -> str:
+    def get_country_tz_str(country_code: str) -> str:
         """Get the default timezone string (e.g. +08:00) for specified country code.
 
         If covered multiple timezone, pick the most common one.
@@ -205,7 +213,7 @@ class EtlTask:
         return EtlTask.get_tz_str(EtlTask.get_country_tz(country_code))
 
     @staticmethod
-    def get_tz_str(timezone) -> str:
+    def get_tz_str(timezone: pytz.UTC) -> str:
         """Convert timezone to offset string (e.g. +08:00).
 
         :rtype: str
@@ -217,7 +225,7 @@ class EtlTask:
         )
 
     @staticmethod
-    def lookback_dates(date, period) -> datetime.datetime:
+    def lookback_dates(date: datetime.datetime, period: int) -> datetime.datetime:
         """Subtract date by period.
 
         :rtype: datetime.datetime
@@ -228,7 +236,7 @@ class EtlTask:
         return date - datetime.timedelta(days=period)
 
     @staticmethod
-    def lookfoward_dates(date, period) -> datetime.datetime:
+    def lookfoward_dates(date: datetime.datetime, period: int) -> datetime.datetime:
         """Add date by period.
 
         :rtype: datetime.datetime
@@ -239,7 +247,7 @@ class EtlTask:
         return date + datetime.timedelta(days=period)
 
     @staticmethod
-    def json_extract(json_str, path) -> Optional[str]:
+    def json_extract(json_str: str, path: str) -> Optional[str]:
         """Extract nested json element by path.
 
         Note that this currently don't support nested json array in path.
@@ -259,7 +267,7 @@ class EtlTask:
         return json.dumps(j)
 
     @staticmethod
-    def convert_df(raw, config) -> DataFrame:
+    def convert_df(raw: str, config: Dict[str, Any]) -> DataFrame:
         """Convert raw string to DataFrame, currently only supports json/csv.
 
         :rtype: DataFrame
@@ -297,7 +305,7 @@ class EtlTask:
         return df
 
     @staticmethod
-    def get_file_ext(fpath) -> str:
+    def get_file_ext(fpath: str) -> str:
         """Extract file extension from path.
 
         :rtype: str
@@ -307,7 +315,7 @@ class EtlTask:
         return re.search(EXT_REGEX, fpath).group(1)
 
     @staticmethod
-    def get_prefix(fpath) -> str:
+    def get_prefix(fpath: str) -> str:
         """Extract prefix from path.
 
         :rtype: str
@@ -318,7 +326,7 @@ class EtlTask:
         return fpath[: ext_search.start()]
 
     @staticmethod
-    def get_path_format(wildcard=False) -> str:
+    def get_path_format(wildcard: bool = False) -> str:
         """Get the format string of file paths.
 
         :rtype: str
@@ -330,7 +338,14 @@ class EtlTask:
         else:
             return DEFAULT_PATH_FORMAT + "/{filename}"
 
-    def get_filepaths(self, source, config, stage, dest, date=None) -> List[str]:
+    def get_filepaths(
+        self,
+        source: str,
+        config: Dict[str, Any],
+        stage: str,
+        dest: str,
+        date: datetime.datetime = None,
+    ) -> List[str]:
         """Get existing data file paths with wildcard page number.
 
         :rtype: list[str]
@@ -362,7 +377,15 @@ class EtlTask:
                 )
             )
 
-    def get_filepath(self, source, config, stage, dest, page=None, date=None) -> str:
+    def get_filepath(
+        self,
+        source: str,
+        config: Dict[str, Any],
+        stage: str,
+        dest: str,
+        page: Union[int, str] = None,
+        date: datetime.datetime = None,
+    ) -> str:
         """Get data file path.
 
         The format would be {prefix}{stage}-{task}-{source}/{filename}
@@ -398,7 +421,15 @@ class EtlTask:
                 filename=self.get_filename(source, config, stage, dest, page, date),
             )
 
-    def get_filename(self, source, config, stage, dest, page=None, date=None) -> str:
+    def get_filename(
+        self,
+        source: str,
+        config: Dict[str, Any],
+        stage: str,
+        dest: str,
+        page: Union[int, str] = None,
+        date: datetime.datetime = None,
+    ) -> str:
         """Get data file name.
 
         The format would be {date}.{page}.{ext} for raw data,
@@ -435,7 +466,13 @@ class EtlTask:
             )
 
     def get_or_create_filepath(
-        self, source, config, stage, dest, page=None, date=None
+        self,
+        source: str,
+        config: Dict[str, Any],
+        stage: str,
+        dest: str,
+        page: Union[int, str] = None,
+        date: datetime.datetime = None,
     ) -> str:
         """Get data file path for loading.
 
@@ -464,7 +501,7 @@ class EtlTask:
                     raise
         return filename
 
-    def is_cached(self, source, config) -> bool:
+    def is_cached(self, source: str, config: Dict[str, Any]) -> bool:
         """Check whether a raw data is cached.
 
         Note that this currently only used for raw data extracted from API.
@@ -479,7 +516,9 @@ class EtlTask:
         fpath = self.get_filepath(source, config, "raw", "fs")
         return os.path.isfile(fpath)
 
-    def get_target_dataframe(self, schema=None) -> DataFrame:
+    def get_target_dataframe(
+        self, schema: List[Tuple[str, np.generic]] = None
+    ) -> DataFrame:
         """Get an empty DataFrame with target schema.
 
         :param schema: list of tuples(column name, numpy data type),
@@ -491,7 +530,13 @@ class EtlTask:
             np.empty(0, dtype=np.dtype(self.raw_schema if schema is None else schema))
         )
 
-    def extract_via_fs(self, source, config, stage="raw", date=None) -> DataFrame:
+    def extract_via_fs(
+        self,
+        source: str,
+        config: Dict[str, Any],
+        stage: str = "raw",
+        date: datetime.datetime = None,
+    ) -> DataFrame:
         """Extract data from file system and convert into DataFrame.
 
         The logic is based on task config, see `configs/*.py`
@@ -553,7 +598,13 @@ class EtlTask:
             )
         return extracted
 
-    def extract_via_gcs(self, source, config, stage="raw", date=None) -> DataFrame:
+    def extract_via_gcs(
+        self,
+        source: str,
+        config: Dict[str, Any],
+        stage: str = "raw",
+        date: datetime.datetime = None,
+    ) -> DataFrame:
         """Download blobs from Google Cloud Storage bucket and convert into DataFrame.
 
         The logic is based on task config, see `configs/*.py`
@@ -607,7 +658,11 @@ class EtlTask:
             return DataFrame()
 
     def extract_via_api(
-        self, source, config, stage="raw", date=None
+        self,
+        source: str,
+        config: Dict[str, Any],
+        stage: str = "raw",
+        date: datetime.datetime = None,
     ) -> Union[DataFrame, Dict[str, DataFrame]]:
         """Extract data from API and convert into DataFrame.
 
@@ -711,7 +766,11 @@ class EtlTask:
             return self.convert_df(raw, config)
 
     def extract_via_api_or_cache(
-        self, source, config, stage="raw", date=None
+        self,
+        source: str,
+        config: Dict[str, Any],
+        stage: str = "raw",
+        date: datetime.datetime = None,
     ) -> Tuple[DataFrame, DataFrame]:
         """Extract data from API and convert into DataFrame.
 
@@ -752,7 +811,7 @@ class EtlTask:
             extracted_base = self.extract_via_fs(source, config, "raw", yesterday)
         return extracted, extracted_base
 
-    def extract_via_bq(self, source, config) -> DataFrame:
+    def extract_via_bq(self, source: str, config: Dict[str, Any]) -> DataFrame:
         """Extract data from Google BigQuery and convert into DataFrame.
 
         The logic is based on task config, see `configs/*.py`
@@ -777,13 +836,13 @@ class EtlTask:
         return df
 
     @staticmethod
-    def build_query(config, start_date, end_date) -> str:
+    def build_query(config: Dict[str, Any], start_date: str, end_date: str) -> str:
         """Build query based on configs and args.
 
         :rtype: str
         :param config: the config of the query
-        :param start_date: the start date for the query
-        :param end_date: the end date for the query
+        :param start_date: the start date string for the query
+        :param end_date: the end date string for the query
         :return: the composed query string
         """
         query = ""
@@ -807,7 +866,7 @@ class EtlTask:
         return query
 
     @staticmethod
-    def extract_via_const(source, config) -> DataFrame:
+    def extract_via_const(source: str, config: Dict[str, Any]) -> DataFrame:
         """Extract data from Google BigQuery and convert into DataFrame.
 
         The logic is based on task config, see `configs/*.py`
@@ -883,7 +942,7 @@ class EtlTask:
                         )
                     )
 
-    def load_to_fs(self, source, config, stage="raw"):
+    def load_to_fs(self, source: str, config: Dict[str, Any], stage: str = "raw"):
         """Load data into file system based on destination settings.
 
         The logic is based on task config (see `configs/*.py`).
@@ -950,7 +1009,14 @@ class EtlTask:
                     % (stage, self.task, source, self.current_date.date())
                 )
 
-    def convert_file(self, df, config, source, stage, date=None):
+    def convert_file(
+        self,
+        df: DataFrame,
+        config: Dict[str, Any],
+        source: str,
+        stage: str,
+        date: datetime.datetime = None,
+    ):
         """Convert DataFrame into destination files.
 
         The logic is based on task config (see `configs/*.py`).
@@ -981,7 +1047,7 @@ class EtlTask:
                 output = df.to_csv(index=False)
             f.write(output)
 
-    def load_to_gcs(self, source, config, stage="raw"):
+    def load_to_gcs(self, source: str, config: Dict[str, Any], stage: str = "raw"):
         """Load data into Google Cloud Storage based on destination settings.
 
         The logic is based on task config (see `configs/*.py`).
