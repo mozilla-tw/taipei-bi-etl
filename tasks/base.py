@@ -764,6 +764,28 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :return: the extracted `DataFrame`
         """
+        query = self.build_query(
+            config,
+            self.last_month.strftime(config["date_format"]),
+            self.current_date.strftime(config["date_format"]),
+        )
+        df = pdbq.read_gbq(query)
+        log.info(
+            "%s-%s-%s/%s w/t %d records extracted from BigQuery"
+            % ("raw", self.task, source, self.current_date.date(), len(df.index))
+        )
+        return df
+
+    @staticmethod
+    def build_query(config, start_date, end_date) -> str:
+        """Build query based on configs and args.
+
+        :rtype: str
+        :param config: the config of the query
+        :param start_date: the start date for the query
+        :param end_date: the end date for the query
+        :return: the composed query string
+        """
         query = ""
         if "udf" in config:
             for udf in config["udf"]:
@@ -779,15 +801,10 @@ class EtlTask:
                     project=config["project"],
                     dataset=config["dataset"],
                     table=config["table"],
-                    start_date=self.last_month.strftime(config["date_format"]),
-                    end_date=self.current_date.strftime(config["date_format"]),
+                    start_date=start_date,
+                    end_date=end_date,
                 )
-        df = pdbq.read_gbq(query)
-        log.info(
-            "%s-%s-%s/%s w/t %d records extracted from BigQuery"
-            % ("raw", self.task, source, self.current_date.date(), len(df.index))
-        )
-        return df
+        return query
 
     @staticmethod
     def extract_via_const(source, config) -> DataFrame:
