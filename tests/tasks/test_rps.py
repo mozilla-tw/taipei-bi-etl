@@ -14,7 +14,6 @@ inject_fixtures(globals(), "rps", {"prd": cfg, "dbg": cfg_dbg})
 
 def test_read_api(req: requests, api_src: Dict[str, Any]):
     """Test calling APIs in source configs."""
-    time.sleep(1)
     r = req.get(api_src["url"], allow_redirects=True)
     assert len(r.text) > 0
 
