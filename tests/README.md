@@ -10,3 +10,22 @@ pip install -r test_requirements.txt
 # run pytest with all linters and 4 workers in parallel
 pytest --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4
 ```
+
+When developing tests, you may want to run them separately with -v (verbose) option
+
+```
+# run code format tests only
+pytest -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not envtest or not unittest or not intgtest"
+
+# run environment tests only
+pytest -v -m "envtest"
+
+# run unit tests only
+pytest -v -m "unittest"
+
+# run integrated tests only
+pytest -v -m "intgtest"
+
+# run mock tests only (won't run by default)
+pytest tests/conftest.py -v -m "mocktest"
+```

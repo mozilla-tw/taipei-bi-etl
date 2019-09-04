@@ -1,6 +1,8 @@
 """Task base."""
 import errno
 import glob
+import importlib
+import inspect
 import re
 import time
 from collections import Counter
@@ -22,6 +24,7 @@ from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
 import pytz
 import logging
+from configs import mapping
 
 log = logging.getLogger(__name__)
 
@@ -903,6 +906,48 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_bq(source, config)
                 elif self.sources[source]["type"] == "const":
                     self.extracted[source] = self.extract_via_const(source, config)
+                self.map_apply(config, self.extracted[source])
+
+    @staticmethod
+    def map_apply(config: Dict[str, Any], df: DataFrame):
+        """Apply map functions to extracted DataFrame.
+
+        :param config: the source config to check mapping settings
+        :param df: the extracted DataFrame to be applied
+        """
+        maps = {}
+        if "mappings" in config:
+            for m in config["mappings"]:
+                mod = importlib.import_module("%s.%s" % (mapping.__name__, m))
+                for cls, cobj in inspect.getmembers(mod, predicate=inspect.isclass):
+                    if hasattr(cobj, "__module__") and cobj.__module__ == mod.__name__:
+                        log.warning(cls)
+                        for method, mobj in inspect.getmembers(
+                            cobj, predicate=inspect.isroutine
+                        ):
+                            if method in cobj.__dict__ and isinstance(
+                                cobj.__dict__[method], staticmethod
+                            ):
+                                if m not in maps:
+                                    maps[m] = {}
+                                if cls not in maps[m]:
+                                    maps[m][cls] = []
+                                maps[m][cls] += [mobj]
+        if not maps:
+            return
+        # apply maps here
+        for idx, row in df.iterrows():
+            for map_name, map_types in maps.items():
+                for t, map_funcs in map_types.items():
+                    for map_func in map_funcs:
+                        map_result = map_func(row)
+                        if map_result:
+                            if isinstance(map_result, list):
+                                # TODO: handle multiple results here:
+                                pass
+                            else:
+                                df.loc[idx, map_name + "_type"] = t
+                                df.loc[idx, map_name + "_name"] = map_result
 
     def transform(self):
         """Transform extracted data into target format DataFrames.
