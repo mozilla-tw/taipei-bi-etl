@@ -14,13 +14,13 @@ import os.path
 import requests
 import datetime
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 import pandas_gbq as pdbq
 from google.cloud import storage
 import json
 import numpy as np
 import pandas.io.json as pd_json
-from typing import List, Optional, Tuple, Union, Dict, Any
+from typing import List, Optional, Tuple, Union, Dict, Any, Callable
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
 import pytz
@@ -916,24 +916,8 @@ class EtlTask:
         :param config: the source config to check mapping settings
         :param df: the extracted DataFrame to be applied
         """
-        maps = {}
-        if "mappings" in config:
-            for m in config["mappings"]:
-                mod = importlib.import_module("%s.%s" % (mapping.__name__, m))
-                for cls, cobj in inspect.getmembers(mod, predicate=inspect.isclass):
-                    if hasattr(cobj, "__module__") and cobj.__module__ == mod.__name__:
-                        log.warning(cls)
-                        for method, mobj in inspect.getmembers(
-                            cobj, predicate=inspect.isroutine
-                        ):
-                            if method in cobj.__dict__ and isinstance(
-                                cobj.__dict__[method], staticmethod
-                            ):
-                                if m not in maps:
-                                    maps[m] = {}
-                                if cls not in maps[m]:
-                                    maps[m][cls] = []
-                                maps[m][cls] += [mobj]
+        maps = EtlTask.import_map_funcs(config)
+        # do nothing if no map functions found in config
         if not maps:
             return df
         # handle map product (e.g. feature x channel)
@@ -961,7 +945,51 @@ class EtlTask:
         return output
 
     @staticmethod
-    def apply_map_func(df, idx, row, map_func, map_name, map_type) -> DataFrame:
+    def import_map_funcs(
+        config: Dict[str, Any]
+    ) -> Dict[str, Dict[str, List[Callable]]]:
+        """Import mapping functions according to source config.
+
+        :rtype: Dict[str, Dict[str, List[Callable]]]
+        :param config: the data source config
+        :return: a dictionary containing all mapping functions
+        """
+        maps = {}
+        if "mappings" in config:
+            for m in config["mappings"]:
+                # import mapping module from config
+                mod = importlib.import_module("%s.%s" % (mapping.__name__, m))
+                # iterate through map type classes (Feature, Vertical, App, ...)
+                for cls, cobj in inspect.getmembers(mod, predicate=inspect.isclass):
+                    # filter only classes defined in the mapping module,
+                    # exclude imported or other builtin classes
+                    if hasattr(cobj, "__module__") and cobj.__module__ == mod.__name__:
+                        # iterate through static functions in the class
+                        for method, mobj in inspect.getmembers(
+                            cobj, predicate=inspect.isroutine
+                        ):
+                            # verify the method is defined directly on the class,
+                            # not inherited or builtin methods,
+                            # also verify it's a static method.
+                            if method in cobj.__dict__ and isinstance(
+                                cobj.__dict__[method], staticmethod
+                            ):
+                                if m not in maps:
+                                    maps[m] = {}
+                                if cls not in maps[m]:
+                                    maps[m][cls] = []
+                                maps[m][cls] += [mobj]
+        return maps
+
+    @staticmethod
+    def apply_map_func(
+        df: DataFrame,
+        idx: int,
+        row: Series,
+        map_func: Callable,
+        map_name: str,
+        map_type: str,
+    ) -> DataFrame:
         """Apply map functions to a row of DataFrame.
 
         :param df: the DataFrame to apply
