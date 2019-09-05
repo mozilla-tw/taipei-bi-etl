@@ -3,6 +3,7 @@ import errno
 import glob
 import importlib
 import inspect
+import itertools
 import re
 import time
 from collections import Counter
@@ -906,10 +907,10 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_bq(source, config)
                 elif self.sources[source]["type"] == "const":
                     self.extracted[source] = self.extract_via_const(source, config)
-                self.map_apply(config, self.extracted[source])
+                self.extracted[source] = self.map_apply(config, self.extracted[source])
 
     @staticmethod
-    def map_apply(config: Dict[str, Any], df: DataFrame):
+    def map_apply(config: Dict[str, Any], df: DataFrame) -> DataFrame:
         """Apply map functions to extracted DataFrame.
 
         :param config: the source config to check mapping settings
@@ -934,20 +935,60 @@ class EtlTask:
                                     maps[m][cls] = []
                                 maps[m][cls] += [mobj]
         if not maps:
-            return
+            return df
+        # handle map product (e.g. feature x channel)
+        map_list = []
+        for map_name, map_types in maps.items():
+            ls = []
+            for t, map_funcs in map_types.items():
+                ls += [(map_name, t, map_funcs)]
+            map_list += [ls]
+        map_prod = itertools.product(*map_list)
+
+        output = DataFrame()
         # apply maps here
-        for idx, row in df.iterrows():
-            for map_name, map_types in maps.items():
-                for t, map_funcs in map_types.items():
+        for batch in map_prod:
+            # use a clean DataFrame for each batch
+            d = df.copy()
+            for map_name, map_type, map_funcs in batch:
+                for idx, row in d.iterrows():
                     for map_func in map_funcs:
-                        map_result = map_func(row)
-                        if map_result:
-                            if isinstance(map_result, list):
-                                # TODO: handle multiple results here:
-                                pass
-                            else:
-                                df.loc[idx, map_name + "_type"] = t
-                                df.loc[idx, map_name + "_name"] = map_result
+                        d = EtlTask.apply_map_func(
+                            d, idx, row, map_func, map_name, map_type
+                        )
+            output = output.append(d)
+        output = output.reset_index()
+        return output
+
+    @staticmethod
+    def apply_map_func(df, idx, row, map_func, map_name, map_type) -> DataFrame:
+        """Apply map functions to a row of DataFrame.
+
+        :param df: the DataFrame to apply
+        :param idx: the row to apply
+        :param row: the actual row (Series)
+        :param map_func: the map function
+        :param map_name: the name of the mapping
+        :param map_type: the type of the mapping
+        """
+        map_result = map_func(row)
+        if map_result:
+            if isinstance(map_result, list):
+                # TODO: handle multiple results here:
+                pass
+            else:
+                type_col = map_name + "_type"
+                name_col = map_name + "_name"
+                # Check duplicated mapping
+                assert type_col not in df.loc[idx].index or pd.isnull(
+                    df.loc[idx, type_col]
+                )
+                assert name_col not in df.loc[idx].index or pd.isnull(
+                    df.loc[idx, name_col]
+                )
+                df.loc[idx, type_col] = map_type
+                df.loc[idx, name_col] = map_result
+        return df
 
     def transform(self):
         """Transform extracted data into target format DataFrames.

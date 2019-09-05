@@ -9,6 +9,4 @@ configs/*.py
 !configs/__init__.py
 configs/debug/*.py
 !configs/debug/__init__.py
-configs/mapping/*.py
-!configs/mapping/__init__.py
 settings.py
