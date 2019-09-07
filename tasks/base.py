@@ -304,7 +304,15 @@ class EtlTask:
         """
         ftype = "json" if "file_format" not in config else config["file_format"]
         df = None
-        if ftype == "json":
+        if ftype == "jsonl":
+            jlines = raw.split("\n")
+            df = DataFrame()
+            for jline in jlines:
+                if len(jline) < 3:
+                    continue
+                line = json.loads(jline)
+                df = df.append(Series(line), ignore_index=True)
+        elif ftype == "json":
             extracted_json = EtlTask.json_extract(
                 raw, None if "json_path" not in config else config["json_path"]
             )
@@ -322,11 +330,16 @@ class EtlTask:
         elif "country_code" in config:
             tz = EtlTask.get_country_tz(config["country_code"])
         # TODO: support multiple countries/timezones in the future if needed
-        if tz is not None and "date_fields" in config:
-            df["tz"] = EtlTask.get_tz_str(tz)
+        if "date_fields" in config:
             for date_field in config["date_fields"]:
-                df[date_field].dt.tz_localize(tz).dt.tz_convert(pytz.utc)
-                df[date_field] = df[date_field].astype("datetime64[ns]")
+                df[date_field] = pd.to_datetime(df[date_field])
+            if tz is not None:
+                df["tz"] = EtlTask.get_tz_str(tz)
+                for date_field in config["date_fields"]:
+                    df[date_field] = (
+                        df[date_field].dt.tz_localize(tz).dt.tz_convert(pytz.utc)
+                    )
+                    df[date_field] = df[date_field].astype("datetime64[ns]")
         return df
 
     @staticmethod
@@ -528,7 +541,9 @@ class EtlTask:
                     raise
         return filename
 
-    def is_cached(self, source: str, config: Dict[str, Any], stage: str = "raw") -> bool:
+    def is_cached(
+        self, source: str, config: Dict[str, Any], stage: str = "raw"
+    ) -> bool:
         """Check whether a raw data is cached.
 
         Note that this currently only used for raw data extracted from API.
@@ -649,7 +664,6 @@ class EtlTask:
         """
         if config["type"] == "gcs":
             # get cached file if already exists
-            file = self.get_filepath(source, config, stage, "fs")
             if self.is_cached(source, config, "staging"):
                 return self.extract_via_fs(source, config, stage, date)
             bucket = config["bucket"]
@@ -860,12 +874,35 @@ class EtlTask:
             self.last_month.strftime(config["date_format"]),
             self.current_date.strftime(config["date_format"]),
         )
-        df = pdbq.read_gbq(query)
-        log.info(
-            "%s-%s-%s/%s w/t %d records extracted from BigQuery"
-            % ("raw", self.task, source, self.current_date.date(), len(df.index))
-        )
-        return df
+        if "cache_file" in config and config["cache_file"]:
+            if self.is_cached(source, config):
+                return self.extract_via_fs(source, config)
+            else:
+                df = pdbq.read_gbq(query)
+                self.raw[source] = self.convert_format(
+                    df, None if "date_fields" not in config else config["date_fields"]
+                )
+                self.load_to_fs(source, config)
+                if self.args.dest != "fs":
+                    self.load_to_gcs(source, config)
+                log.info(
+                    "%s-%s-%s/%s w/t %d records extracted from BigQuery"
+                    % (
+                        "raw",
+                        self.task,
+                        source,
+                        self.current_date.date(),
+                        len(df.index),
+                    )
+                )
+                return df
+        else:
+            df = pdbq.read_gbq(query)
+            log.info(
+                "%s-%s-%s/%s w/t %d records extracted from BigQuery"
+                % ("raw", self.task, source, self.current_date.date(), len(df.index))
+            )
+            return df
 
     @staticmethod
     def build_query(config: Dict[str, Any], start_date: str, end_date: str) -> str:
@@ -1172,22 +1209,37 @@ class EtlTask:
         date = self.current_date if date is None else date
         fpath = self.get_or_create_filepath(source, config, stage, "fs", None, date)
         with open(fpath, "w") as f:
-            output = ""
-            if self.destinations["fs"]["file_format"] == "jsonl":
-                output = ""
-                # build json lines
-                for row in df.iterrows():
-                    output += row[1].to_json() + "\n"
-            elif self.destinations["fs"]["file_format"] == "json":
-                output = "["
-                # build json
-                for row in df.iterrows():
-                    output += row[1].to_json() + ",\n"
-                if len(output) > 2:
-                    output = output[0:-2] + "\n]"
-            elif self.destinations["fs"]["file_format"] == "csv":
-                output = df.to_csv(index=False)
+            output = self.convert_format(df)
             f.write(output)
+
+    def convert_format(self, df: DataFrame, date_fields: List = None) -> str:
+        """Convert DataFrame into destination format.
+
+        The logic is based on task config (see `configs/*.py`).
+
+        :param df: The DataFrame to be converted to destination format.
+        :param date_fields: the date fields to convert to date string
+        :return:
+        """
+        output = ""
+        if date_fields:
+            for date_field in date_fields:
+                df[date_field] = df[date_field].dt.strftime(DEFAULT_DATETIME_FORMAT)
+        if self.destinations["fs"]["file_format"] == "jsonl":
+            output = ""
+            # build json lines
+            for row in df.iterrows():
+                output += row[1].to_json() + "\n"
+        elif self.destinations["fs"]["file_format"] == "json":
+            output = "["
+            # build json
+            for row in df.iterrows():
+                output += row[1].to_json() + ",\n"
+            if len(output) > 2:
+                output = output[0:-2] + "\n]"
+        elif self.destinations["fs"]["file_format"] == "csv":
+            output = df.to_csv(index=False)
+        return output
 
     def load_to_gcs(self, source: str, config: Dict[str, Any], stage: str = "raw"):
         """Load data into Google Cloud Storage based on destination settings.
