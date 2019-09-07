@@ -644,8 +644,11 @@ class EtlTask:
             will use `self.current_date` if not specified
         :return: the extracted `DataFrame`
         """
-        # TODO: handle caching here
         if config["type"] == "gcs":
+            # get cached file if already exists
+            file = self.get_filepath(source, config, stage, "fs")
+            if os.path.isfile(file):
+                return self.extract_via_fs(source, config, stage, date)
             bucket = config["bucket"]
             prefix = self.get_filepath(source, config, stage, "gcs")
         else:
