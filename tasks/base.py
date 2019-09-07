@@ -473,6 +473,8 @@ class EtlTask:
         """
         date = self.current_date if date is None else date
         if stage == "raw":
+            if "iterator" in config:
+                page = config["iterator"][0] if page is None else page
             ftype = "json" if "file_format" not in config else config["file_format"]
             return "{date}.{page}.{ext}".format(
                 date=date.strftime(DEFAULT_DATE_FORMAT),
@@ -526,7 +528,7 @@ class EtlTask:
                     raise
         return filename
 
-    def is_cached(self, source: str, config: Dict[str, Any]) -> bool:
+    def is_cached(self, source: str, config: Dict[str, Any], stage: str = "raw") -> bool:
         """Check whether a raw data is cached.
 
         Note that this currently only used for raw data extracted from API.
@@ -536,9 +538,10 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :param config: config of the data source to be extracted,
             specified in task config, see `configs/*.py`
+        :param stage: the stage of the data, could be raw/staging/production.
         :return: whether a data file is cached in local file system
         """
-        fpath = self.get_filepath(source, config, "raw", "fs")
+        fpath = self.get_filepath(source, config, stage, "fs")
         return os.path.isfile(fpath)
 
     def get_target_dataframe(
@@ -647,7 +650,7 @@ class EtlTask:
         if config["type"] == "gcs":
             # get cached file if already exists
             file = self.get_filepath(source, config, stage, "fs")
-            if os.path.isfile(file):
+            if self.is_cached(source, config, "staging"):
                 return self.extract_via_fs(source, config, stage, date)
             bucket = config["bucket"]
             prefix = self.get_filepath(source, config, stage, "gcs")
@@ -707,7 +710,6 @@ class EtlTask:
             will use `self.current_date` if not specified
         :return: the extracted `DataFrame`
         """
-        # TODO: handle caching here
         # API paging
         start_date = (
             self.last_month.strftime(config["date_format"])
