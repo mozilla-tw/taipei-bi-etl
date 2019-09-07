@@ -1,12 +1,21 @@
+"""Override debugging config here."""
 from copy import deepcopy
 from configs import revenue
 
+# deep copy required here in case of side effect on production config
 SOURCES = deepcopy(revenue.SOURCES)
 
-SOURCES["google_search_rps"]["bucket"] = "moz-taipei-bi-test"
-SOURCES["google_search_rps"]["prefix"] = "test/"
+SOURCES["google_search_rps"]["bucket"] = "bi-datasets"
+SOURCES["google_search_rps"]["prefix"] = "mango/"
+
+SOURCES["google_search"]["project"] = "rocket"
+SOURCES["google_search"]["dataset"] = "mango"
+SOURCES["google_search"]["table"] = "events"
+
 
 DESTINATIONS = deepcopy(revenue.DESTINATIONS)
 
-DESTINATIONS["gcs"]["bucket"] = "moz-taipei-bi-test"
-DESTINATIONS["gcs"]["prefix"] = "test/"
+DESTINATIONS["gcs"]["bucket"] = "bi-datasets"
+DESTINATIONS["gcs"]["prefix"] = "mango/"
+
+DESTINATIONS["fs"]["prefix"] = "./debug-data/"
