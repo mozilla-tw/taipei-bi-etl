@@ -5,13 +5,17 @@ import pytest
 import requests
 from google.cloud import storage
 from google.cloud.storage import Bucket
-from configs import revenue as cfg
-from configs.debug import revenue as cfg_dbg
+from tasks import base
 from tests.utils import inject_fixtures
 
 log = logging.getLogger(__name__)
 
-inject_fixtures(globals(), "revenue", {"prd": cfg, "dbg": cfg_dbg})
+task = "revenue"
+inject_fixtures(
+    globals(),
+    task,
+    {"prd": base.get_configs(task, ""), "dbg": base.get_configs(task, "")},
+)
 
 
 @pytest.mark.envtest

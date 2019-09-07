@@ -36,6 +36,20 @@ EXT_REGEX = "([*0-9A-z]+)\\.[A-z0-9]+$"
 DEFAULT_PATH_FORMAT = "{prefix}{stage}-{task}-{source}"
 
 
+def get_configs(mod: str, pkg: str = "") -> Callable:
+    """Get configs by module name and package name.
+
+    :rtype: Callable
+    :param mod: the name of the ETL module
+    :param pkg: the package of the ETL module
+    :return: the config module
+    """
+    if pkg == "":
+        return importlib.import_module("%s.%s" % ("configs", mod))
+    else:
+        return importlib.import_module("%s.%s.%s" % ("configs", pkg, mod))
+
+
 def get_arg_parser(**kwargs) -> ArgumentParser:
     """Parse arguments passed in EtlTask.
 
@@ -191,10 +205,17 @@ class EtlTask:
         timezones = pytz.country_timezones[country_code]
         offsets = []
         for timezone in timezones:
-            offsets += [
-                pytz.timezone(timezone).utcoffset(datetime.datetime.now()).seconds
-                / 3600
-            ]
+            try:
+                offsets += [
+                    pytz.timezone(timezone).utcoffset(datetime.datetime.now()).seconds
+                    / 3600
+                ]
+            except pytz.exceptions.NonExistentTimeError:
+                log.warning("Error creating timezone")
+                log.warning(timezones)
+        if not offsets:
+            log.warning("returning UTC")
+            return pytz.UTC
         offset_count = Counter(offsets)
         max_count = -1
         max_offset = None
@@ -623,6 +644,7 @@ class EtlTask:
             will use `self.current_date` if not specified
         :return: the extracted `DataFrame`
         """
+        # TODO: handle caching here
         if config["type"] == "gcs":
             bucket = config["bucket"]
             prefix = self.get_filepath(source, config, stage, "gcs")
@@ -682,6 +704,7 @@ class EtlTask:
             will use `self.current_date` if not specified
         :return: the extracted `DataFrame`
         """
+        # TODO: handle caching here
         # API paging
         start_date = (
             self.last_month.strftime(config["date_format"])

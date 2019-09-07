@@ -3,13 +3,17 @@ from typing import Dict, Any
 import pytest
 import requests
 from google.cloud.storage import Bucket
-from configs import rps as cfg
-from configs.debug import rps as cfg_dbg
+from tasks import base
 from tests.utils import inject_fixtures
 
 log = logging.getLogger(__name__)
 
-inject_fixtures(globals(), "rps", {"prd": cfg, "dbg": cfg_dbg})
+task = "rps"
+inject_fixtures(
+    globals(),
+    task,
+    {"prd": base.get_configs(task, ""), "dbg": base.get_configs(task, "")},
+)
 
 
 @pytest.mark.envtest

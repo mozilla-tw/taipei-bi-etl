@@ -5,8 +5,6 @@ from typing import Dict, Any, List, Tuple
 
 from pandas import DataFrame
 from tasks import base
-from configs import rps
-from configs.debug import rps as rps_dbg
 import pycountry
 import pandas as pd
 import numpy as np
@@ -172,9 +170,8 @@ def main(args: Namespace):
 
     :param args: args passed from command line, see `base.get_arg_parser()`
     """
-    srcs = rps.SOURCES if not args.debug else rps_dbg.SOURCES
-    dests = rps.DESTINATIONS if not args.debug else rps_dbg.DESTINATIONS
-    task = RpsEtlTask(args, srcs, rps.SCHEMA, dests)
+    configs = base.get_configs("rps", "" if not args.debug else "debug")
+    task = RpsEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 
 

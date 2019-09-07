@@ -8,8 +8,6 @@ import pandasql as ps
 from pandas import DataFrame
 
 from tasks import base
-from configs import revenue
-from configs.debug import revenue as revenue_dbg
 import numpy as np
 import logging
 
@@ -221,9 +219,8 @@ def main(args: Namespace):
 
     :param args: args passed from command line, see `base.get_arg_parser()`
     """
-    srcs = revenue.SOURCES if not args.debug else revenue_dbg.SOURCES
-    dests = revenue.DESTINATIONS if not args.debug else revenue_dbg.DESTINATIONS
-    task = RevenueEtlTask(args, srcs, revenue.SCHEMA, dests)
+    configs = base.get_configs("revenue", "" if not args.debug else "debug")
+    task = RevenueEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 
 

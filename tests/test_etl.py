@@ -7,5 +7,5 @@ import etl
 
 @pytest.mark.intgtest
 def test_etl():
-    sys.argv = ["--debug"]
+    sys.argv = ["./etl.py", "--debug"]
     etl.main()

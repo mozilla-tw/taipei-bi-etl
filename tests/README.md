@@ -15,7 +15,7 @@ When developing tests, you may want to run them separately with -v (verbose) opt
 
 ```
 # run code format tests only
-pytest -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not envtest or not unittest or not intgtest"
+pytest -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not envtest and not unittest and not intgtest"
 
 # run environment tests only
 pytest -v -m "envtest"
