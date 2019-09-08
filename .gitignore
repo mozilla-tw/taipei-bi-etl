@@ -4,9 +4,15 @@
 venv/
 data/
 debug-data/
+test-data/
 .idea/
+.mypy_cache
+.coverage
+.DS_Store
 configs/*.py
 !configs/__init__.py
 configs/debug/*.py
 !configs/debug/__init__.py
+configs/test/*.py
+!configs/test/__init__.py
 settings.py
