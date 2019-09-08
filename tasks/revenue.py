@@ -219,7 +219,12 @@ def main(args: Namespace):
 
     :param args: args passed from command line, see `base.get_arg_parser()`
     """
-    configs = base.get_configs("revenue", "" if not args.debug else "debug")
+    config_name = ""
+    if args.debug:
+        config_name = "debug"
+    if args.config:
+        config_name = args.config
+    configs = base.get_configs("revenue", config_name)
     task = RevenueEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 

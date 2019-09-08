@@ -71,6 +71,11 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
         help="Set log level by name.",
     )
     parser.add_argument(
+        "--config",
+        default="" if "config" not in kwargs else kwargs["config"],
+        help="The ETL config to use.",
+    )
+    parser.add_argument(
         "--task",
         default=None if "task" not in kwargs else kwargs["task"],
         help="The ETL task to run.",
