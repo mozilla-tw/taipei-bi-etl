@@ -36,7 +36,7 @@ EXT_REGEX = "([*0-9A-z]+)\\.[A-z0-9]+$"
 DEFAULT_PATH_FORMAT = "{prefix}{stage}-{task}-{source}"
 
 
-def get_configs(mod: str, pkg: str = "") -> Callable:
+def get_configs(mod: str, pkg: str = "") -> Optional[Callable]:
     """Get configs by module name and package name.
 
     :rtype: Callable
@@ -44,10 +44,14 @@ def get_configs(mod: str, pkg: str = "") -> Callable:
     :param pkg: the package of the ETL module
     :return: the config module
     """
-    if pkg == "":
-        return importlib.import_module("%s.%s" % ("configs", mod))
-    else:
-        return importlib.import_module("%s.%s.%s" % ("configs", pkg, mod))
+    try:
+        if pkg == "":
+            return importlib.import_module("%s.%s" % ("configs", mod))
+        else:
+            return importlib.import_module("%s.%s.%s" % ("configs", pkg, mod))
+    except ModuleNotFoundError:
+        log.warning("Config module %s not found." % mod)
+    return None
 
 
 def get_arg_parser(**kwargs) -> ArgumentParser:

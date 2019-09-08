@@ -50,6 +50,8 @@ def get_src_by_type(task: str, cfgs: Dict[str, Any], t: str) -> Dict[str, Any]:
     params = []
     ids = []
     for src, cfg in cfgs.items():
+        if cfg is None:
+            continue
         params += [v for k, v in cfg.SOURCES.items() if v["type"] == t]
         ids += [
             task + "_" + src + "_" + k for k, v in cfg.SOURCES.items() if v["type"] == t
