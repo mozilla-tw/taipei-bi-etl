@@ -59,7 +59,7 @@ anonymize:
 docker-build:
 	docker build -t .
 
-docker-rm: stop
+docker-rm:
 	docker rm -f
 
 docker-shell:
