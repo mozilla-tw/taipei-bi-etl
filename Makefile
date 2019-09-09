@@ -3,10 +3,13 @@
 help:
 	@echo "  clean-build - remove build artifacts"
 	@echo "  clean-pyc - remove Python file artifacts"
-	@echo "  lint - check style with flake8"
+	@echo "  lint - check code style"
 	@echo "  test - run tests quickly with the default Python"
 	@echo "  test-mark - run tests with specific marks"
 	@echo "  test-mock - run tests on mock objects"
+	@echo "  test-unit - run unit tests"
+	@echo "  test-env - run environment tests"
+	@echo "  test-intg - run integration tests"
 	@echo "  coverage - check code coverage quickly"
 	@echo "  coverage-report - open the coverage report in your browser"
 	@echo "  install-requirements - install the requirements for development"
@@ -37,6 +40,15 @@ test-mark:
 
 test-mock:
 	pytest tests/conftest.py -m "mocktest"
+
+test-unit:
+	pytest -m "unittest"
+
+test-env:
+	pytest -m "envtest"
+
+test-intg:
+	pytest -m "intgtest"
 
 coverage:
 	pytest tests/ --cov=.
