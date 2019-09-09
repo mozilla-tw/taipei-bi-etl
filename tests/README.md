@@ -29,3 +29,10 @@ pytest -v -m "intgtest"
 # run mock tests only (won't run by default)
 pytest tests/conftest.py -v -m "mocktest"
 ```
+
+## Technical References
+- [pytest](https://docs.pytest.org/en/latest/contents.html)
+    - [assertion](https://docs.pytest.org/en/latest/assert.html)
+    - [fixture](https://docs.pytest.org/en/latest/fixture.html)
+    - [parameterize](https://docs.pytest.org/en/latest/parametrize.html#parametrize)
+    - [Monkeypatching/mocking](https://docs.pytest.org/en/latest/monkeypatch.html)
