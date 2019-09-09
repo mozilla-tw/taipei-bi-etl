@@ -42,13 +42,14 @@ class RpsEtlTask(base.EtlTask):
         """Inherit from super class and extract latest fb_index for later use."""
         super().extract()
         source = "fb_index"
-        config = self.sources[source]
-        self.extracted_idx[source] = self.extract_via_api_or_cache(
-            source,
-            config,
-            "raw",
-            RpsEtlTask.lookfoward_dates(self.current_date, self.period),
-        )[0]
+        if not self.args.source or source in self.args.source.split(","):
+            config = self.sources[source]
+            self.extracted_idx[source] = self.extract_via_api_or_cache(
+                source,
+                config,
+                "raw",
+                RpsEtlTask.lookfoward_dates(self.current_date, self.period),
+            )[0]
 
     def transform_google_search_rps(
         self, source: str, config: Dict[str, Any]
