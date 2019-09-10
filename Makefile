@@ -5,14 +5,18 @@ help:
 	@echo "  clean-pyc - remove Python file artifacts"
 	@echo "  lint - check code style"
 	@echo "  test - run tests quickly with the default Python"
-	@echo "  test-mark - run tests with specific marks"
+	@echo "  test-mark - run tests with specific marks, e.g. MARK=\"envtest and intgtest\""
 	@echo "  test-mock - run tests on mock objects"
 	@echo "  test-unit - run unit tests"
 	@echo "  test-env - run environment tests"
 	@echo "  test-intg - run integration tests"
+	@echo "  run - run ETL tasks"
 	@echo "  coverage - check code coverage quickly"
 	@echo "  coverage-report - open the coverage report in your browser"
 	@echo "  install-requirements - install the requirements for development"
+	@echo "  anonymize - anonymize data"
+	@echo "  docker-build - build docker image taipei-bi-etl-img"
+	@echo "  docker-run - run docker image taipei-bi-etl-img"
 
 clean: clean-build clean-pyc docker-rm
 
@@ -69,18 +73,9 @@ anonymize:
 	python utils/anonymizer.py
 
 docker-build:
-	docker build -t .
-
-docker-rm:
-	docker rm -f
-
-docker-shell:
-	docker run app bash
+	docker build -t taipei-bi-etl-img .
 
 docker-run:
-	docker run $(COMMAND)
-
-docker-run-script:
-	docker run app bash < $(SCRIPT)
+	docker run $(COMMAND) taipei-bi-etl-img
 
 
