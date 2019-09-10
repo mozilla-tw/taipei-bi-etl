@@ -1,0 +1,12 @@
+language: generic
+
+services:
+  - docker
+
+before_install:
+  - docker build -t taipei-bi-etl-img .
+
+script:
+  - docker run --entrypoint pytest taipei-bi-etl-img -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not envtest and not unittest and not intgtest and not todo"
+  - docker run --entrypoint pytest taipei-bi-etl-img -m "mocktest"
+  - docker run --entrypoint pytest taipei-bi-etl-img -m "unittest"
