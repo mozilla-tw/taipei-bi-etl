@@ -38,6 +38,7 @@ def pdbq():
 @pytest.fixture
 def mock_io(monkeypatch):
     """Mock file IO object."""
+
     # defining mock objects
     class MockIO:
         def __enter__(self, *args, **kwargs):
@@ -67,6 +68,7 @@ def mock_io(monkeypatch):
 @pytest.fixture
 def mock_requests(monkeypatch):
     """Mock http request object."""
+
     # defining mock objects
     class MockResponse:
         def get_text(self):
@@ -89,21 +91,29 @@ def mock_requests(monkeypatch):
 @pytest.fixture
 def mock_pdbq(monkeypatch):
     """Mock Pandas GBQ object."""
+
     # defining mock objects
-    df = DataFrame()
+    class MockResponse():
+        df = DataFrame()
+
+        def setQueryResult(self, input: DataFrame):
+            self.df = input.copy()
+
+    mock = MockResponse()
 
     def mock_read_gbq(query, **kwargs):
         log.warning("mock_read_gbq(%s)" % query)
-        return df
+        return mock.df
 
     monkeypatch.setattr(pandas_gbq, "read_gbq", mock_read_gbq)
 
-    return df
+    return mock
 
 
 @pytest.fixture
 def mock_gcs(monkeypatch):
     """Mock GCS client object."""
+
     # defining mock objects
     class MockBlob:
         def get_name(self):
