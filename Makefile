@@ -3,6 +3,8 @@
 help:
 	@echo "  clean-build - remove build artifacts"
 	@echo "  clean-pyc - remove Python file artifacts"
+	@echo "  clean-data - remove generated data files"
+	@echo "  clean - clean everything"
 	@echo "  lint - check code style"
 	@echo "  test - run tests quickly with the default Python"
 	@echo "  test-mark - run tests with specific marks, e.g. MARK=\"envtest and intgtest\""
@@ -18,7 +20,13 @@ help:
 	@echo "  docker-build - build docker image taipei-bi-etl-img"
 	@echo "  docker-run - run docker image taipei-bi-etl-img"
 
-clean: clean-build clean-pyc docker-rm
+clean: clean-build clean-pyc clean-data
+
+clean-data:
+	rm -fr data/
+	rm -fr debug-data/
+	mkdir data
+	mkdir debug-data
 
 clean-build:
 	rm -fr .mypy_cache/
