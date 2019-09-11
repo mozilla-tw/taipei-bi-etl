@@ -6,7 +6,9 @@ import pandas_gbq
 import pytest
 import requests
 from .mockio import MockIO
+from .mockbigquery import MockBigqueryClient
 from google.cloud import storage
+from google.cloud import bigquery
 from pandas import DataFrame
 
 log = logging.getLogger(__name__)
@@ -92,6 +94,12 @@ def mock_pdbq(monkeypatch):
     monkeypatch.setattr(pandas_gbq, "read_gbq", mock_read_gbq)
 
     return mock
+
+
+@pytest.fixture
+def mock_bigquery(monkeypatch):
+    """Mock google-cloud-bigquery object"""
+    bigquery.Client = MockBigqueryClient
 
 
 @pytest.fixture

@@ -42,6 +42,11 @@ def test_mock_pdbq(mock_pdbq):
 
 
 @pytest.mark.mocktest
+def test_mock_bigquery(mock_bigquery):
+    """Testing mock_bigquery fixture."""
+    client = bigquery.Client()
+
+
 @pytest.mark.mocktest
 def test_mock_gcs(mock_gcs):
     """Testing mock_gcs fixture."""
