@@ -43,7 +43,6 @@ from utils.marshalling import (
 
 log = logging.getLogger(__name__)
 
-
 class EtlTask:
     """Base ETL task to serve common extract/load functions."""
 
