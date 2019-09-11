@@ -1091,7 +1091,7 @@ class EtlTask:
             elif isinstance(map_result, list):
                 df.loc[idx, type_col] = map_type
                 # merge list if duplicated:
-                if name_col in df.loc[idx].index and pd.notnull(df.loc[idx, type_col]):
+                if name_col in df.loc[idx].index and pd.notnull(df.loc[idx, name_col]):
                     if isinstance(df.loc[idx, name_col], list):
                         df.loc[idx, name_col] += map_result
                     else:
