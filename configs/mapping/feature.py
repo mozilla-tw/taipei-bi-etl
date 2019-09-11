@@ -4,6 +4,9 @@ from pandas import Series
 
 class Feature:
     
+    global partner_list
+    partner_list = ['bukalapak','flipkart','jd.id','gamezop']
+    
     @staticmethod
     def background(e: Series):
         if (e['event_method'] == 'background'): 
@@ -34,38 +37,48 @@ class Feature:
     
     @staticmethod
     def change_tab(e: Series):
-        if (e['event_method'] == 'change' and
-           e['event_object'] == 'tab'): 
+        if (
+            e['event_method'] == 'change' and
+            e['event_object'] == 'tab'
+       ): 
             return ['feature: change_tab']
         return False
     
     @staticmethod
     def close_all_tab(e: Series):
-        if (e['event_method'] == 'click' and
-           e['event_object'] == 'close_all' and
-           e['event_value'] == 'tab_tray'): 
+        if (
+            e['event_method'] == 'click' and
+            e['event_object'] == 'close_all' and
+            e['event_value'] == 'tab_tray'
+       ): 
             return ['feature: close_all_tab']
         return False
     
     @staticmethod
     def remove_tab(e: Series):
-        if (e['event_method'] in ['remove', 'swipe'] and
-           e['event_object'] == 'tab' and
-           e['event_value'] == 'tab_tray'): 
+        if (
+            e['event_method'] in ['remove', 'swipe'] and
+            e['event_object'] == 'tab' and
+            e['event_value'] in ['tab_tray','tab_swipe']
+       ): 
             return ['feature: remove_tab']
         return False
     
     @staticmethod
     def remove_tab(e: Series):
-        if (e['event_method'] in ['remove', 'swipe'] and
-           e['event_object'] == 'tab' and
-           e['event_value'] == 'tab_tray'): 
+        if (
+            e['event_method'] in ['remove', 'swipe'] and
+            e['event_object'] == 'tab' and
+            e['event_value'] == 'tab_tray'
+        ): 
             return ['feature: remove_tab']
         return False
     
     @staticmethod
     def change_block_image(e: Series):
-        if (e['event_value'] == 'block_image'): 
+        if (
+            e['event_value'] == 'block_image'
+        ): 
             return ['feature: change_block_image']
         return False
     
@@ -270,9 +283,11 @@ class Feature:
             e['event_object'] == 'home' and 
             e['event_value'] == 'link' and
             e['extra_key'] == 'source' and
-            e['extra_value'].lower() == 'bukalapak' 
+            e['extra_value'].lower() in partner_list
         ): 
-            return ['tags: visit_topsite_bukalapak', 'source: bukalapak', 'partner: True']
+            return ['tags: visit_topsite_bukalapak', 
+                    'source: %s' % (e['extra_value'].lower()), 
+                    'partner: True']
         return False
     
     @staticmethod
@@ -340,6 +355,63 @@ class Feature:
         return False
     
     @staticmethod
+    def tab_swipe(e: Series):
+        if (
+            # enter & leave
+            (
+                e['event_method'] in ['click','start','end','clear'] and
+                ((
+                    e['event_value'] is not None and 
+                    'tab_swipe' in e['event_value']
+                ) or
+                    e['event_object'] == 'tab_swipe'
+                ) and
+                
+                e['extra_key'] == 'vertical' and
+                e['extra_value'] == 'shopping' 
+            ) or
+            
+            # visit tab swipe setting
+            (
+                e['event_method'] == 'change' and
+                e['event_object'] == 'setting' and
+                e['event_value'] == 'tab_swipe'
+        )): 
+            return ['feature: tab_swipe']
+        return False
+    
+    @staticmethod
+    def tab_swipe_feed(e: Series):
+        if (
+            e['event_method'] == 'end' and
+            e['event_object'] == 'tab_swipe' and
+            e['extra_key'] == 'feed'
+        ): 
+            return ['feed: %s' % (e['extra_value'].lower())]
+        return False
+    
+    @staticmethod
+    def tab_swipe_source(e: Series):
+        if (
+            e['event_method'] == 'end' and
+            e['event_object'] == 'tab_swipe' and
+            e['extra_key'] == 'source'
+        ): 
+            return ['source: %s' % (e['extra_value'].lower())]
+        return False
+    
+    @staticmethod
+    def tab_swipe_partner(e: Series):
+        if (
+            e['event_method'] == 'end' and
+            e['event_object'] == 'tab_swipe' and
+            e['extra_key'] == 'feed' and
+            e['extra_value'].lower() in partner_list
+        ): 
+            return ['partner: True']
+        return False
+    
+    @staticmethod
     def browse(e: Series):
         if (
             e['event_object'] == 'browser_contextmenu' or 
@@ -388,7 +460,9 @@ class Feature:
                 e['settings_value'].lower() == 'google' or
                 e['settings_value'] is None
         )): 
-            return ['tags: keyword_search', 'source: google', 'partner: True']
+            return ['tags: keyword_search', 
+                    'source: google', 
+                    'partner: True']
         return False
     
     @staticmethod
@@ -415,9 +489,11 @@ class Feature:
             e['event_method'] == 'click' and
             e['event_object'] == 'quicksearch' and
             e['extra_key'] == 'engine' and
-            e['extra_value'].lower() == 'bukalapak'
+            e['extra_value'].lower() in partner_list
         ): 
-            return ['tags: quicksearch', 'source: bukalapak', 'partner: True']
+            return ['tags: quicksearch', 
+                    'source: %s' % (e['extra_value'].lower()), 
+                    'partner: True']
         return False
     
     @staticmethod
@@ -540,17 +616,124 @@ class Feature:
     
     """
     ##########################
-    Vertical Feature
+    Vertical Feature - Shopping
     ##########################
     """
     
     @staticmethod
-    def lifefeed_ec(e: Series):
+    def lifefeed_e_ticket(e: Series):
         if (
             e['event_value'] == 'lifefeed_ec'
         ): 
-            return ['feature: lifefeed_ec']
+            return ['feature: lifefeed',
+                    'category: e_ticket']
         return False
+    
+    @staticmethod
+    def lifefeed_e_ticket_click_tags(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_value'] == 'lifefeed_ec' and
+            e['extra_key'] == 'category'
+        ): 
+            return ['component_type_id: 9', #icon_card 
+                    'tags: %s' % (e['extra_value'].lower())]
+        return False
+    
+    @staticmethod
+    def lifefeed_e_ticket_click_source(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_value'] == 'lifefeed_ec' and
+            e['extra_key'] == 'source'
+        ): 
+            return ['component_type_id: 9', #icon_card 
+                    'feed: %s' % (e['extra_value'].lower()),
+                    'source: %s' % (e['extra_value'].lower())]
+        return False
+    
+    @staticmethod
+    def lifefeed_e_ticket_click_partner(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_value'] == 'lifefeed_ec' and
+            e['extra_key'] == 'source' and 
+            e['extra_value'].lower() in partner_list
+        ): 
+            return ['partner: True']
+        return False
+    
+    @staticmethod
+    def lifefeed_coupon(e: Series):
+        if (
+            e['event_value'] == 'lifefeed_promo'
+        ): 
+            return ['feature: lifefeed',
+                   'category: coupon']
+        return False
+    
+    @staticmethod
+    def lifefeed_coupon_click_list(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_value'] == 'lifefeed_promo' and
+            e['extra_key'] == 'feed' and
+            e['extra_value'] == 'list'
+        ): 
+            return ['component_type_id: 7'] #list
+        return False
+    
+    @staticmethod
+    def lifefeed_coupon_click_banner(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_value'] == 'lifefeed_promo' and
+            e['extra_key'] == 'feed' and
+            e['extra_value'] == 'banner'
+        ): 
+            return ['component_type_id: 6'] #banner
+        return False
+    
+    @staticmethod
+    def lifefeed_coupon_click_source(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_value'] == 'lifefeed_promo' and
+            e['extra_key'] == 'source'
+        ): 
+            return ['feed: %s' % (e['extra_value'].lower()),
+                    'source: %s' % (e['extra_value'].lower())]
+        return False
+    
+    @staticmethod
+    def lifefeed_coupon_click_tags(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_value'] == 'lifefeed_promo' and
+            e['extra_key'] == 'subcategory'
+        ): 
+            return ['tags: %s' % (e['extra_value'].lower())]
+        return False
+    
+    @staticmethod
+    def lifefeed_coupon_click_partner(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_value'] == 'lifefeed_promo' and
+            e['extra_key'] == 'source' and
+            e['extra_value'].lower() in partner_list
+        ): 
+            return ['partner: True']
+        return False
+    
+    
+    
+    
+    """
+    ##########################
+    Vertical Feature - Lifestyle
+    ##########################
+    """
     
     @staticmethod
     def lifefeed_news(e: Series):
@@ -561,14 +744,50 @@ class Feature:
         return False
     
     @staticmethod
-    def lifefeed_promo(e: Series):
+    def lifefeed_news_category(e: Series):
         if (
-            e['event_value'] == 'lifefeed_promo'
+            e['event_method'] == 'open' and
+            e['event_value'] == 'lifefeed_news' and
+            e['extra_key'] == 'category'
         ): 
-            return ['feature: lifefeed_promo']
+            return ['category: %s' % (e['extra_value'].lower())]
         return False
     
+    @staticmethod
+    def lifefeed_news_click_feed(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_object'] == 'panel' and
+            e['event_value'] == 'lifefeed_news' and
+            e['extra_key'] == 'feed'
+        ): 
+            return ['component_type_id: 7', #list
+                    'feed: %s' % (e['extra_value'].lower())]
+        return False
     
+    @staticmethod
+    def lifefeed_news_click_source(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_object'] == 'panel' and
+            e['event_value'] == 'lifefeed_news' and
+            e['extra_key'] == 'source'
+        ): 
+            return ['component_type_id: 7', #list
+                    'source: %s' % (e['extra_value'].lower())]
+        return False
+    
+    @staticmethod
+    def lifefeed_news_click_partner(e: Series):
+        if (
+            e['event_method'] == 'click' and
+            e['event_object'] == 'panel' and
+            e['event_value'] == 'lifefeed_news' and
+            e['extra_key'] == 'feed' and 
+            e['extra_value'].lower() in partner_list
+        ): 
+            return ['partner: True']
+        return False
     
 
 
