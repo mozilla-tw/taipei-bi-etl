@@ -1078,22 +1078,22 @@ class EtlTask:
         if map_result:
             type_col = map_name + "_type"
             name_col = map_name + "_name"
+            if type_col not in df.loc[idx].index:
+                df[type_col] = Series(dtype=object)
+            if name_col not in df.loc[idx].index:
+                df[name_col] = Series(dtype=object)
             if isinstance(map_result, str):
                 # Check duplicated mapping
-                assert type_col not in df.loc[idx].index or pd.isnull(
-                    df.loc[idx, type_col]
-                )
-                assert name_col not in df.loc[idx].index or pd.isnull(
-                    df.loc[idx, name_col]
-                )
+                assert pd.isnull(df.loc[idx, type_col])
+                assert pd.isnull(df.loc[idx, name_col])
                 df.loc[idx, type_col] = map_type
                 df.loc[idx, name_col] = map_result
             elif isinstance(map_result, list):
                 df.loc[idx, type_col] = map_type
-                # merge list if duplicated:
-                if name_col in df.loc[idx].index and pd.notnull(df.loc[idx, name_col]):
+                # merge list if duplicated
+                if pd.notnull(df.loc[idx, name_col]):
                     if isinstance(df.loc[idx, name_col], list):
-                        df.loc[idx, name_col] += map_result
+                        df.loc[idx, name_col] = df.loc[idx, name_col] + map_result
                     else:
                         assert False, "Invalid data type found %s: %s" % (
                             map_type,
