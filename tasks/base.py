@@ -1092,12 +1092,12 @@ class EtlTask:
                 df.loc[idx, type_col] = map_type
                 # merge list if duplicated:
                 if name_col in df.loc[idx].index and pd.notnull(df.loc[idx, type_col]):
-                    if isinstance(df.loc[idx, type_col], list):
+                    if isinstance(df.loc[idx, name_col], list):
                         df.loc[idx, name_col] += map_result
                     else:
                         assert False, "Invalid data type found %s: %s" % (
                             map_type,
-                            str(type(df.loc[idx, type_col])),
+                            str(type(df.loc[idx, name_col])),
                         )
                 else:
                     df.loc[idx, name_col] = map_result
