@@ -5,6 +5,7 @@ import logging
 import pandas_gbq
 import pytest
 import requests
+from .mockio import MockIO
 from google.cloud import storage
 from pandas import DataFrame
 
@@ -35,32 +36,15 @@ def pdbq():
     return pandas_gbq
 
 
+# TODO: from docs.pytest.org
+# Be advised that it is not recommended to patch builtin functions such as open, compile, etc., because it might break pytest’s internals. If that’s unavoidable, passing --tb=native, --assert=plain and --capture=no might help although there’s no guarantee.
+# defining mock objects
 @pytest.fixture
 def mock_io(monkeypatch):
     """Mock file IO object."""
 
-    # defining mock objects
-    class MockIO:
-        def __enter__(self, *args, **kwargs):
-            return self
-
-        def __exit__(self, *args, **kwargs):
-            return self
-
-        def read(self, *args, **kwargs):
-            log.warning("mock_io.read")
-            return ""
-
-        def write(self, *args, **kwargs):
-            log.warning("mock_io.write")
-
     mock_io = MockIO()
-
-    def mock_open(file, mode="r"):
-        log.warning("mock_open(%s, %s)" % (file, mode))
-        return mock_io
-
-    monkeypatch.setattr(builtins, "open", mock_open)
+    monkeypatch.setattr(builtins, "open", mock_io.open)
 
     return mock_io
 
@@ -151,39 +135,3 @@ def mock_gcs(monkeypatch):
     monkeypatch.setattr(storage, "Client", mock_client)
 
     return mock_gcs_client
-
-
-@pytest.mark.mocktest
-def test_mock_io(mock_io):
-    """Testing mock_io fixture."""
-    with open("test.txt", "w") as f:
-        f.write("test")
-        f.read()
-
-
-@pytest.mark.mocktest
-def test_mock_requests(mock_requests):
-    """Testing mock_requests fixture."""
-    r = requests.get("http://test/")
-    log.warning(r.text)
-
-
-@pytest.mark.mocktest
-def test_mock_pdbq(mock_pdbq):
-    """Testing mock_pdbq fixture."""
-    df = pandas_gbq.read_gbq("select * from test")
-    log.warning(df)
-
-
-@pytest.mark.mocktest
-def test_mock_gcs(mock_gcs):
-    """Testing mock_gcs fixture."""
-    gcs = storage.Client()
-    bucket = gcs.bucket("test bucket")
-    blob = bucket.blob("test blob")
-    log.warning(blob.name)
-    blob.upload_from_filename("test file")
-    blob.download_to_filename("test file")
-    blobs = gcs.list_blobs("test bucket")
-    for b in blobs:
-        log.warning(b.name)
