@@ -7,20 +7,6 @@ class Feature:
     global partner_list
     partner_list = ['bukalapak','flipkart','jd.id','gamezop']
     
-    @staticmethod
-    def background(e: Series):
-        if (e['event_method'] == 'background'): 
-            return ['feature: background']
-        return False
-    
-    @staticmethod
-    def foreground(e: Series):
-        if (e['event_method'] == 'foreground'): 
-            return ['feature: foreground']
-        return False
-    
-    
-    
     
     """
     ##########################
