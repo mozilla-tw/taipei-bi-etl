@@ -1084,23 +1084,23 @@ class EtlTask:
                 df[name_col] = Series(dtype=object)
             if isinstance(map_result, str):
                 # Check duplicated mapping
-                assert pd.isnull(df.loc[idx, type_col])
-                assert pd.isnull(df.loc[idx, name_col])
-                df.loc[idx, type_col] = map_type
-                df.loc[idx, name_col] = map_result
+                assert pd.isnull(df[type_col][idx])
+                assert pd.isnull(df[name_col][idx])
+                df[type_col][idx] = map_type
+                df[name_col][idx] = map_result
             elif isinstance(map_result, list):
                 df.loc[idx, type_col] = map_type
                 # merge list if duplicated
                 if pd.notnull(df.loc[idx, name_col]):
                     if isinstance(df.loc[idx, name_col], list):
-                        df.loc[idx, name_col] = df.loc[idx, name_col] + map_result
+                        df[name_col][idx] += map_result
                     else:
                         assert False, "Invalid data type found %s: %s" % (
                             map_type,
-                            str(type(df.loc[idx, name_col])),
+                            str(type(df[name_col][idx])),
                         )
                 else:
-                    df.loc[idx, name_col] = map_result
+                    df[name_col][idx] = map_result
             else:
                 assert False, "Invalid mapping result %s: %s" % (
                     map_type,
