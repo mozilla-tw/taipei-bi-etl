@@ -1014,6 +1014,7 @@ class EtlTask:
                         d = EtlTask.apply_map_func(
                             d, idx, row, map_func, map_name, map_type
                         )
+            # TODO: dedup here
             output = output.append(d)
         output = output.reset_index()
         return output
@@ -1075,12 +1076,9 @@ class EtlTask:
         """
         map_result = map_func(row)
         if map_result:
-            if isinstance(map_result, list):
-                # TODO: handle multiple results here:
-                pass
-            else:
-                type_col = map_name + "_type"
-                name_col = map_name + "_name"
+            type_col = map_name + "_type"
+            name_col = map_name + "_name"
+            if isinstance(map_result, str):
                 # Check duplicated mapping
                 assert type_col not in df.loc[idx].index or pd.isnull(
                     df.loc[idx, type_col]
@@ -1090,6 +1088,24 @@ class EtlTask:
                 )
                 df.loc[idx, type_col] = map_type
                 df.loc[idx, name_col] = map_result
+            elif isinstance(map_result, list):
+                df.loc[idx, type_col] = map_type
+                # merge list if duplicated:
+                if name_col in df.loc[idx].index and pd.notnull(df.loc[idx, type_col]):
+                    if isinstance(df.loc[idx, type_col], list):
+                        df.loc[idx, name_col] += map_result
+                    else:
+                        assert False, "Invalid data type found %s: %s" % (
+                            map_type,
+                            str(type(df.loc[idx, type_col])),
+                        )
+                else:
+                    df.loc[idx, name_col] = map_result
+            else:
+                assert False, "Invalid mapping result %s: %s" % (
+                    map_type,
+                    str(map_result),
+                )
         return df
 
     def transform(self):
