@@ -116,3 +116,26 @@ def test_revenue_google_search_extract_via_bq(mock_pdbq):
     df = task.extract_via_bq("google_search", SOURCES["google_search"])
     assert isinstance(df, DataFrame)
     assert df.equals(queryResult)
+
+
+@pytest.mark.unittest
+def test_revenue_google_search_extract(mock_pdbq):
+    queryResult = utils.common.cachedDataFrame(
+        "test-data/raw-revenue-google_search/2019-09-08.1.jsonl",
+        {"file_format": "jsonl"})
+    mock_pdbq.setQueryResult(queryResult)
+    args = Namespace(config='test',
+                     date=datetime.datetime(2019, 9, 8, 0, 0),
+                     debug=True,
+                     dest='fs',
+                     loglevel=None,
+                     period=30,
+                     rm=False,
+                     source='google_search',
+                     step='e',
+                     task='revenue')
+    task = revenue.RevenueEtlTask(args, SOURCES, SCHEMA, DESTINATIONS)
+    task.extract()
+    df = task.extracted[args.source]  # pylint: disable=no-member
+    assert isinstance(df, DataFrame)
+    assert df.equals(queryResult)
