@@ -1,15 +1,16 @@
 """Revenue task."""
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
-
 import pandas as pd
 import datetime
 import pandasql as ps
 from pandas import DataFrame
-
+import utils.config
 from tasks import base
 import numpy as np
 import logging
+
+from utils.marshalling import get_country_tz_str
 
 log = logging.getLogger(__name__)
 
@@ -78,9 +79,7 @@ class RevenueEtlTask(base.EtlTask):
             d["Country.name"] = [
                 "ID" if x == "Indonesia" else "" for x in d["Country.name"]
             ]
-            d["tz"] = d["Country.name"].apply(
-                lambda x: RevenueEtlTask.get_country_tz_str(x)
-            )
+            d["tz"] = d["Country.name"].apply(lambda x: get_country_tz_str(x))
             d = d[map_cols]
             log.info(">>> Done data preparation...")
             return d
@@ -178,7 +177,7 @@ class RevenueEtlTask(base.EtlTask):
 
         # reformat data types
         df["utc_datetime"] = df["utc_datetime"].astype("datetime64[ns]")
-        df["tz"] = df["country"].apply(lambda x: RevenueEtlTask.get_country_tz_str(x))
+        df["tz"] = df["country"].apply(lambda x: get_country_tz_str(x))
         df["sales_amount"] = df["sales_amount"].astype("float")
         df["payout"] = df["payout"].astype("float")
         return df
@@ -204,7 +203,7 @@ class RevenueEtlTask(base.EtlTask):
         # workaround for datetime64 validation since `datetime64[ns, UTC]`
         # will raise "TypeError: data type not understood"
         td["utc_datetime"] = df["day"].astype("datetime64[ns]")
-        td["tz"] = df["country"].apply(lambda x: RevenueEtlTask.get_country_tz_str(x))
+        td["tz"] = df["country"].apply(lambda x: get_country_tz_str(x))
         td["payout"] = df["event_count"] * df["rps"]
         td["payout"] = td["payout"].fillna(0)
         td["sales_amount"] = td["sales_amount"].fillna(0)
@@ -224,11 +223,11 @@ def main(args: Namespace):
         config_name = "debug"
     if args.config:
         config_name = args.config
-    configs = base.get_configs("revenue", config_name)
+    configs = utils.config.get_configs("revenue", config_name)
     task = RevenueEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 
 
 if __name__ == "__main__":
-    arg_parser = base.get_arg_parser()
+    arg_parser = utils.config.get_arg_parser()
     main(arg_parser.parse_args())

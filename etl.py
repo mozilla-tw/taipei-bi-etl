@@ -4,13 +4,14 @@
 It will run task specified in args, or if not specified,
 run all tasks in the correct sequence.
 """
-from tasks import base, rps, revenue  # , rfe
+import utils.config
+from tasks import rps, revenue  # , rfe
 import logging as log
 
 
 def main():
     """Determine which task to run based on args.task."""
-    arg_parser = base.get_arg_parser()
+    arg_parser = utils.config.get_arg_parser()
     args = arg_parser.parse_args()
     if args.loglevel:
         log.basicConfig(level=log.getLevelName(args.loglevel))
@@ -28,11 +29,11 @@ def main():
         else:
             assert False, "Invalid task name %s" % args.task
     if task:
-        arg_parser = base.get_arg_parser(**task.DEFAULTS)
+        arg_parser = utils.config.get_arg_parser(**task.DEFAULTS)
         task.main(arg_parser.parse_args())
     else:  # Run all tasks in sequence
-        rps.main(base.get_arg_parser(**rps.DEFAULTS).parse_args())
-        revenue.main(base.get_arg_parser(**revenue.DEFAULTS).parse_args())
+        rps.main(utils.config.get_arg_parser(**rps.DEFAULTS).parse_args())
+        revenue.main(utils.config.get_arg_parser(**revenue.DEFAULTS).parse_args())
 
 
 if __name__ == "__main__":

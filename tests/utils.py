@@ -2,6 +2,8 @@
 import datetime
 from typing import Dict, Callable, Any, Tuple
 from _pytest.fixtures import FixtureRequest
+
+import utils.config
 from tasks import base
 import logging
 import pytest
@@ -40,8 +42,8 @@ def get_default_range(request: FixtureRequest) -> Tuple[str, str]:
     assert period is not None
     ed = date
     sd = ed - datetime.timedelta(days=period)
-    ed = ed.strftime(base.DEFAULT_DATE_FORMAT)
-    sd = sd.strftime(base.DEFAULT_DATE_FORMAT)
+    ed = ed.strftime(utils.config.DEFAULT_DATE_FORMAT)
+    sd = sd.strftime(utils.config.DEFAULT_DATE_FORMAT)
     return sd, ed
 
 

@@ -2,13 +2,15 @@
 import datetime
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
-
 from pandas import DataFrame
+import utils.config
 from tasks import base
 import pycountry
 import pandas as pd
 import numpy as np
 import logging
+
+from utils.marshalling import lookfoward_dates
 
 log = logging.getLogger(__name__)
 
@@ -45,10 +47,7 @@ class RpsEtlTask(base.EtlTask):
         if not self.args.source or source in self.args.source.split(","):
             config = self.sources[source]
             self.extracted_idx[source] = self.extract_via_api_or_cache(
-                source,
-                config,
-                "raw",
-                RpsEtlTask.lookfoward_dates(self.current_date, self.period),
+                source, config, "raw", lookfoward_dates(self.current_date, self.period)
             )[0]
 
     def transform_google_search_rps(
@@ -176,11 +175,11 @@ def main(args: Namespace):
         config_name = "debug"
     if args.config:
         config_name = args.config
-    configs = base.get_configs("rps", config_name)
+    configs = utils.config.get_configs("rps", config_name)
     task = RpsEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 
 
 if __name__ == "__main__":
-    arg_parser = base.get_arg_parser(**DEFAULTS)
+    arg_parser = utils.config.get_arg_parser(**DEFAULTS)
     main(arg_parser.parse_args())
