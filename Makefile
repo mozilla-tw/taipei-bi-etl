@@ -50,8 +50,8 @@ test:
 test-mark:
 	pytest -m $(MARK)
 
-test-mock:
-	pytest tests/conftest.py -m "mocktest"
+test-unit:
+	pytest -m "mocktest"
 
 test-unit:
 	pytest -m "unittest"
