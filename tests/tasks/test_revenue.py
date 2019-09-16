@@ -16,7 +16,6 @@ from utils.config import get_configs
 
 log = logging.getLogger(__name__)
 
-cfg = get_configs("revenue", "test")
 
 task = "revenue"
 inject_fixtures(
@@ -27,6 +26,7 @@ inject_fixtures(
         "dbg": utils.config.get_configs(task, "")
     },
 )
+cfg = get_configs(task, "test")
 
 
 @pytest.mark.envtest
