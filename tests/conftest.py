@@ -39,12 +39,15 @@ def pdbq():
 
 
 # TODO: from docs.pytest.org
-# Be advised that it is not recommended to patch builtin functions such as open, compile, etc., because it might break pytest’s internals. If that’s unavoidable, passing --tb=native, --assert=plain and --capture=no might help although there’s no guarantee.
+# Be advised that it is not recommended to patch builtin functions such as
+# open, compile, etc., because it might break pytest’s internals.
+# If that’s unavoidable, passing --tb=native, --assert=plain and --capture=no
+# might help although there’s no guarantee.
+#
 # defining mock objects
 @pytest.fixture
 def mock_io(monkeypatch):
     """Mock file IO object."""
-
     mock_io = MockIO()
     monkeypatch.setattr(builtins, "open", mock_io.open)
 
@@ -54,7 +57,6 @@ def mock_io(monkeypatch):
 @pytest.fixture
 def mock_requests(monkeypatch):
     """Mock http request object."""
-
     # defining mock objects
     class MockResponse:
         def get_text(self):
@@ -77,9 +79,8 @@ def mock_requests(monkeypatch):
 @pytest.fixture
 def mock_pdbq(monkeypatch):
     """Mock Pandas GBQ object."""
-
     # defining mock objects
-    class MockResponse():
+    class MockResponse:
         df = DataFrame()
 
         def setQueryResult(self, input: DataFrame):
@@ -98,14 +99,13 @@ def mock_pdbq(monkeypatch):
 
 @pytest.fixture
 def mock_bigquery(monkeypatch):
-    """Mock google-cloud-bigquery object"""
+    """Mock google-cloud-bigquery object."""
     bigquery.Client = MockBigqueryClient
 
 
 @pytest.fixture
 def mock_gcs(monkeypatch):
     """Mock GCS client object."""
-
     # defining mock objects
     class MockBlob:
         def get_name(self):

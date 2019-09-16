@@ -2,7 +2,6 @@
 # flake8: noqa
 import numpy as np
 
-
 SOURCES = {
     "google_search_rps": {
         "type": "gcs",
@@ -25,7 +24,7 @@ SOURCES = {
         "json_path": "response.data.data",
         "json_path_page_count": "response.data.pageCount",
         "page_size": 100,
-        "country_code": "ID",   # for detecting timezone,
+        "country_code": "ID",  # for detecting timezone,
         "datetime_fields": ["Stat.date", "Stat.datetime", "Stat.session_datetime"],
     },
     "google_search": {
@@ -56,13 +55,10 @@ SCHEMA = [
     ("conversion_status", np.dtype(object).type),
 ]
 DESTINATIONS = {
-    "gcs": {
-        "bucket": "moz-fx-data",
-        "prefix": "taipei/",
-    },
+    "gcs": {"bucket": "moz-fx-data", "prefix": "taipei/"},
     "fs": {
         "prefix": "./data/",
         "file_format": "jsonl",
         "date_field": "utc_datetime",
-    }
+    },
 }
