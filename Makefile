@@ -50,7 +50,7 @@ test:
 test-mark:
 	pytest -m $(MARK)
 
-test-unit:
+test-mock:
 	pytest -m "mocktest"
 
 test-unit:
