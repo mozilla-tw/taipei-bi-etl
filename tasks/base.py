@@ -39,9 +39,11 @@ from utils.marshalling import (
     json_extract,
     get_country_tz,
     get_tz_str,
+    json_unnest,
 )
 
 log = logging.getLogger(__name__)
+
 
 class EtlTask:
     """Base ETL task to serve common extract/load functions."""
@@ -131,9 +133,14 @@ class EtlTask:
                 line = json.loads(jline)
                 df = df.append(Series(line), ignore_index=True)
         elif ftype == "json":
-            extracted_json = json_extract(
-                raw, None if "json_path" not in config else config["json_path"]
-            )
+            if "json_path" in config:
+                extracted_json = json_extract(raw, config["json_path"])
+            elif "json_path_nested" in config:
+                extracted_json = json_unnest(
+                    raw, config["json_path_nested"], config["fields"], {}, []
+                )
+            else:
+                extracted_json = raw
             data = pd_json.loads(extracted_json)
             df = pd_json.json_normalize(data)
         elif ftype == "csv":
@@ -790,6 +797,7 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_bq(source, config)
                 elif self.sources[source]["type"] == "const":
                     self.extracted[source] = self.extract_via_const(source, config)
+                print(self.extracted[source])
                 self.extracted[source] = self.map_apply(config, self.extracted[source])
 
     @staticmethod
