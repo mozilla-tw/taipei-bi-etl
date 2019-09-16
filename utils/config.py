@@ -22,13 +22,15 @@ def get_configs(mod: str, pkg: str = "") -> Optional[Callable]:
     :param pkg: the package of the ETL module
     :return: the config module
     """
+    module = ""
+    if pkg == "":
+        module = "%s.%s" % ("configs", mod)
+    else:
+        module = "%s.%s.%s" % ("configs", pkg, mod)
     try:
-        if pkg == "":
-            return importlib.import_module("%s.%s" % ("configs", mod))
-        else:
-            return importlib.import_module("%s.%s.%s" % ("configs", pkg, mod))
+        return importlib.import_module(module)
     except ModuleNotFoundError:
-        log.warning("Config module %s not found." % mod)
+        log.warning("Config module %s not found." % module)
     return None
 
 
