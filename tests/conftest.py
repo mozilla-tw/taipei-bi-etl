@@ -100,16 +100,26 @@ def mock_pdbq(monkeypatch):
     """Mock Pandas GBQ object."""
     # defining mock objects
     class MockResponse:
-        df = DataFrame()
+        def __init__(self):
+            self.results = {}
+            self.default_results = None
 
-        def setQueryResult(self, input: DataFrame):
-            self.df = input.copy()
+        def setResult(self, df: DataFrame):
+            self.default_results = df.copy()
+
+        def setQueryResult(self, query: str, df: DataFrame):
+            self.results[query] = df.copy()
+
+        def read(self, query: str) -> DataFrame:
+            if query in self.results:
+                return self.results[query]
+            return self.default_results
 
     mock = MockResponse()
 
-    def mock_read_gbq(query, **kwargs):
+    def mock_read_gbq(query: str, **kwargs):
         log.warning("mock_read_gbq(%s)" % query)
-        return mock.df
+        return mock.read(query)
 
     monkeypatch.setattr(pandas_gbq, "read_gbq", mock_read_gbq)
 

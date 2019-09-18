@@ -64,7 +64,7 @@ def test_revenue_google_search_extract_via_bq(mock_pdbq):
         "test-data/raw-revenue-google_search/2019-09-08.1.jsonl",
         {"file_format": "jsonl"},
     )
-    mock_pdbq.setQueryResult(queryResult)
+    mock_pdbq.setResult(queryResult)
     args = Namespace(
         config="test",
         date=datetime.datetime(2019, 9, 8, 0, 0),
@@ -89,7 +89,7 @@ def test_revenue_google_search_extract(mock_pdbq):
         "test-data/raw-revenue-google_search/2019-09-08.1.jsonl",
         {"file_format": "jsonl"},
     )
-    mock_pdbq.setQueryResult(queryResult)
+    mock_pdbq.setResult(queryResult)
     args = Namespace(
         config="test",
         date=datetime.datetime(2019, 9, 8, 0, 0),

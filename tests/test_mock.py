@@ -1,9 +1,10 @@
+import logging
+
+import pandas as pd
+import pandas_gbq
 import pytest
 import requests
-import logging
-import pandas_gbq
-from google.cloud import storage
-from google.cloud import bigquery
+from google.cloud import bigquery, storage
 
 log = logging.getLogger(__name__)
 
@@ -41,8 +42,14 @@ def test_mock_requests(mock_requests):
 @pytest.mark.mocktest
 def test_mock_pdbq(mock_pdbq):
     """Testing mock_pdbq fixture."""
-    df = pandas_gbq.read_gbq("select * from test")
+    QUERY = "select * from test"
+    tup = [("google_search", "google_search"), ("NL", "IN"), ("Android", "Android")]
+    EXPECTED = pd.DataFrame(dict(source=tup[0], country=tup[1], os=tup[2]))
+    mock_pdbq.setQueryResult(QUERY, EXPECTED)
+    df = pandas_gbq.read_gbq(QUERY)
     log.warning(df)
+    assert isinstance(df, pd.DataFrame)
+    assert df.equals(EXPECTED)
 
 
 @pytest.mark.mocktest
