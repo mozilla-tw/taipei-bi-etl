@@ -30,8 +30,12 @@ def test_mock_io(mock_io):
 @pytest.mark.mocktest
 def test_mock_requests(mock_requests):
     """Testing mock_requests fixture."""
-    r = requests.get("http://test/")
+    CONTENT = "test"
+    URL = "http://test/"
+    mock_requests.setContent(URL, CONTENT)
+    r = requests.get(URL)
     log.warning(r.text)
+    assert CONTENT == r.text
 
 
 @pytest.mark.mocktest
