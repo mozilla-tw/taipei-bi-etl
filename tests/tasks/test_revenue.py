@@ -4,12 +4,11 @@ import pandas_gbq
 import pytest
 import requests
 import datetime
-import numpy as np
 import utils.common
 from google.cloud import storage
 from google.cloud.storage import Bucket
 from pandas import DataFrame
-from tasks import base, revenue
+from tasks import revenue
 from tests.utils import inject_fixtures
 from argparse import Namespace
 from utils.config import get_configs
@@ -23,7 +22,7 @@ inject_fixtures(
     task,
     {
         "prd": utils.config.get_configs(task, ""),
-        "dbg": utils.config.get_configs(task, "")
+        "dbg": utils.config.get_configs(task, ""),
     },
 )
 cfg = get_configs(task, "test")
@@ -62,18 +61,21 @@ def test_write_gcs(gcs_bucket: Bucket, gcs_dest: Dict[str, Any]):
 def test_revenue_google_search_extract_via_bq(mock_pdbq):
     queryResult = utils.common.cachedDataFrame(
         "test-data/raw-revenue-google_search/2019-09-08.1.jsonl",
-        {"file_format": "jsonl"})
+        {"file_format": "jsonl"},
+    )
     mock_pdbq.setQueryResult(queryResult)
-    args = Namespace(config='test',
-                     date=datetime.datetime(2019, 9, 8, 0, 0),
-                     debug=True,
-                     dest='fs',
-                     loglevel=None,
-                     period=30,
-                     rm=False,
-                     source='google_search',
-                     step='e',
-                     task='revenue')
+    args = Namespace(
+        config="test",
+        date=datetime.datetime(2019, 9, 8, 0, 0),
+        debug=True,
+        dest="fs",
+        loglevel=None,
+        period=30,
+        rm=False,
+        source="google_search",
+        step="e",
+        task="revenue",
+    )
     task = revenue.RevenueEtlTask(args, cfg.SOURCES, cfg.SCHEMA, cfg.DESTINATIONS)
     df = task.extract_via_bq("google_search", cfg.SOURCES["google_search"])
     assert isinstance(df, DataFrame)
@@ -84,18 +86,21 @@ def test_revenue_google_search_extract_via_bq(mock_pdbq):
 def test_revenue_google_search_extract(mock_pdbq):
     queryResult = utils.common.cachedDataFrame(
         "test-data/raw-revenue-google_search/2019-09-08.1.jsonl",
-        {"file_format": "jsonl"})
+        {"file_format": "jsonl"},
+    )
     mock_pdbq.setQueryResult(queryResult)
-    args = Namespace(config='test',
-                     date=datetime.datetime(2019, 9, 8, 0, 0),
-                     debug=True,
-                     dest='fs',
-                     loglevel=None,
-                     period=30,
-                     rm=False,
-                     source='google_search',
-                     step='e',
-                     task='revenue')
+    args = Namespace(
+        config="test",
+        date=datetime.datetime(2019, 9, 8, 0, 0),
+        debug=True,
+        dest="fs",
+        loglevel=None,
+        period=30,
+        rm=False,
+        source="google_search",
+        step="e",
+        task="revenue",
+    )
     task = revenue.RevenueEtlTask(args, cfg.SOURCES, cfg.SCHEMA, cfg.DESTINATIONS)
     task.extract()
     df = task.extracted[args.source]  # pylint: disable=no-member
