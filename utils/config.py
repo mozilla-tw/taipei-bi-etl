@@ -12,6 +12,7 @@ DEFAULT_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_TZ_FORMAT = "%+03d:00"
 EXT_REGEX = "([*0-9A-z]+)\\.[A-z0-9]+$"
 DEFAULT_PATH_FORMAT = "{prefix}{stage}-{task}-{source}"
+INJECTED_MAPPINGS = dict()
 
 
 def get_configs(mod: str, pkg: str = "") -> Optional[Callable]:

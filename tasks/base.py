@@ -30,6 +30,7 @@ from utils.config import (
     DEFAULT_DATETIME_FORMAT,
     EXT_REGEX,
     DEFAULT_PATH_FORMAT,
+    INJECTED_MAPPINGS,
 )
 from utils.marshalling import (
     flatten_dict,
@@ -797,7 +798,8 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_bq(source, config)
                 elif self.sources[source]["type"] == "const":
                     self.extracted[source] = self.extract_via_const(source, config)
-                print(self.extracted[source])
+                if "inject_mapping" in config:
+                    INJECTED_MAPPINGS[config["inject_mapping"]] = self.extracted[source]
                 self.extracted[source] = self.map_apply(config, self.extracted[source])
 
     @staticmethod
@@ -851,6 +853,8 @@ class EtlTask:
                 maps[m] = {}
                 # import mapping module from config
                 mod = importlib.import_module("%s.%s" % (mapping.__name__, m))
+                if m in INJECTED_MAPPINGS:
+                    mod.MAPPING = INJECTED_MAPPINGS[m]
                 # iterate through map type classes (Feature, Vertical, App, ...)
                 # {mod: {cls: subcls: func: map_func}}
                 maptree = EtlTask.extract_map_funcs_recursive(mod)
@@ -956,8 +960,14 @@ class EtlTask:
                     # leaf node, use return value as name
                     if isinstance(map_result, str):
                         # Check duplicated mapping
-                        assert pd.isnull(df[type_col][idx])
-                        assert pd.isnull(df[name_col][idx])
+                        assert (
+                            pd.isnull(df[type_col][idx])
+                            or df[type_col][idx] == map_type
+                        )
+                        assert (
+                            pd.isnull(df[name_col][idx])
+                            or df[name_col][idx] == map_result
+                        )
                         df[type_col][idx] = map_type
                         df[name_col][idx] = map_result
                     elif isinstance(map_result, list):
