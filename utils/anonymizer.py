@@ -21,9 +21,13 @@ ANONYMIZE_CONFIG = {
             ("Stat.ad_id", "uid"),
         ]
     },
-    "staging-revenue-bukalapak": [("sales_amount", float), ("payout", float)],
-    "staging-revenue-google_search": [("sales_amount", float), ("payout", float)],
-    "staging-rps-google_search_rps": [("rps", float)],
+    "raw-revenue-google_search": [("event_count", int)],
+    "raw-rps-google_search_rps": [("volume", int)],
+    "raw-rps-fb_index": [("cost_index", float)],
+    "raw-rps-cb_index": [(4, float)],
+    # "staging-revenue-bukalapak": [("sales_amount", float), ("payout", float)],
+    # "staging-revenue-google_search": [("sales_amount", float), ("payout", float)],
+    # "staging-rps-google_search_rps": [("rps", float)],
 }
 
 
@@ -55,7 +59,12 @@ def read_data(cfgs: Union[Dict, List], ext: str, file: str) -> object:
         elif ext == "json":
             d = json.load(f)
         elif ext == "csv":
-            r = csv.DictReader(f)
+            has_header = csv.Sniffer().has_header(f.read(2048))
+            f.seek(0)
+            if has_header:
+                r = csv.DictReader(f)
+            else:
+                r = csv.reader(f)
             d = []
             for row in r:
                 d += [row]
@@ -80,9 +89,13 @@ def write_data(d: Union[List, Dict], ext: str, file: str):
             o = json.dumps(d)
             f.write(o)
         elif ext == "csv":
-            dr = csv.DictWriter(f, fieldnames=d[0].keys())
-            dr.writeheader()
-            dr.writerows(d)
+            if isinstance(d[0], dict):
+                dr = csv.DictWriter(f, fieldnames=d[0].keys())
+                dr.writeheader()
+                dr.writerows(d)
+            elif isinstance(d[0], list):
+                dr = csv.writer(f)
+                dr.writerows(d)
 
 
 def anonymize_data(cfgs: Union[Dict, List], d: Union[Dict, List]):
@@ -128,7 +141,7 @@ def anonymize_row(cfg: Tuple, row: Dict):
     extract(row, cfg[0], anonymous_data)
 
 
-def extract(data: Dict, path: str, newval=None) -> Any:
+def extract(data: Dict, path: Union[str, int], newval=None) -> Any:
     """Extract nested json element by path.
 
     Note that this currently don't support nested json array in path.
@@ -142,13 +155,14 @@ def extract(data: Dict, path: str, newval=None) -> Any:
     if path:
         parent = data
         idx = path
-        for i in path.split("."):
-            if i in data:
-                idx = i
-                parent = data
-                data = data[i]
-            else:
-                return None
+        if isinstance(path, str):
+            for i in path.split("."):
+                if i in data:
+                    idx = i
+                    parent = data
+                    data = data[i]
+                else:
+                    return None
         if newval is not None:
             parent[idx] = newval
     return data

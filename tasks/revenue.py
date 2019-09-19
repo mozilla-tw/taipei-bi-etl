@@ -180,6 +180,13 @@ class RevenueEtlTask(base.EtlTask):
         df["tz"] = df["country"].apply(lambda x: get_country_tz_str(x))
         df["sales_amount"] = df["sales_amount"].astype("float")
         df["payout"] = df["payout"].astype("float")
+
+        # fill N/A columns, so object columns w/t N/A won't be recognized as float64
+        nacols = [
+            "fx_defined1", "fx_defined2", "fx_defined3", "fx_defined4", "fx_defined5"
+        ]
+        for nacol in nacols:
+            df[nacol] = df[nacol].fillna("")
         return df
 
     def transform_google_search(self, source: str, config: Dict[str, Any]) -> DataFrame:

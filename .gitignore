@@ -4,7 +4,6 @@
 venv/
 data/
 debug-data/
-test-data/
 .idea/
 .mypy_cache
 .coverage
