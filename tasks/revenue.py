@@ -186,7 +186,11 @@ class RevenueEtlTask(base.EtlTask):
 
         # fill N/A columns, so object columns w/t N/A won't be recognized as float64
         nacols = [
-            "fx_defined1", "fx_defined2", "fx_defined3", "fx_defined4", "fx_defined5"
+            "fx_defined1",
+            "fx_defined2",
+            "fx_defined3",
+            "fx_defined4",
+            "fx_defined5",
         ]
         for nacol in nacols:
             df[nacol] = df[nacol].fillna("")
