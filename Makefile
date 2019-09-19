@@ -45,7 +45,10 @@ lint:
 	pytest -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not envtest and not unittest and not intgtest"
 
 test:
-	py.test
+	py.test --doctest-modules
+
+test-doctest
+	pytest --doctest-modules -m "not envtest and not unittest and not intgtest"
 
 test-mark:
 	pytest -m $(MARK)
