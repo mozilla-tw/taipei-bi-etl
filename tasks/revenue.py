@@ -42,6 +42,9 @@ class RevenueEtlTask(base.EtlTask):
     def transform_bukalapak(self, source: str, config: Dict[str, Any]) -> DataFrame:
         """Transform data from bukalapak for revenue reference.
 
+        Input: raw-revenue-bukalapak
+        Output: staging-revenue-bukalapak
+
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
             specified in task config, see `configs/*.py`
@@ -191,6 +194,9 @@ class RevenueEtlTask(base.EtlTask):
 
     def transform_google_search(self, source: str, config: Dict[str, Any]) -> DataFrame:
         """Transform search data from telemetry for revenue reference.
+
+        Input: staging-rps-google_sesarch_rps, raw-revenue-google_search
+        Output: staging-revenue-google_search
 
         :rtype: DataFrame
         :param source: name of the data source to be extracted,

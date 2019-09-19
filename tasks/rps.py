@@ -67,6 +67,10 @@ class RpsEtlTask(base.EtlTask):
             )
             / Country Searches) / Country CPI Index
             = Total Revenue / Σ(Country Searches * Country CPI Index)
+
+        Input: raw-rps-google_search_rps, raw-rps-fb_index, raw-rps-cb_index
+        Output: staging-rps-google_search_rps
+
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
             specified in task config, see `configs/*.py`
