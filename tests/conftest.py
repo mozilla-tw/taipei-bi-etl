@@ -100,7 +100,7 @@ def mock_pdbq(monkeypatch):
 @pytest.fixture
 def mock_bigquery(monkeypatch):
     """Mock google-cloud-bigquery object."""
-    bigquery.Client = MockBigqueryClient
+    monkeypatch.setattr(bigquery, "Client", MockBigqueryClient)
 
 
 @pytest.fixture
