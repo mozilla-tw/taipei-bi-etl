@@ -5,11 +5,12 @@ import logging
 import pandas_gbq
 import pytest
 import requests
-from .mockio import MockIO
-from .mockbigquery import MockBigqueryClient
-from google.cloud import storage
 from google.cloud import bigquery
+from google.cloud import storage
 from pandas import DataFrame
+
+from .mockbigquery import MockBigqueryClient
+from .mockio import MockIO
 
 log = logging.getLogger(__name__)
 
@@ -59,17 +60,35 @@ def mock_requests(monkeypatch):
     """Mock http request object."""
     # defining mock objects
     class MockResponse:
+        def __init__(self, content: str):
+            self._content = content
+
+        @property
+        def text(self) -> str:
+            return self._content
+
+    class MockRequest:
+        def __init__(self):
+            self.urls = {}
+
         def get_text(self):
             log.warning("mock_response.text")
             return "test response text"
 
         text = property(get_text)
 
-    mock_response = MockResponse()
+        def get(self, url: str) -> MockResponse:
+            # TODO: return a requests.Response object
+            return MockResponse(self.urls[url])
+
+        def setContent(self, url: str, content: str):
+            self.urls[url] = content
+
+    mock_response = MockRequest()
 
     def mock_get(url, **kwargs):
         log.warning("mock_get(%s)" % url)
-        return mock_response
+        return mock_response.get(url)
 
     monkeypatch.setattr(requests, "get", mock_get)
 
@@ -81,16 +100,26 @@ def mock_pdbq(monkeypatch):
     """Mock Pandas GBQ object."""
     # defining mock objects
     class MockResponse:
-        df = DataFrame()
+        def __init__(self):
+            self.results = {}
+            self.default_results = None
 
-        def setQueryResult(self, input: DataFrame):
-            self.df = input.copy()
+        def setResult(self, df: DataFrame):
+            self.default_results = df.copy()
+
+        def setQueryResult(self, query: str, df: DataFrame):
+            self.results[query] = df.copy()
+
+        def read(self, query: str) -> DataFrame:
+            if query in self.results:
+                return self.results[query]
+            return self.default_results
 
     mock = MockResponse()
 
-    def mock_read_gbq(query, **kwargs):
+    def mock_read_gbq(query: str, **kwargs):
         log.warning("mock_read_gbq(%s)" % query)
-        return mock.df
+        return mock.read(query)
 
     monkeypatch.setattr(pandas_gbq, "read_gbq", mock_read_gbq)
 
