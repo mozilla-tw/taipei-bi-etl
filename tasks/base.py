@@ -17,7 +17,7 @@ from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
 import logging
 from utils.config import DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT, INJECTED_MAPPINGS
-from utils.file import get_path_format, get_file_ext, get_prefix
+from utils.file import get_path_format, get_file_ext, get_path_prefix
 from utils.mapping import map_apply
 from utils.marshalling import lookback_dates, json_extract, convert_df, convert_format
 from utils.query import build_query
@@ -386,7 +386,7 @@ class EtlTask:
         else:
             bucket = self.destinations["gcs"]["bucket"]
             prefix = self.get_filepath(source, config, stage, "gcs", "*", date)
-            prefix = get_prefix(prefix)
+            prefix = get_path_prefix(prefix)
         blobs = self.gcs.list_blobs(bucket, prefix=prefix)
 
         i = 0
@@ -394,7 +394,9 @@ class EtlTask:
         for i, blob in enumerate(blobs):
             is_empty = False
             page = get_file_ext(blob.name)
-            filepath = self.get_filepath(source, config, stage, "fs", page, date)
+            filepath = self.get_or_create_filepath(
+                source, config, stage, "fs", page, date
+            )
             blob.download_to_filename(filepath)
 
         if not is_empty:

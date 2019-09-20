@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 DEFAULT_DATE_FORMAT = "%Y-%m-%d"
 DEFAULT_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_TZ_FORMAT = "%+03d:00"
-EXT_REGEX = "([*0-9A-z]+)\\.[A-z0-9]+$"
+EXT_REGEX = "((\\.[*0-9A-z]+)?\\.[A-z0-9]+$)"
 DEFAULT_PATH_FORMAT = "{prefix}{stage}-{task}-{source}"
 INJECTED_MAPPINGS = dict()
 
