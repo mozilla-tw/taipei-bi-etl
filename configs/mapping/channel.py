@@ -9,7 +9,7 @@ class Network:
 
     @staticmethod
     def all_network(e: Series):
-        if e["settings_key"] == "tracker_token":
+        if e["settings_key"] == "pref_key_s_tracker_token":
             for col in COLUMNS:
                 match = MAPPING[MAPPING[col] == e.get("settings_value")]
                 match = match.reset_index()

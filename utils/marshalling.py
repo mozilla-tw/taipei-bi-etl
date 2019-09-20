@@ -142,9 +142,7 @@ def json_unnest(
     result: List,
     level: int = 0,
 ) -> Optional[str]:
-    """Extract nested json element by path.
-
-    Note that this currently don't support nested json array in path.
+    """Flatten nested json elements of specified paths.
 
     :param json_str: original json in string format
     :param paths: paths of the nested elements in string format
