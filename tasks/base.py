@@ -1010,7 +1010,17 @@ class EtlTask:
                 if "load" in config and config["load"]:
                     assert self.extracted is not None
                     transform_method = getattr(self, "transform_{}".format(source))
-                    self.transformed[source] = transform_method(source, config)
+                    transform_args = inspect.getfullargspec(transform_method).args
+                    avail_args = {"source": source, "config": config, **self.extracted}
+                    transform_kwargs = {}
+                    for transform_arg in transform_args:
+                        if transform_arg == "self":
+                            continue
+                        if transform_arg in avail_args:
+                            transform_kwargs[transform_arg] = avail_args[transform_arg]
+                        else:
+                            assert False, "Invalid transform arg %s" % transform_arg
+                    self.transformed[source] = transform_method(**transform_kwargs)
                     errors = self.schema.validate(self.transformed[source])
                     error_msg = ""
                     for error in errors:

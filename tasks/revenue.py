@@ -39,16 +39,15 @@ class RevenueEtlTask(base.EtlTask):
         """
         super().__init__(args, sources, schema, destinations, "staging", "revenue")
 
-    def transform_bukalapak(self, source: str, config: Dict[str, Any]) -> DataFrame:
+    def transform_bukalapak(self, bukalapak: DataFrame, source: str) -> DataFrame:
         """Transform data from bukalapak for revenue reference.
 
         Input: raw-revenue-bukalapak
         Output: staging-revenue-bukalapak
 
+        :param bukalapak: extracted source DataFrame that contains transaction data
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
-            specified in task config, see `configs/*.py`
-        :param config: config of the data source to be extracted,
             specified in task config, see `configs/*.py`
         :return: the transformed DataFrame
         """
@@ -150,10 +149,10 @@ class RevenueEtlTask(base.EtlTask):
             return do_update
 
         # extract new & old data
-        new_df = data_prep(self.extracted[source])
-        last_df = self.extracted_base[source]
+        new_df = data_prep(bukalapak)
+        last_df = bukalapak
         if not last_df.empty:
-            last_df = data_prep(self.extracted_base[source])
+            last_df = data_prep(bukalapak)
 
             # transform here ------
         # do check
@@ -196,22 +195,22 @@ class RevenueEtlTask(base.EtlTask):
             df[nacol] = df[nacol].fillna("")
         return df
 
-    def transform_google_search(self, source: str, config: Dict[str, Any]) -> DataFrame:
+    def transform_google_search(
+        self, google_search: DataFrame, google_search_rps: DataFrame
+    ) -> DataFrame:
         """Transform search data from telemetry for revenue reference.
 
         Input: staging-rps-google_sesarch_rps, raw-revenue-google_search
         Output: staging-revenue-google_search
 
         :rtype: DataFrame
-        :param source: name of the data source to be extracted,
-            specified in task config, see `configs/*.py`
-        :param config: config of the data source to be extracted,
-            specified in task config, see `configs/*.py`
+        :param google_search: extracted source DataFrame for search volume
+        :param google_search_rps: extracted source DataFrame for search rps
         :return: the transformed DataFrame
         """
-        df = self.extracted[source]
+        df = google_search
         df["country"] = df["country_code"]
-        rps = self.extracted["google_search_rps"]
+        rps = google_search_rps
         df = df.join(rps, rsuffix="_rps")
         # transform here
         td = self.get_target_dataframe()
