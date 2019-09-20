@@ -1,47 +1,26 @@
 """Task base."""
 import errno
 import glob
-import importlib
 import inspect
-import itertools
-import re
 import time
-from io import StringIO
 from argparse import Namespace
 import os
 import os.path
 import requests
 import datetime
-import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame
 import pandas_gbq as pdbq
 from google.cloud import storage
-import json
 import numpy as np
-import pandas.io.json as pd_json
-from typing import List, Tuple, Union, Dict, Any, Callable
+from typing import List, Tuple, Union, Dict, Any
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
-import pytz
 import logging
-from configs import mapping
-from utils.config import (
-    DEFAULT_DATE_FORMAT,
-    DEFAULT_DATETIME_FORMAT,
-    EXT_REGEX,
-    DEFAULT_PATH_FORMAT,
-    INJECTED_MAPPINGS,
-)
-from utils.marshalling import (
-    flatten_dict,
-    is_camel,
-    decamelize,
-    lookback_dates,
-    json_extract,
-    get_country_tz,
-    get_tz_str,
-    json_unnest,
-)
+from utils.config import DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT, INJECTED_MAPPINGS
+from utils.file import get_path_format, get_file_ext, get_prefix
+from utils.mapping import map_apply
+from utils.marshalling import lookback_dates, json_extract, convert_df, convert_format
+from utils.query import build_query
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +54,7 @@ class EtlTask:
             for source in sources:
                 files = []
                 files += glob.glob(
-                    EtlTask.get_path_format(True).format(
+                    get_path_format(True).format(
                         prefix=destinations["fs"]["prefix"],
                         stage="raw",
                         task=args.task,
@@ -83,7 +62,7 @@ class EtlTask:
                     )
                 )
                 files += glob.glob(
-                    EtlTask.get_path_format(True).format(
+                    get_path_format(True).format(
                         prefix=destinations["fs"]["prefix"],
                         stage=stage,
                         task=args.task,
@@ -111,96 +90,6 @@ class EtlTask:
         self.extracted = dict()
         self.transformed = dict()
         self.gcs = storage.Client()
-
-    @staticmethod
-    def convert_df(raw: str, config: Dict[str, Any]) -> DataFrame:
-        """Convert raw string to DataFrame, currently only supports json/csv.
-
-        :rtype: DataFrame
-        :param raw: the raw source string in json/csv format,
-            this is to be converted to DataFrame
-        :param config: the config of the data source specified in task config,
-            see `configs/*.py`
-        :return: the converted `DataFrame`
-        """
-        ftype = "json" if "file_format" not in config else config["file_format"]
-        df = None
-        if ftype == "jsonl":
-            jlines = raw.split("\n")
-            df = DataFrame()
-            for jline in jlines:
-                if len(jline) < 3:
-                    continue
-                line = json.loads(jline)
-                df = df.append(Series(line), ignore_index=True)
-        elif ftype == "json":
-            if "json_path" in config:
-                extracted_json = json_extract(raw, config["json_path"])
-            elif "json_path_nested" in config:
-                extracted_json = json_unnest(
-                    raw, config["json_path_nested"], config["fields"], {}, []
-                )
-            else:
-                extracted_json = raw
-            data = pd_json.loads(extracted_json)
-            df = pd_json.json_normalize(data)
-        elif ftype == "csv":
-            if "header" in config:
-                df = pd.read_csv(StringIO(raw), names=config["header"])
-            else:
-                df = pd.read_csv(StringIO(raw))
-        # convert timezone according to config
-        tz = None
-        if "timezone" in config:
-            tz = pytz.timezone(config["timezone"])
-        elif "country_code" in config:
-            tz = get_country_tz(config["country_code"])
-        # TODO: support multiple countries/timezones in the future if needed
-        if "date_fields" in config:
-            for date_field in config["date_fields"]:
-                df[date_field] = pd.to_datetime(df[date_field])
-            if tz is not None:
-                df["tz"] = get_tz_str(tz)
-                for date_field in config["date_fields"]:
-                    df[date_field] = (
-                        df[date_field].dt.tz_localize(tz).dt.tz_convert(pytz.utc)
-                    )
-                    df[date_field] = df[date_field].astype("datetime64[ns]")
-        return df
-
-    @staticmethod
-    def get_file_ext(fpath: str) -> str:
-        """Extract file extension from path.
-
-        :rtype: str
-        :param fpath: the path to extract
-        :return: the extracted file extension
-        """
-        return re.search(EXT_REGEX, fpath).group(1)
-
-    @staticmethod
-    def get_prefix(fpath: str) -> str:
-        """Extract prefix from path.
-
-        :rtype: str
-        :param fpath: the path to extract
-        :return: the extracted prefix
-        """
-        ext_search = re.search(EXT_REGEX, fpath)
-        return fpath[: ext_search.start()]
-
-    @staticmethod
-    def get_path_format(wildcard: bool = False) -> str:
-        """Get the format string of file paths.
-
-        :rtype: str
-        :param wildcard: whether it's a wildcard path or not.
-        :return: the path format string
-        """
-        if wildcard:
-            return DEFAULT_PATH_FORMAT + "/*"
-        else:
-            return DEFAULT_PATH_FORMAT + "/{filename}"
 
     def get_filepaths(
         self,
@@ -232,7 +121,7 @@ class EtlTask:
             return glob.glob(prefix + config["path"] + config["filename"])
         else:
             return glob.glob(
-                EtlTask.get_path_format().format(
+                get_path_format().format(
                     stage=stage,
                     task=self.task,
                     source=source,
@@ -277,7 +166,7 @@ class EtlTask:
                 fpath = fpath.replace("*", page)
             return fpath
         else:
-            return EtlTask.get_path_format().format(
+            return get_path_format().format(
                 stage=stage,
                 task=self.task,
                 source=source,
@@ -430,9 +319,9 @@ class EtlTask:
             for fpath in fpaths:
                 with open(fpath, "r") as f:
                     raw = f.read()
-                    it = EtlTask.get_file_ext(fpath)
+                    it = get_file_ext(fpath)
                     self.raw[it] = raw
-                    extracted[it] = self.convert_df(raw, config)
+                    extracted[it] = convert_df(raw, config)
             log.info(
                 "%s-%s-%s/%s x %d iterators extracted from file system"
                 % (
@@ -450,10 +339,10 @@ class EtlTask:
                     raw = f.read()
                     if extracted is None:
                         self.raw[source] = [raw]
-                        extracted = self.convert_df(raw, config)
+                        extracted = convert_df(raw, config)
                     else:
                         self.raw[source] += [raw]
-                        extracted = extracted.append(self.convert_df(raw, config))
+                        extracted = extracted.append(convert_df(raw, config))
             extracted = extracted.reset_index(drop=True)
             log.info(
                 "%s-%s-%s/%s x %d pages extracted from file system"
@@ -497,14 +386,14 @@ class EtlTask:
         else:
             bucket = self.destinations["gcs"]["bucket"]
             prefix = self.get_filepath(source, config, stage, "gcs", "*", date)
-            prefix = EtlTask.get_prefix(prefix)
+            prefix = get_prefix(prefix)
         blobs = self.gcs.list_blobs(bucket, prefix=prefix)
 
         i = 0
         is_empty = True
         for i, blob in enumerate(blobs):
             is_empty = False
-            page = EtlTask.get_file_ext(blob.name)
+            page = get_file_ext(blob.name)
             filepath = self.get_filepath(source, config, stage, "fs", page, date)
             blob.download_to_filename(filepath)
 
@@ -577,7 +466,7 @@ class EtlTask:
                 )
                 r = requests.get(url, allow_redirects=True)
                 raw[it] = r.text
-                extracted[it] = self.convert_df(raw[it], config)
+                extracted[it] = convert_df(raw[it], config)
             self.raw[source] = raw
             log.info(
                 "%s-%s-%s/%s x %d iterators extracted from API"
@@ -595,7 +484,7 @@ class EtlTask:
             )
             r = requests.get(url, allow_redirects=True)
             raw = [r.text]
-            extracted = self.convert_df(raw[0], config)
+            extracted = convert_df(raw[0], config)
             count = int(json_extract(raw[0], config["json_path_page_count"]))
             if count is None or int(count) <= 1:
                 self.raw[source] = raw
@@ -616,7 +505,7 @@ class EtlTask:
                 )
                 r = requests.get(url, allow_redirects=True)
                 raw += [r.text]
-                extracted = extracted.append(self.convert_df(raw[page - 1], config))
+                extracted = extracted.append(convert_df(raw[page - 1], config))
             extracted = extracted.reset_index(drop=True)
             self.raw[source] = raw
             log.info(
@@ -635,7 +524,7 @@ class EtlTask:
                 "%s-%s-%s/%s extracted from API"
                 % ("raw", self.task, source, self.current_date.date())
             )
-            return self.convert_df(raw, config)
+            return convert_df(raw, config)
 
     def extract_via_api_or_cache(
         self,
@@ -695,7 +584,7 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :return: the extracted `DataFrame`
         """
-        query = self.build_query(
+        query = build_query(
             config,
             self.last_month.strftime(config["date_format"]),
             self.current_date.strftime(config["date_format"]),
@@ -705,8 +594,10 @@ class EtlTask:
                 return self.extract_via_fs(source, config)
             else:
                 df = pdbq.read_gbq(query)
-                self.raw[source] = self.convert_format(
-                    df, None if "date_fields" not in config else config["date_fields"]
+                self.raw[source] = convert_format(
+                    self.destinations["fs"]["file_format"],
+                    df,
+                    None if "date_fields" not in config else config["date_fields"],
                 )
                 self.load_to_fs(source, config)
                 if self.args.dest != "fs":
@@ -729,36 +620,6 @@ class EtlTask:
                 % ("raw", self.task, source, self.current_date.date(), len(df.index))
             )
             return df
-
-    @staticmethod
-    def build_query(config: Dict[str, Any], start_date: str, end_date: str) -> str:
-        """Build query based on configs and args.
-
-        :rtype: str
-        :param config: the config of the query
-        :param start_date: the start date string for the query
-        :param end_date: the end date string for the query
-        :return: the composed query string
-        """
-        query = ""
-        if "udf" in config:
-            for udf in config["udf"]:
-                with open("udf/{}.sql".format(udf)) as f:
-                    query += f.read()
-        if "udf_js" in config:
-            for udf_js in config["udf_js"]:
-                with open("udf_js/{}.sql".format(udf_js)) as f:
-                    query += f.read()
-        if "query" in config:
-            with open("sql/{}.sql".format(config["query"])) as f:
-                query += f.read().format(
-                    project=config["project"],
-                    dataset=config["dataset"],
-                    table=config["table"],
-                    start_date=start_date,
-                    end_date=end_date,
-                )
-        return query
 
     @staticmethod
     def extract_via_const(source: str, config: Dict[str, Any]) -> DataFrame:
@@ -800,194 +661,7 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_const(source, config)
                 if "inject_mapping" in config:
                     INJECTED_MAPPINGS[config["inject_mapping"]] = self.extracted[source]
-                self.extracted[source] = self.map_apply(config, self.extracted[source])
-
-    @staticmethod
-    def map_apply(config: Dict[str, Any], df: DataFrame) -> DataFrame:
-        """Apply map functions to extracted DataFrame.
-
-        :param config: the source config to check mapping settings
-        :param df: the extracted DataFrame to be applied
-        """
-        maps = EtlTask.import_map_funcs(config)
-        # do nothing if no map functions found in config
-        if not maps:
-            return df
-        # handle map product (e.g. feature x channel)
-        map_list = []
-        for map_name, map_types in maps.items():
-            ls = []
-            for t, map_funcs in map_types.items():
-                ls += [(map_name, t, map_funcs)]
-            map_list += [ls]
-        map_prod = itertools.product(*map_list)
-        output = DataFrame()
-        # apply maps here
-        for batch in map_prod:
-            # use a clean DataFrame for each batch
-            d = df.copy()
-            for map_name, map_type, map_funcs in batch:
-                for idx, row in d.iterrows():
-                    for map_func in map_funcs:
-                        d = EtlTask.apply_map_func(
-                            d, idx, row, map_func, map_name, map_type
-                        )
-            # TODO: dedup here
-            output = output.append(d)
-        output = output.reset_index()
-        return output
-
-    @staticmethod
-    def import_map_funcs(
-        config: Dict[str, Any]
-    ) -> Dict[str, Dict[str, List[Callable]]]:
-        """Import mapping functions according to source config.
-
-        :rtype: Dict[str, Dict[str, List[Callable]]]
-        :param config: the data source config
-        :return: a dictionary containing all mapping functions
-        """
-        maps = {}
-        if "mappings" in config:
-            for m in config["mappings"]:
-                maps[m] = {}
-                # import mapping module from config
-                mod = importlib.import_module("%s.%s" % (mapping.__name__, m))
-                if m in INJECTED_MAPPINGS:
-                    mod.MAPPING = INJECTED_MAPPINGS[m]
-                # iterate through map type classes (Feature, Vertical, App, ...)
-                # {mod: {cls: subcls: func: map_func}}
-                maptree = EtlTask.extract_map_funcs_recursive(mod)
-                # {mod: {type: [map_func, ...]}}
-                # type = cls_type, subcls_type, func_type
-                mapflat = flatten_dict(maptree)
-                for types, map_func in mapflat.items():
-                    ts = []
-                    for name in types.split(","):
-                        if is_camel(name):
-                            # non-leaf node
-                            ts += [decamelize(name)]
-                        else:
-                            # leaf node
-                            ts += [name.split("_")[-1]]
-                    for t in ts:
-                        if t not in maps[m]:
-                            maps[m][t] = []
-                        maps[m][t] += [map_func]
-        return maps
-
-    @staticmethod
-    def extract_map_funcs_recursive(mod: Callable, clsobj: Callable = None) -> Dict:
-        """Extract map functions based on mapping config hierarchy.
-
-        :param mod: the package of mapping configs
-        :param clsobj: the module of the mapping config
-        :return: extracted map functions in nested dictionary
-        """
-        maps = {}
-        for cls, cobj in inspect.getmembers(
-            mod if not clsobj else clsobj, predicate=inspect.isclass
-        ):
-            # filter only classes defined in the mapping module,
-            # exclude imported or other builtin classes
-            if hasattr(cobj, "__module__") and cobj.__module__ == mod.__name__:
-                # iterate through static functions in the class
-                for method, mobj in inspect.getmembers(
-                    cobj, predicate=inspect.isroutine
-                ):
-                    # verify the method is defined directly on the class,
-                    # not inherited or builtin methods,
-                    # also verify it's a static method.
-                    if method in cobj.__dict__ and isinstance(
-                        cobj.__dict__[method], staticmethod
-                    ):
-                        if cls not in maps:
-                            maps[cls] = {}
-                        maps[cls][method] = mobj
-                submaps = EtlTask.extract_map_funcs_recursive(mod, cobj)
-                # merge dictionaries
-                maps[cls] = {
-                    **(maps[cls] if cls in maps else {}),
-                    **(submaps if submaps else {}),
-                }
-        return maps
-
-    @staticmethod
-    def apply_map_func(
-        df: DataFrame,
-        idx: int,
-        row: Series,
-        map_func: Callable,
-        map_name: str,
-        map_type: str,
-    ) -> DataFrame:
-        """Apply map functions to a row of DataFrame.
-
-        :param df: the DataFrame to apply
-        :param idx: the row to apply
-        :param row: the actual row (Series)
-        :param map_func: the map function
-        :param map_name: the name of the mapping
-        :param map_type: the type of the mapping
-        """
-        with pd.option_context("mode.chained_assignment", None):
-            map_result = map_func(row)
-            if map_result:
-                type_col = map_name + "_type"
-                name_col = map_name + "_name"
-                if type_col not in df.loc[idx].index:
-                    df[type_col] = Series(dtype=object)
-                if name_col not in df.loc[idx].index:
-                    df[name_col] = Series(dtype=object)
-                if "_" in map_type:
-                    # non-leaft node, ignore returns
-                    type_segments = map_type.split("_")
-                    t = type_segments[-1]
-                    n = "_".join(type_segments[0:-1])
-                    if idx in df[type_col] and pd.notnull(df[type_col][idx]):
-                        assert df[type_col][idx] == t, "%s != %s" % (
-                            df[type_col][idx],
-                            t,
-                        )
-                    if idx in df[name_col] and pd.notnull(df[name_col][idx]):
-                        assert df[name_col][idx] == n, "%s != %s" % (
-                            df[name_col][idx],
-                            n,
-                        )
-                    df[type_col][idx] = t
-                    df[name_col][idx] = n
-                else:
-                    # leaf node, use return value as name
-                    if isinstance(map_result, str):
-                        # Check duplicated mapping
-                        assert (
-                            pd.isnull(df[type_col][idx])
-                            or df[type_col][idx] == map_type
-                        )
-                        assert (
-                            pd.isnull(df[name_col][idx])
-                            or df[name_col][idx] == map_result
-                        )
-                        df[type_col][idx] = map_type
-                        df[name_col][idx] = map_result
-                    elif isinstance(map_result, list):
-                        df[type_col][idx] = map_type
-                        # merge list if duplicated
-                        if isinstance(df[name_col][idx], list):
-                            df[name_col][idx] += map_result
-                        elif pd.isnull(df[name_col][idx]):
-                            df[name_col][idx] = map_result
-                        else:
-                            assert False, "Invalid data type found %s: %s" % (
-                                map_type,
-                                str(type(df[name_col][idx])),
-                            )
-                    else:
-                        assert False, "Invalid mapping result %s: %s" % (
-                            map_type,
-                            str(map_result),
-                        )
-        return df
+                self.extracted[source] = map_apply(config, self.extracted[source])
 
     def transform(self):
         """Transform extracted data into target format DataFrames.
@@ -1125,37 +799,8 @@ class EtlTask:
         date = self.current_date if date is None else date
         fpath = self.get_or_create_filepath(source, config, stage, "fs", None, date)
         with open(fpath, "w") as f:
-            output = self.convert_format(df)
+            output = convert_format(self.destinations["fs"]["file_format"], df)
             f.write(output)
-
-    def convert_format(self, df: DataFrame, date_fields: List = None) -> str:
-        """Convert DataFrame into destination format.
-
-        The logic is based on task config (see `configs/*.py`).
-
-        :param df: The DataFrame to be converted to destination format.
-        :param date_fields: the date fields to convert to date string
-        :return:
-        """
-        output = ""
-        if date_fields:
-            for date_field in date_fields:
-                df[date_field] = df[date_field].dt.strftime(DEFAULT_DATETIME_FORMAT)
-        if self.destinations["fs"]["file_format"] == "jsonl":
-            output = ""
-            # build json lines
-            for row in df.iterrows():
-                output += row[1].to_json() + "\n"
-        elif self.destinations["fs"]["file_format"] == "json":
-            output = "["
-            # build json
-            for row in df.iterrows():
-                output += row[1].to_json() + ",\n"
-            if len(output) > 2:
-                output = output[0:-2] + "\n]"
-        elif self.destinations["fs"]["file_format"] == "csv":
-            output = df.to_csv(index=False)
-        return output
 
     def load_to_gcs(self, source: str, config: Dict[str, Any], stage: str = "raw"):
         """Load data into Google Cloud Storage based on destination settings.
@@ -1174,9 +819,7 @@ class EtlTask:
             fl = len(fpaths)
             for fpath in fpaths:
                 blob = bucket.blob(
-                    self.get_filepath(
-                        source, config, stage, "gcs", EtlTask.get_file_ext(fpath)
-                    )
+                    self.get_filepath(source, config, stage, "gcs", get_file_ext(fpath))
                 )
                 blob.upload_from_filename(fpath)
         else:

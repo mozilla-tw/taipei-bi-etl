@@ -2,11 +2,11 @@
 import datetime
 from typing import Dict, Callable, Any, Tuple
 from _pytest.fixtures import FixtureRequest
-
 import utils.config
-from tasks import base
 import logging
 import pytest
+
+from utils.query import build_query
 
 log = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ def generate_fixtures(task: str, cfgs: Dict[str, Any]) -> Dict[str, Callable]:
             """Pytest fixture for accessing source BQ configs."""
             sd, ed = get_default_range(request)
             cfg = request.param
-            cfg["sql"] = base.EtlTask.build_query(cfg, sd, ed)
+            cfg["sql"] = build_query(cfg, sd, ed)
             return request.param
 
         fixtures["bq_src"] = bq_src

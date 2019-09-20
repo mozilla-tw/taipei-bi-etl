@@ -1,10 +1,10 @@
 """Common."""
 from pandas import DataFrame
-from tasks.base import EtlTask
+from utils.marshalling import convert_df
 
 
 def cachedDataFrame(fpath, config) -> DataFrame:
     """Open dataframe stored in file."""
     with open(fpath, "r") as f:
         raw = f.read()
-        return EtlTask.convert_df(raw, config)
+        return convert_df(raw, config)

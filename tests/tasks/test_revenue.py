@@ -14,6 +14,7 @@ import utils.common
 from tasks import revenue
 from tests.utils import inject_fixtures
 from utils.config import DEFAULT_DATETIME_FORMAT, get_configs
+from utils.marshalling import convert_format
 
 log = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ def test_revenue_load_to_fs(mock_io, revenue_sample_data):
     expected["utc_datetime"] = expected["utc_datetime"].dt.strftime(
         DEFAULT_DATETIME_FORMAT
     )
-    assert data == task.convert_format(expected)
+    assert data == convert_format(cfg.DESTINATIONS["fs"]["file_format"], expected)
 
 
 @pytest.mark.unittest
@@ -174,4 +175,4 @@ def test_revenue_load(mock_io, revenue_sample_data):
     expected["utc_datetime"] = expected["utc_datetime"].dt.strftime(
         DEFAULT_DATETIME_FORMAT
     )
-    assert data == task.convert_format(expected)
+    assert data == convert_format(cfg.DESTINATIONS["fs"]["file_format"], expected)

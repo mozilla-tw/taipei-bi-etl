@@ -2,14 +2,107 @@
 import datetime
 import json
 import re
+from io import StringIO
 from collections import Counter
 from functools import reduce
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
+import pandas.io.json as pd_json
+import pandas as pd
 import pytz
 import logging
-from utils.config import DEFAULT_TZ_FORMAT
+
+from pandas import DataFrame, Series
+
+from utils.config import DEFAULT_TZ_FORMAT, DEFAULT_DATETIME_FORMAT
 
 log = logging.getLogger(__name__)
+
+
+def convert_df(raw: str, config: Dict[str, Any]) -> DataFrame:
+    """Convert raw string to DataFrame, currently only supports json/csv.
+
+    :rtype: DataFrame
+    :param raw: the raw source string in json/csv format,
+        this is to be converted to DataFrame
+    :param config: the config of the data source specified in task config,
+        see `configs/*.py`
+    :return: the converted `DataFrame`
+    """
+    ftype = "json" if "file_format" not in config else config["file_format"]
+    df = None
+    if ftype == "jsonl":
+        jlines = raw.split("\n")
+        df = DataFrame()
+        for jline in jlines:
+            if len(jline) < 3:
+                continue
+            line = json.loads(jline)
+            df = df.append(Series(line), ignore_index=True)
+    elif ftype == "json":
+        if "json_path" in config:
+            extracted_json = json_extract(raw, config["json_path"])
+        elif "json_path_nested" in config:
+            extracted_json = json_unnest(
+                raw, config["json_path_nested"], config["fields"], {}, []
+            )
+        else:
+            extracted_json = raw
+        data = pd_json.loads(extracted_json)
+        df = pd_json.json_normalize(data)
+    elif ftype == "csv":
+        if "header" in config:
+            df = pd.read_csv(StringIO(raw), names=config["header"])
+        else:
+            df = pd.read_csv(StringIO(raw))
+    # convert timezone according to config
+    tz = None
+    if "timezone" in config:
+        tz = pytz.timezone(config["timezone"])
+    elif "country_code" in config:
+        tz = get_country_tz(config["country_code"])
+    # TODO: support multiple countries/timezones in the future if needed
+    if "date_fields" in config:
+        for date_field in config["date_fields"]:
+            df[date_field] = pd.to_datetime(df[date_field])
+        if tz is not None:
+            df["tz"] = get_tz_str(tz)
+            for date_field in config["date_fields"]:
+                df[date_field] = (
+                    df[date_field].dt.tz_localize(tz).dt.tz_convert(pytz.utc)
+                )
+                df[date_field] = df[date_field].astype("datetime64[ns]")
+    return df
+
+
+def convert_format(format: str, df: DataFrame, date_fields: List = None) -> str:
+    """Convert DataFrame into destination format.
+
+    The logic is based on task config (see `configs/*.py`).
+
+    :param format: the format to convert
+    :param df: The DataFrame to be converted to destination format.
+    :param date_fields: the date fields to convert to date string
+    :return:
+    """
+    output = ""
+    if date_fields:
+        for date_field in date_fields:
+            df[date_field] = df[date_field].dt.strftime(DEFAULT_DATETIME_FORMAT)
+    if format == "jsonl":
+        output = ""
+        # build json lines
+        for row in df.iterrows():
+            output += row[1].to_json() + "\n"
+    elif format == "json":
+        output = "["
+        # build json
+        for row in df.iterrows():
+            output += row[1].to_json() + ",\n"
+        if len(output) > 2:
+            output = output[0:-2] + "\n]"
+    elif format == "csv":
+        output = df.to_csv(index=False)
+    return output
 
 
 def json_extract(json_str: str, path: str) -> Optional[str]:
