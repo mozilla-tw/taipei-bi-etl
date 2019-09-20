@@ -39,7 +39,8 @@ def map_apply(config: Dict[str, Any], df: DataFrame) -> DataFrame:
             for idx, row in d.iterrows():
                 for map_func in map_funcs:
                     d = apply_map_func(d, idx, row, map_func, map_name, map_type)
-        # TODO: dedup here
+        # FIXME: dedup events here
+        print(d)
         output = output.append(d)
     output = output.reset_index()
     return output
@@ -52,6 +53,7 @@ def import_map_funcs(config: Dict[str, Any]) -> Dict[str, Dict[str, List[Callabl
     :param config: the data source config
     :return: a dictionary containing all mapping functions
     """
+    # FIXME: dedup map funcs here
     maps = {}
     if "mappings" in config:
         for m in config["mappings"]:
@@ -78,7 +80,8 @@ def import_map_funcs(config: Dict[str, Any]) -> Dict[str, Dict[str, List[Callabl
                 for t in ts:
                     if t not in maps[m]:
                         maps[m][t] = []
-                    maps[m][t] += [map_func]
+                    if map_func not in maps[m][t]:
+                        maps[m][t] += [map_func]
     return maps
 
 
@@ -157,10 +160,8 @@ def apply_map_func(
                 # leaf node, use return value as name
                 if isinstance(map_result, str):
                     # Check duplicated mapping
-                    assert pd.isnull(df[type_col][idx]) or df[type_col][idx] == map_type
-                    assert (
-                        pd.isnull(df[name_col][idx]) or df[name_col][idx] == map_result
-                    )
+                    assert pd.isnull(df[type_col][idx])
+                    assert pd.isnull(df[name_col][idx])
                     df[type_col][idx] = map_type
                     df[name_col][idx] = map_result
                 elif isinstance(map_result, list):
