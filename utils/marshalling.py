@@ -82,7 +82,7 @@ def convert_format(format: str, df: DataFrame, date_fields: List = None) -> str:
     :param format: the format to convert
     :param df: The DataFrame to be converted to destination format.
     :param date_fields: the date fields to convert to date string
-    :return:
+    :return: the output string in converted format
     """
     output = ""
     if date_fields:

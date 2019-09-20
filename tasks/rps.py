@@ -59,18 +59,18 @@ class RpsEtlTask(base.EtlTask):
     ) -> DataFrame:
         """Calculate revenue per search with existing CPI index and total package.
 
-        Country RPS = Country CPI Index * Revenue Share Factor
-            (Assume the same for all Countries)
-        Revenue Share Factor = Country RPS / Country CPI Index
-            = (Country Revenue / Country Searches) / Country CPI Index
-            = (
-                (
-                    Total Revenue * Country Searches * Country CPI Index
-                    / Σ(Country Searches * Country CPI Index
-                )
-            )
-            / Country Searches) / Country CPI Index
-            = Total Revenue / Σ(Country Searches * Country CPI Index)
+        CRPS = Country RPS
+        CCI = Country Cost Index
+        RSF = Revenue Share Factor (Assume the same for all Countries)
+        CR = Country Revenue
+        CS = Country Searches
+        TR = Total Revenue
+        CRPS = CCI * RSF
+
+        RSF = CRPS / CCI
+        = (CR / CS) / CCI
+        = ((TR * CS * CCI / Σ(CS * CCI))/ CS) / CCI
+        = TR / Σ(CS * CCI)
 
         Input: raw-rps-google_search_rps, raw-rps-fb_index, raw-rps-cb_index
         Output: staging-rps-google_search_rps
