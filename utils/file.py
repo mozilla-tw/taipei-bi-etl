@@ -5,7 +5,7 @@ from utils.config import EXT_REGEX, DEFAULT_PATH_FORMAT
 
 
 def write_string(path: str, s: str):
-    """Wrapper function to write string to file.
+    """Write string to file.
 
     :param path: the file path to write to
     :param s: the string to write
@@ -15,7 +15,7 @@ def write_string(path: str, s: str):
 
 
 def read_string(path: str) -> str:
-    """Wrapper function to read string from file.
+    """Read string from file.
 
     :param path: the file path to read from
     :return: the string read from the file
