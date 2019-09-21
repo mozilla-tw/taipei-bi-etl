@@ -59,7 +59,7 @@ def main(args):
         config_name = "debug"
     if args.config:
         config_name = args.config
-    configs = get_configs("rps", config_name)
+    configs = get_configs("rfe", config_name)
     task = RfeEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 
