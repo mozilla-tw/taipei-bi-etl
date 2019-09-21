@@ -310,7 +310,9 @@ class EtlTask:
         :return: the extracted DataFrame
         """
         # extract paged raw files
-        if stage == "raw":
+        if "paths" in config:
+            fpaths = config["paths"]
+        elif stage == "raw":
             fpaths = self.get_filepaths(source, config, stage, "fs", date)
         else:
             fpaths = [self.get_filepath(source, config, stage, "fs", date)]
@@ -659,6 +661,8 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_gcs(source, config)
                 elif self.sources[source]["type"] == "bq":
                     self.extracted[source] = self.extract_via_bq(source, config)
+                elif self.sources[source]["type"] == "file":
+                    self.extracted[source] = self.extract_via_fs(source, config)
                 elif self.sources[source]["type"] == "const":
                     self.extracted[source] = self.extract_via_const(source, config)
                 if "inject_mapping" in config:

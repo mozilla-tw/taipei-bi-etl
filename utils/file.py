@@ -4,6 +4,27 @@ import re
 from utils.config import EXT_REGEX, DEFAULT_PATH_FORMAT
 
 
+def write_string(path: str, s: str):
+    """Wrapper function to write string to file.
+
+    :param path: the file path to write to
+    :param s: the string to write
+    """
+    with open(path, "w") as f:
+        f.write(s)
+
+
+def read_string(path: str) -> str:
+    """Wrapper function to read string from file.
+
+    :param path: the file path to read from
+    :return: the string read from the file
+    """
+    with open(path, "r") as f:
+        s = f.read()
+    return s
+
+
 def get_file_ext(fpath: str) -> str:
     """Extract file extension from path.
 
