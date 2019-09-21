@@ -1,15 +1,19 @@
 """Mapping utilities."""
 import importlib
 import inspect
-import itertools
+import logging
 from typing import Dict, Any, List, Callable
-
 import pandas as pd
 from pandas import DataFrame, Series
-
 from configs import mapping
 from utils.config import INJECTED_MAPPINGS
 from utils.marshalling import flatten_dict, is_camel, decamelize
+
+
+log = logging.getLogger(__name__)
+
+MAP_TYPE = "map_type"
+MAP_NAME = "map_name"
 
 
 def map_apply(config: Dict[str, Any], df: DataFrame) -> DataFrame:
@@ -22,28 +26,68 @@ def map_apply(config: Dict[str, Any], df: DataFrame) -> DataFrame:
     # do nothing if no map functions found in config
     if not maps:
         return df
-    # handle map product (e.g. feature x channel)
+    # prepare map function batches (e.g. feature x channel)
     map_list = []
     for map_name, map_types in maps.items():
-        ls = []
         for t, map_funcs in map_types.items():
-            ls += [(map_name, t, map_funcs)]
-        map_list += [ls]
-    map_prod = itertools.product(*map_list)
+            map_list += [(map_name, t, map_funcs)]
     output = DataFrame()
     # apply maps here
-    for batch in map_prod:
+    for map_type, map_name, map_funcs in map_list:
         # use a clean DataFrame for each batch
         d = df.copy()
-        for map_name, map_type, map_funcs in batch:
-            for idx, row in d.iterrows():
-                for map_func in map_funcs:
-                    d = apply_map_func(d, idx, row, map_func, map_name, map_type)
-        # FIXME: dedup events here
-        print(d)
-        output = output.append(d)
+        for idx, row in d.iterrows():
+            for map_func in map_funcs:
+                d = apply_map_func(d, idx, row, map_func, map_name, map_type)
+        # dedup events here
+        dedup = dedup_mapped_rows(d)
+        output = output.append(dedup)
     output = output.reset_index()
     return output
+
+
+def dedup_mapped_rows(d: DataFrame) -> DataFrame:
+    """Deduplicate mapped rows.
+
+    :param d: the DataFrame to be de-duplicated
+    :return: the de-duplicated DataFrame
+    """
+    map_cols = [MAP_TYPE, MAP_NAME]
+    dedup = DataFrame()
+    for id in d["id"].unique():
+        unnested_event = d[d["id"] == id]
+        cols = {}
+        for map_col in map_cols:
+            col = unnested_event[map_col]
+            col = col[pd.notnull(col)].tolist()
+            if len(col) > 0:
+                if isinstance(col[0], str):
+                    # check consistency for string values
+                    col = list(set(col))
+                    if len(col) == 1:
+                        cols[map_col] = col[0]
+                    else:
+                        assert False, "inconsistent mapping %s for id %s" % (
+                            str(col),
+                            id,
+                        )
+                elif isinstance(col[0], list):
+                    # merge list values
+                    cols[map_col] = list(set([i for l in col for i in l]))
+                else:
+                    assert False, "invalid mapping data type %s: %s" % (
+                        str(col[0]),
+                        str(type(col[0])),
+                    )
+        # only keep rows with mapped values
+        if cols:
+            reduced_event = unnested_event.head(1).copy()
+            for k, v in cols.items():
+                reduced_event[k] = [v]
+            dedup = dedup.append(reduced_event)
+        else:
+            log.debug("id %s skipped" % id)
+    return dedup
 
 
 def import_map_funcs(config: Dict[str, Any]) -> Dict[str, Dict[str, List[Callable]]]:
@@ -139,8 +183,8 @@ def apply_map_func(
     with pd.option_context("mode.chained_assignment", None):
         map_result = map_func(row)
         if map_result:
-            type_col = map_name + "_type"
-            name_col = map_name + "_name"
+            type_col = MAP_TYPE
+            name_col = MAP_NAME
             if type_col not in df.loc[idx].index:
                 df[type_col] = Series(dtype=object)
             if name_col not in df.loc[idx].index:
@@ -148,7 +192,7 @@ def apply_map_func(
             if "_" in map_type:
                 # non-leaft node, ignore returns
                 type_segments = map_type.split("_")
-                t = type_segments[-1]
+                t = type_segments[-1] + map_name
                 n = "_".join(type_segments[0:-1])
                 if idx in df[type_col] and pd.notnull(df[type_col][idx]):
                     assert df[type_col][idx] == t, "%s != %s" % (df[type_col][idx], t)
@@ -162,10 +206,10 @@ def apply_map_func(
                     # Check duplicated mapping
                     assert pd.isnull(df[type_col][idx])
                     assert pd.isnull(df[name_col][idx])
-                    df[type_col][idx] = map_type
+                    df[type_col][idx] = map_type + "_" + map_name
                     df[name_col][idx] = map_result
                 elif isinstance(map_result, list):
-                    df[type_col][idx] = map_type
+                    df[type_col][idx] = map_type + "_" + map_name
                     # merge list if duplicated
                     if isinstance(df[name_col][idx], list):
                         df[name_col][idx] += map_result
