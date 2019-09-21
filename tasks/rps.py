@@ -2,13 +2,15 @@
 import datetime
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
-
 from pandas import DataFrame
+import utils.config
 from tasks import base
 import pycountry
 import pandas as pd
 import numpy as np
 import logging
+
+from utils.marshalling import lookfoward_dates
 
 log = logging.getLogger(__name__)
 
@@ -36,7 +38,6 @@ class RpsEtlTask(base.EtlTask):
         specified in task config, see `configs/*.py`
         """
         super().__init__(args, sources, schema, destinations, "staging", "rps")
-        self.extracted_idx = dict()
 
     def extract(self):
         """Inherit from super class and extract latest fb_index for later use."""
@@ -44,35 +45,42 @@ class RpsEtlTask(base.EtlTask):
         source = "fb_index"
         if not self.args.source or source in self.args.source.split(","):
             config = self.sources[source]
-            self.extracted_idx[source] = self.extract_via_api_or_cache(
-                source,
-                config,
-                "raw",
-                RpsEtlTask.lookfoward_dates(self.current_date, self.period),
+            self.extracted[source + "_latest"] = self.extract_via_api_or_cache(
+                source, config, "raw", lookfoward_dates(self.current_date, self.period)
             )[0]
 
     def transform_google_search_rps(
-        self, source: str, config: Dict[str, Any]
+        self,
+        google_search_rps: DataFrame,
+        global_package: DataFrame,
+        fb_index: DataFrame,
+        fb_index_latest: DataFrame,
+        cb_index: DataFrame,
     ) -> DataFrame:
         """Calculate revenue per search with existing CPI index and total package.
 
-        Country RPS = Country CPI Index * Revenue Share Factor
-            (Assume the same for all Countries)
-        Revenue Share Factor = Country RPS / Country CPI Index
-            = (Country Revenue / Country Searches) / Country CPI Index
-            = (
-                (
-                    Total Revenue * Country Searches * Country CPI Index
-                    / Σ(Country Searches * Country CPI Index
-                )
-            )
-            / Country Searches) / Country CPI Index
-            = Total Revenue / Σ(Country Searches * Country CPI Index)
+        CRPS = Country RPS
+        CCI = Country Cost Index
+        RSF = Revenue Share Factor (Assume the same for all Countries)
+        CR = Country Revenue
+        CS = Country Searches
+        TR = Total Revenue
+        CRPS = CCI * RSF
+
+        RSF = CRPS / CCI
+        = (CR / CS) / CCI
+        = ((TR * CS * CCI / Σ(CS * CCI))/ CS) / CCI
+        = TR / Σ(CS * CCI)
+
+        Input: raw-rps-google_search_rps, raw-rps-fb_index, raw-rps-cb_index
+        Output: staging-rps-google_search_rps
+
+        :param google_search_rps: extracted source DataFrame w/t global search volume
+        :param global_package: extracted source DataFrame w/t total package number
+        :param fb_index: extracted source DataFrame for cost index reference
+        :param fb_index_latest: extracted source DataFrame for cost index reference
+        :param cb_index: extracted source DataFrame for cost index reference
         :rtype: DataFrame
-        :param source: name of the data source to be extracted,
-            specified in task config, see `configs/*.py`
-        :param config: config of the data source to be extracted,
-            specified in task config, see `configs/*.py`
         :return: the transformed DataFrame
         """
         # shared functions to map/transform data
@@ -128,13 +136,13 @@ class RpsEtlTask(base.EtlTask):
             s = volume * cost_idx
             return package / s.sum()
 
-        df = self.extracted[source]
-        pkg = self.extracted["global_package"]
+        df = google_search_rps
+        pkg = global_package
         # use FB cost index as revenue index since it covers all os/categories/trends
-        cost_idx_base = avg_idx(self.extracted["fb_index"], "cost_index")
-        cost_idx_latest = avg_idx(self.extracted_idx["fb_index"], "cost_index")
+        cost_idx_base = avg_idx(fb_index, "cost_index")
+        cost_idx_latest = avg_idx(fb_index_latest, "cost_index")
         # CB as reference only since it"s only for mobile game.
-        cost_idx_cb = transform_cb_idx(self.extracted["cb_index"])
+        cost_idx_cb = transform_cb_idx(cb_index)
 
         df = pd.pivot_table(df, index="country", values="volume", aggfunc=np.sum)
 
@@ -176,11 +184,11 @@ def main(args: Namespace):
         config_name = "debug"
     if args.config:
         config_name = args.config
-    configs = base.get_configs("rps", config_name)
+    configs = utils.config.get_configs("rps", config_name)
     task = RpsEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 
 
 if __name__ == "__main__":
-    arg_parser = base.get_arg_parser(**DEFAULTS)
+    arg_parser = utils.config.get_arg_parser(**DEFAULTS)
     main(arg_parser.parse_args())

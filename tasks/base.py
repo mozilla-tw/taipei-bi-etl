@@ -1,131 +1,28 @@
 """Task base."""
 import errno
 import glob
-import importlib
 import inspect
-import itertools
-import re
 import time
-from collections import Counter
-from io import StringIO
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace
 import os
 import os.path
 import requests
 import datetime
-import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame
 import pandas_gbq as pdbq
 from google.cloud import storage
-import json
 import numpy as np
-import pandas.io.json as pd_json
-from typing import List, Optional, Tuple, Union, Dict, Any, Callable
+from typing import List, Tuple, Union, Dict, Any
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
-import pytz
 import logging
-from configs import mapping
+from utils.config import DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT, INJECTED_MAPPINGS
+from utils.file import get_path_format, get_file_ext, get_path_prefix
+from utils.mapping import map_apply
+from utils.marshalling import lookback_dates, json_extract, convert_df, convert_format
+from utils.query import build_query
 
 log = logging.getLogger(__name__)
-
-DEFAULT_DATE_FORMAT = "%Y-%m-%d"
-DEFAULT_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
-DEFAULT_TZ_FORMAT = "%+03d:00"
-EXT_REGEX = "([*0-9A-z]+)\\.[A-z0-9]+$"
-DEFAULT_PATH_FORMAT = "{prefix}{stage}-{task}-{source}"
-
-
-def get_configs(mod: str, pkg: str = "") -> Optional[Callable]:
-    """Get configs by module name and package name.
-
-    :rtype: Callable
-    :param mod: the name of the ETL module
-    :param pkg: the package of the ETL module
-    :return: the config module
-    """
-    try:
-        if pkg == "":
-            return importlib.import_module("%s.%s" % ("configs", mod))
-        else:
-            return importlib.import_module("%s.%s.%s" % ("configs", pkg, mod))
-    except ModuleNotFoundError:
-        log.warning("Config module %s not found." % mod)
-    return None
-
-
-def get_arg_parser(**kwargs) -> ArgumentParser:
-    """Parse arguments passed in EtlTask.
-
-    --help will list all argument descriptions
-
-    :rtype: ArgumentParser
-    :return: properly configured argument parser to accept arguments
-    """
-    parser = ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--debug",
-        default=False if "debug" not in kwargs else kwargs["debug"],
-        action="store_true",
-        help="Run tasks in DEBUG mode, will use debugging configs in /configs/debug/*",
-    )
-    parser.add_argument(
-        "--loglevel",
-        default=None if "loglevel" not in kwargs else kwargs["loglevel"],
-        help="Set log level by name.",
-    )
-    parser.add_argument(
-        "--config",
-        default="" if "config" not in kwargs else kwargs["config"],
-        help="The ETL config to use.",
-    )
-    parser.add_argument(
-        "--task",
-        default=None if "task" not in kwargs else kwargs["task"],
-        help="The ETL task to run.",
-    )
-    parser.add_argument(
-        "--source",
-        default=None if "source" not in kwargs else kwargs["source"],
-        help="The ETL data source to extract, use the name specified in settings.",
-    )
-    parser.add_argument(
-        "--dest",
-        default=None if "dest" not in kwargs else kwargs["dest"],
-        help=(
-            "The place to load transformed data to, can be 'fs' or 'gcs'.\n"
-            "Default is 'gcs', "
-            "which the intermediate output will still write to 'fs'."
-        ),
-    )
-    parser.add_argument(
-        "--step",
-        default=None if "step" not in kwargs else kwargs["step"],
-        help=(
-            "The ETL step to run to, "
-            "can be 'extract', 'transform', 'load', or just the first letter. \n"
-            "Default is 'load', which means go through the whole ETL process."
-        ),
-    )
-    parser.add_argument(
-        "--date",
-        type=lambda x: datetime.datetime.strptime(x, DEFAULT_DATE_FORMAT),
-        default=datetime.datetime.today() if "date" not in kwargs else kwargs["date"],
-        help="The base (latest) date of the data in YYYY-MM-DD format.",
-    )
-    parser.add_argument(
-        "--period",
-        type=int,
-        default=30 if "period" not in kwargs else kwargs["period"],
-        help="Period of data in days.",
-    )
-    parser.add_argument(
-        "--rm",
-        default=False if "rm" not in kwargs else kwargs["rm"],
-        action="store_true",
-        help="Clean up cached files.",
-    )
-    return parser
 
 
 class EtlTask:
@@ -157,7 +54,7 @@ class EtlTask:
             for source in sources:
                 files = []
                 files += glob.glob(
-                    EtlTask.get_path_format(True).format(
+                    get_path_format(True).format(
                         prefix=destinations["fs"]["prefix"],
                         stage="raw",
                         task=args.task,
@@ -165,7 +62,7 @@ class EtlTask:
                     )
                 )
                 files += glob.glob(
-                    EtlTask.get_path_format(True).format(
+                    get_path_format(True).format(
                         prefix=destinations["fs"]["prefix"],
                         stage=stage,
                         task=args.task,
@@ -180,7 +77,7 @@ class EtlTask:
         self.args = args
         self.period = args.period
         self.current_date = args.date
-        self.last_month = self.lookback_dates(args.date, args.period)
+        self.last_month = lookback_dates(args.date, args.period)
         self.sources = sources
         coltypes = []
         for coltype in schema:
@@ -193,197 +90,6 @@ class EtlTask:
         self.extracted = dict()
         self.transformed = dict()
         self.gcs = storage.Client()
-
-    @staticmethod
-    def get_country_tz(country_code: str) -> pytz.UTC:
-        """Get the default timezone for specified country code.
-
-        If covered multiple timezone, pick the most common one.
-
-        :rtype: pytz.UTC
-        :return: the default (major) timezone of the country
-        :param country_code: the 2 digit country code to get timezone
-        """
-        if country_code not in pytz.country_timezones:
-            # FIXME: workaround here for pytz doesn't support XK for now.
-            tzmap = {"XK": "CET"}
-            if country_code in tzmap:
-                return pytz.timezone(tzmap[country_code])
-            log.warning("timezone not found for %s, return UTC" % country_code)
-            return pytz.utc
-        timezones = pytz.country_timezones[country_code]
-        offsets = []
-        for timezone in timezones:
-            try:
-                offsets += [
-                    pytz.timezone(timezone).utcoffset(datetime.datetime.now()).seconds
-                    / 3600
-                ]
-            except pytz.exceptions.NonExistentTimeError:
-                log.warning("Error creating timezone")
-                log.warning(timezones)
-        if not offsets:
-            log.warning("returning UTC")
-            return pytz.UTC
-        offset_count = Counter(offsets)
-        max_count = -1
-        max_offset = None
-        for k, v in offset_count.items():
-            if v > max_count:
-                max_count = v
-                max_offset = k
-        return pytz.timezone(timezones[offsets.index(max_offset)])
-
-    @staticmethod
-    def get_country_tz_str(country_code: str) -> str:
-        """Get the default timezone string (e.g. +08:00) for specified country code.
-
-        If covered multiple timezone, pick the most common one.
-
-        :rtype: str
-        :param country_code: the 2 digit country code to get timezone
-        :return: the default (major) timezone string of the country in +08:00 format.
-        """
-        return EtlTask.get_tz_str(EtlTask.get_country_tz(country_code))
-
-    @staticmethod
-    def get_tz_str(timezone: pytz.UTC) -> str:
-        """Convert timezone to offset string (e.g. +08:00).
-
-        :rtype: str
-        :param timezone: pytz.UTC
-        :return: the timezone offset string in +08:00 format.
-        """
-        return DEFAULT_TZ_FORMAT % (
-            timezone.utcoffset(datetime.datetime.now()).seconds / 3600,
-        )
-
-    @staticmethod
-    def lookback_dates(date: datetime.datetime, period: int) -> datetime.datetime:
-        """Subtract date by period.
-
-        :rtype: datetime.datetime
-        :param date: the base date
-        :param period: the period to subtract
-        :return: the subtracted datetime
-        """
-        return date - datetime.timedelta(days=period)
-
-    @staticmethod
-    def lookfoward_dates(date: datetime.datetime, period: int) -> datetime.datetime:
-        """Add date by period.
-
-        :rtype: datetime.datetime
-        :param date: the base date
-        :param period: the period to add
-        :return: the add datetime
-        """
-        return date + datetime.timedelta(days=period)
-
-    @staticmethod
-    def json_extract(json_str: str, path: str) -> Optional[str]:
-        """Extract nested json element by path.
-
-        Note that this currently don't support nested json array in path.
-
-        :rtype: str
-        :param json_str: original json in string format
-        :param path: path of the element in string format, e.g. response.data
-        :return: the extracted json element in string format
-        """
-        j = json.loads(json_str)
-        if path:
-            for i in path.split("."):
-                if i in j:
-                    j = j[i]
-                else:
-                    return None
-        return json.dumps(j)
-
-    @staticmethod
-    def convert_df(raw: str, config: Dict[str, Any]) -> DataFrame:
-        """Convert raw string to DataFrame, currently only supports json/csv.
-
-        :rtype: DataFrame
-        :param raw: the raw source string in json/csv format,
-            this is to be converted to DataFrame
-        :param config: the config of the data source specified in task config,
-            see `configs/*.py`
-        :return: the converted `DataFrame`
-        """
-        ftype = "json" if "file_format" not in config else config["file_format"]
-        df = None
-        if ftype == "jsonl":
-            jlines = raw.split("\n")
-            df = DataFrame()
-            for jline in jlines:
-                if len(jline) < 3:
-                    continue
-                line = json.loads(jline)
-                df = df.append(Series(line), ignore_index=True)
-        elif ftype == "json":
-            extracted_json = EtlTask.json_extract(
-                raw, None if "json_path" not in config else config["json_path"]
-            )
-            data = pd_json.loads(extracted_json)
-            df = pd_json.json_normalize(data)
-        elif ftype == "csv":
-            if "header" in config:
-                df = pd.read_csv(StringIO(raw), names=config["header"])
-            else:
-                df = pd.read_csv(StringIO(raw))
-        # convert timezone according to config
-        tz = None
-        if "timezone" in config:
-            tz = pytz.timezone(config["timezone"])
-        elif "country_code" in config:
-            tz = EtlTask.get_country_tz(config["country_code"])
-        # TODO: support multiple countries/timezones in the future if needed
-        if "date_fields" in config:
-            for date_field in config["date_fields"]:
-                df[date_field] = pd.to_datetime(df[date_field])
-            if tz is not None:
-                df["tz"] = EtlTask.get_tz_str(tz)
-                for date_field in config["date_fields"]:
-                    df[date_field] = (
-                        df[date_field].dt.tz_localize(tz).dt.tz_convert(pytz.utc)
-                    )
-                    df[date_field] = df[date_field].astype("datetime64[ns]")
-        return df
-
-    @staticmethod
-    def get_file_ext(fpath: str) -> str:
-        """Extract file extension from path.
-
-        :rtype: str
-        :param fpath: the path to extract
-        :return: the extracted file extension
-        """
-        return re.search(EXT_REGEX, fpath).group(1)
-
-    @staticmethod
-    def get_prefix(fpath: str) -> str:
-        """Extract prefix from path.
-
-        :rtype: str
-        :param fpath: the path to extract
-        :return: the extracted prefix
-        """
-        ext_search = re.search(EXT_REGEX, fpath)
-        return fpath[: ext_search.start()]
-
-    @staticmethod
-    def get_path_format(wildcard: bool = False) -> str:
-        """Get the format string of file paths.
-
-        :rtype: str
-        :param wildcard: whether it's a wildcard path or not.
-        :return: the path format string
-        """
-        if wildcard:
-            return DEFAULT_PATH_FORMAT + "/*"
-        else:
-            return DEFAULT_PATH_FORMAT + "/{filename}"
 
     def get_filepaths(
         self,
@@ -415,7 +121,7 @@ class EtlTask:
             return glob.glob(prefix + config["path"] + config["filename"])
         else:
             return glob.glob(
-                EtlTask.get_path_format().format(
+                get_path_format().format(
                     stage=stage,
                     task=self.task,
                     source=source,
@@ -460,7 +166,7 @@ class EtlTask:
                 fpath = fpath.replace("*", page)
             return fpath
         else:
-            return EtlTask.get_path_format().format(
+            return get_path_format().format(
                 stage=stage,
                 task=self.task,
                 source=source,
@@ -613,9 +319,9 @@ class EtlTask:
             for fpath in fpaths:
                 with open(fpath, "r") as f:
                     raw = f.read()
-                    it = EtlTask.get_file_ext(fpath)
+                    it = get_file_ext(fpath)
                     self.raw[it] = raw
-                    extracted[it] = self.convert_df(raw, config)
+                    extracted[it] = convert_df(raw, config)
             log.info(
                 "%s-%s-%s/%s x %d iterators extracted from file system"
                 % (
@@ -633,10 +339,10 @@ class EtlTask:
                     raw = f.read()
                     if extracted is None:
                         self.raw[source] = [raw]
-                        extracted = self.convert_df(raw, config)
+                        extracted = convert_df(raw, config)
                     else:
                         self.raw[source] += [raw]
-                        extracted = extracted.append(self.convert_df(raw, config))
+                        extracted = extracted.append(convert_df(raw, config))
             extracted = extracted.reset_index(drop=True)
             log.info(
                 "%s-%s-%s/%s x %d pages extracted from file system"
@@ -680,15 +386,17 @@ class EtlTask:
         else:
             bucket = self.destinations["gcs"]["bucket"]
             prefix = self.get_filepath(source, config, stage, "gcs", "*", date)
-            prefix = EtlTask.get_prefix(prefix)
+            prefix = get_path_prefix(prefix)
         blobs = self.gcs.list_blobs(bucket, prefix=prefix)
 
         i = 0
         is_empty = True
         for i, blob in enumerate(blobs):
             is_empty = False
-            page = EtlTask.get_file_ext(blob.name)
-            filepath = self.get_filepath(source, config, stage, "fs", page, date)
+            page = get_file_ext(blob.name)
+            filepath = self.get_or_create_filepath(
+                source, config, stage, "fs", page, date
+            )
             blob.download_to_filename(filepath)
 
         if not is_empty:
@@ -737,7 +445,7 @@ class EtlTask:
         start_date = (
             self.last_month.strftime(config["date_format"])
             if date is None
-            else EtlTask.lookback_dates(date, self.period)
+            else lookback_dates(date, self.period)
         )
         end_date = (
             self.current_date.strftime(config["date_format"]) if date is None else date
@@ -760,7 +468,7 @@ class EtlTask:
                 )
                 r = requests.get(url, allow_redirects=True)
                 raw[it] = r.text
-                extracted[it] = self.convert_df(raw[it], config)
+                extracted[it] = convert_df(raw[it], config)
             self.raw[source] = raw
             log.info(
                 "%s-%s-%s/%s x %d iterators extracted from API"
@@ -778,8 +486,8 @@ class EtlTask:
             )
             r = requests.get(url, allow_redirects=True)
             raw = [r.text]
-            extracted = self.convert_df(raw[0], config)
-            count = int(self.json_extract(raw[0], config["json_path_page_count"]))
+            extracted = convert_df(raw[0], config)
+            count = int(json_extract(raw[0], config["json_path_page_count"]))
             if count is None or int(count) <= 1:
                 self.raw[source] = raw
                 log.info(
@@ -799,7 +507,7 @@ class EtlTask:
                 )
                 r = requests.get(url, allow_redirects=True)
                 raw += [r.text]
-                extracted = extracted.append(self.convert_df(raw[page - 1], config))
+                extracted = extracted.append(convert_df(raw[page - 1], config))
             extracted = extracted.reset_index(drop=True)
             self.raw[source] = raw
             log.info(
@@ -818,7 +526,7 @@ class EtlTask:
                 "%s-%s-%s/%s extracted from API"
                 % ("raw", self.task, source, self.current_date.date())
             )
-            return self.convert_df(raw, config)
+            return convert_df(raw, config)
 
     def extract_via_api_or_cache(
         self,
@@ -859,7 +567,7 @@ class EtlTask:
             ):
                 self.load_to_gcs(source, config)
         # Extract data from previous date for validation
-        yesterday = EtlTask.lookback_dates(self.current_date, 1)
+        yesterday = lookback_dates(self.current_date, 1)
         if self.args.dest != "fs":
             extracted_base = self.extract_via_gcs(source, config, "raw", yesterday)
         else:
@@ -878,7 +586,7 @@ class EtlTask:
             specified in task config, see `configs/*.py`
         :return: the extracted `DataFrame`
         """
-        query = self.build_query(
+        query = build_query(
             config,
             self.last_month.strftime(config["date_format"]),
             self.current_date.strftime(config["date_format"]),
@@ -888,8 +596,10 @@ class EtlTask:
                 return self.extract_via_fs(source, config)
             else:
                 df = pdbq.read_gbq(query)
-                self.raw[source] = self.convert_format(
-                    df, None if "date_fields" not in config else config["date_fields"]
+                self.raw[source] = convert_format(
+                    self.destinations["fs"]["file_format"],
+                    df,
+                    None if "date_fields" not in config else config["date_fields"],
                 )
                 self.load_to_fs(source, config)
                 if self.args.dest != "fs":
@@ -912,36 +622,6 @@ class EtlTask:
                 % ("raw", self.task, source, self.current_date.date(), len(df.index))
             )
             return df
-
-    @staticmethod
-    def build_query(config: Dict[str, Any], start_date: str, end_date: str) -> str:
-        """Build query based on configs and args.
-
-        :rtype: str
-        :param config: the config of the query
-        :param start_date: the start date string for the query
-        :param end_date: the end date string for the query
-        :return: the composed query string
-        """
-        query = ""
-        if "udf" in config:
-            for udf in config["udf"]:
-                with open("udf/{}.sql".format(udf)) as f:
-                    query += f.read()
-        if "udf_js" in config:
-            for udf_js in config["udf_js"]:
-                with open("udf_js/{}.sql".format(udf_js)) as f:
-                    query += f.read()
-        if "query" in config:
-            with open("sql/{}.sql".format(config["query"])) as f:
-                query += f.read().format(
-                    project=config["project"],
-                    dataset=config["dataset"],
-                    table=config["table"],
-                    start_date=start_date,
-                    end_date=end_date,
-                )
-        return query
 
     @staticmethod
     def extract_via_const(source: str, config: Dict[str, Any]) -> DataFrame:
@@ -981,132 +661,9 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_bq(source, config)
                 elif self.sources[source]["type"] == "const":
                     self.extracted[source] = self.extract_via_const(source, config)
-                self.extracted[source] = self.map_apply(config, self.extracted[source])
-
-    @staticmethod
-    def map_apply(config: Dict[str, Any], df: DataFrame) -> DataFrame:
-        """Apply map functions to extracted DataFrame.
-
-        :param config: the source config to check mapping settings
-        :param df: the extracted DataFrame to be applied
-        """
-        maps = EtlTask.import_map_funcs(config)
-        # do nothing if no map functions found in config
-        if not maps:
-            return df
-        # handle map product (e.g. feature x channel)
-        map_list = []
-        for map_name, map_types in maps.items():
-            ls = []
-            for t, map_funcs in map_types.items():
-                ls += [(map_name, t, map_funcs)]
-            map_list += [ls]
-        map_prod = itertools.product(*map_list)
-
-        output = DataFrame()
-        # apply maps here
-        for batch in map_prod:
-            # use a clean DataFrame for each batch
-            d = df.copy()
-            for map_name, map_type, map_funcs in batch:
-                for idx, row in d.iterrows():
-                    for map_func in map_funcs:
-                        d = EtlTask.apply_map_func(
-                            d, idx, row, map_func, map_name, map_type
-                        )
-            # TODO: dedup here
-            output = output.append(d)
-        output = output.reset_index()
-        return output
-
-    @staticmethod
-    def import_map_funcs(
-        config: Dict[str, Any]
-    ) -> Dict[str, Dict[str, List[Callable]]]:
-        """Import mapping functions according to source config.
-
-        :rtype: Dict[str, Dict[str, List[Callable]]]
-        :param config: the data source config
-        :return: a dictionary containing all mapping functions
-        """
-        maps = {}
-        if "mappings" in config:
-            for m in config["mappings"]:
-                # import mapping module from config
-                mod = importlib.import_module("%s.%s" % (mapping.__name__, m))
-                # iterate through map type classes (Feature, Vertical, App, ...)
-                for cls, cobj in inspect.getmembers(mod, predicate=inspect.isclass):
-                    # filter only classes defined in the mapping module,
-                    # exclude imported or other builtin classes
-                    if hasattr(cobj, "__module__") and cobj.__module__ == mod.__name__:
-                        # iterate through static functions in the class
-                        for method, mobj in inspect.getmembers(
-                            cobj, predicate=inspect.isroutine
-                        ):
-                            # verify the method is defined directly on the class,
-                            # not inherited or builtin methods,
-                            # also verify it's a static method.
-                            if method in cobj.__dict__ and isinstance(
-                                cobj.__dict__[method], staticmethod
-                            ):
-                                if m not in maps:
-                                    maps[m] = {}
-                                if cls not in maps[m]:
-                                    maps[m][cls] = []
-                                maps[m][cls] += [mobj]
-        return maps
-
-    @staticmethod
-    def apply_map_func(
-        df: DataFrame,
-        idx: int,
-        row: Series,
-        map_func: Callable,
-        map_name: str,
-        map_type: str,
-    ) -> DataFrame:
-        """Apply map functions to a row of DataFrame.
-
-        :param df: the DataFrame to apply
-        :param idx: the row to apply
-        :param row: the actual row (Series)
-        :param map_func: the map function
-        :param map_name: the name of the mapping
-        :param map_type: the type of the mapping
-        """
-        map_result = map_func(row)
-        if map_result:
-            type_col = map_name + "_type"
-            name_col = map_name + "_name"
-            if type_col not in df.loc[idx].index:
-                df[type_col] = Series(dtype=object)
-            if name_col not in df.loc[idx].index:
-                df[name_col] = Series(dtype=object)
-            if isinstance(map_result, str):
-                # Check duplicated mapping
-                assert pd.isnull(df[type_col][idx])
-                assert pd.isnull(df[name_col][idx])
-                df[type_col][idx] = map_type
-                df[name_col][idx] = map_result
-            elif isinstance(map_result, list):
-                df.loc[idx, type_col] = map_type
-                # merge list if duplicated
-                if pd.notnull(df.loc[idx, name_col]):
-                    if isinstance(df.loc[idx, name_col], list):
-                        df[name_col][idx] += map_result
-                    else:
-                        assert False, "Invalid data type found %s: %s" % (
-                            map_type,
-                            str(type(df[name_col][idx])),
-                        )
-                else:
-                    df[name_col][idx] = map_result
-            else:
-                assert False, "Invalid mapping result %s: %s" % (
-                    map_type,
-                    str(map_result),
-                )
-        return df
+                if "inject_mapping" in config:
+                    INJECTED_MAPPINGS[config["inject_mapping"]] = self.extracted[source]
+                self.extracted[source] = map_apply(config, self.extracted[source])
 
     def transform(self):
         """Transform extracted data into target format DataFrames.
@@ -1129,7 +686,17 @@ class EtlTask:
                 if "load" in config and config["load"]:
                     assert self.extracted is not None
                     transform_method = getattr(self, "transform_{}".format(source))
-                    self.transformed[source] = transform_method(source, config)
+                    transform_args = inspect.getfullargspec(transform_method).args
+                    avail_args = {"source": source, "config": config, **self.extracted}
+                    transform_kwargs = {}
+                    for transform_arg in transform_args:
+                        if transform_arg == "self":
+                            continue
+                        if transform_arg in avail_args:
+                            transform_kwargs[transform_arg] = avail_args[transform_arg]
+                        else:
+                            assert False, "Invalid transform arg %s" % transform_arg
+                    self.transformed[source] = transform_method(**transform_kwargs)
                     errors = self.schema.validate(self.transformed[source])
                     error_msg = ""
                     for error in errors:
@@ -1234,37 +801,8 @@ class EtlTask:
         date = self.current_date if date is None else date
         fpath = self.get_or_create_filepath(source, config, stage, "fs", None, date)
         with open(fpath, "w") as f:
-            output = self.convert_format(df)
+            output = convert_format(self.destinations["fs"]["file_format"], df)
             f.write(output)
-
-    def convert_format(self, df: DataFrame, date_fields: List = None) -> str:
-        """Convert DataFrame into destination format.
-
-        The logic is based on task config (see `configs/*.py`).
-
-        :param df: The DataFrame to be converted to destination format.
-        :param date_fields: the date fields to convert to date string
-        :return:
-        """
-        output = ""
-        if date_fields:
-            for date_field in date_fields:
-                df[date_field] = df[date_field].dt.strftime(DEFAULT_DATETIME_FORMAT)
-        if self.destinations["fs"]["file_format"] == "jsonl":
-            output = ""
-            # build json lines
-            for row in df.iterrows():
-                output += row[1].to_json() + "\n"
-        elif self.destinations["fs"]["file_format"] == "json":
-            output = "["
-            # build json
-            for row in df.iterrows():
-                output += row[1].to_json() + ",\n"
-            if len(output) > 2:
-                output = output[0:-2] + "\n]"
-        elif self.destinations["fs"]["file_format"] == "csv":
-            output = df.to_csv(index=False)
-        return output
 
     def load_to_gcs(self, source: str, config: Dict[str, Any], stage: str = "raw"):
         """Load data into Google Cloud Storage based on destination settings.
@@ -1278,15 +816,12 @@ class EtlTask:
         :param stage: the stage of the loaded data, could be raw/staging/production.
         """
         bucket = self.gcs.bucket(self.destinations["gcs"]["bucket"])
-        fl = 0
         if stage == "raw":
             fpaths = self.get_filepaths(source, config, stage, "fs")
             fl = len(fpaths)
             for fpath in fpaths:
                 blob = bucket.blob(
-                    self.get_filepath(
-                        source, config, stage, "gcs", EtlTask.get_file_ext(fpath)
-                    )
+                    self.get_filepath(source, config, stage, "gcs", get_file_ext(fpath))
                 )
                 blob.upload_from_filename(fpath)
         else:

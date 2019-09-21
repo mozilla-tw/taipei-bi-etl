@@ -21,9 +21,14 @@ ANONYMIZE_CONFIG = {
             ("Stat.ad_id", "uid"),
         ]
     },
-    "staging-revenue-bukalapak": [("sales_amount", float), ("payout", float)],
-    "staging-revenue-google_search": [("sales_amount", float), ("payout", float)],
-    "staging-rps-google_search_rps": [("rps", float)],
+    "raw-revenue-google_search": [("event_count", int)],
+    "raw-rps-google_search_rps": [("volume", int)],
+    "raw-rps-fb_index": [("cost_index", float)],
+    "raw-rps-cb_index": [(4, float)],
+    "raw-rfe-adjust_trackers": {"*.kpi_values": float},
+    # "staging-revenue-bukalapak": [("sales_amount", float), ("payout", float)],
+    # "staging-revenue-google_search": [("sales_amount", float), ("payout", float)],
+    # "staging-rps-google_search_rps": [("rps", float)],
 }
 
 
@@ -37,11 +42,10 @@ def main():
             write_data(d, ext, file)
 
 
-def read_data(cfgs: Union[Dict, List], ext: str, file: str) -> object:
+def read_data(cfgs: Union[Dict, List], ext: str, file: str) -> Union[List, Dict]:
     """Read and anonymize data.
 
-    :param cfg: the anonymize config
-    :param d: the data to be anonymized
+    :param cfgs: the anonymize config
     :param ext: the extension of the data file
     :param file: the file name
     :return: the anonymized data
@@ -55,7 +59,12 @@ def read_data(cfgs: Union[Dict, List], ext: str, file: str) -> object:
         elif ext == "json":
             d = json.load(f)
         elif ext == "csv":
-            r = csv.DictReader(f)
+            has_header = csv.Sniffer().has_header(f.read(2048))
+            f.seek(0)
+            if has_header:
+                r = csv.DictReader(f)
+            else:
+                r = csv.reader(f)
             d = []
             for row in r:
                 d += [row]
@@ -80,15 +89,19 @@ def write_data(d: Union[List, Dict], ext: str, file: str):
             o = json.dumps(d)
             f.write(o)
         elif ext == "csv":
-            dr = csv.DictWriter(f, fieldnames=d[0].keys())
-            dr.writeheader()
-            dr.writerows(d)
+            if isinstance(d[0], dict):
+                dr = csv.DictWriter(f, fieldnames=d[0].keys())
+                dr.writeheader()
+                dr.writerows(d)
+            elif isinstance(d[0], list):
+                dr = csv.writer(f)
+                dr.writerows(d)
 
 
 def anonymize_data(cfgs: Union[Dict, List], d: Union[Dict, List]):
     """Anonymize data based on config.
 
-    :param cfg: the anonymize config
+    :param cfgs: the anonymize configs
     :param d: the data to be anonymized
     """
     if isinstance(cfgs, list):
@@ -97,10 +110,31 @@ def anonymize_data(cfgs: Union[Dict, List], d: Union[Dict, List]):
                 anonymize_row(cfg, row)
     elif isinstance(cfgs, dict):
         for path, cs in cfgs.items():
-            ed = extract(d, path)
-            for row in ed:
-                for c in cs:
-                    anonymize_row(c, row)
+            ed = extract_elem(d, path)
+            if isinstance(cs, list):
+                for row in ed:
+                    for c in cs:
+                        anonymize_row(c, row)
+            elif isinstance(cs, type) or isinstance(cs, str):
+                if path[0] == "*":
+                    for e in ed:
+                        anonymize_list(cs, e)
+                else:
+                    anonymize_list(cs, ed)
+            else:
+                assert False, "Invalid config format for %s" % path
+
+
+def anonymize_list(cfg: Union[str, type], ls: list):
+    """Anonymize list based on config.
+
+    :param cfg: the anonymize config
+    :param ls: the list to be anonymized
+    """
+    if ls is None:
+        return
+    for i, item in enumerate(ls):
+        ls[i] = generate_anonymized_data(cfg)
 
 
 def anonymize_row(cfg: Tuple, row: Dict):
@@ -109,31 +143,65 @@ def anonymize_row(cfg: Tuple, row: Dict):
     :param cfg: the anonymize config
     :param row: the row to be anonymized
     """
+    anonymous_data = generate_anonymized_data(cfg[1])
+    extract_elem(row, cfg[0], anonymous_data)
+
+
+def generate_anonymized_data(cfg: Union[str, type]):
+    """Generate a single anonymized data based on config.
+
+    :param cfg: which kind of data to generate
+    :return: generated anonymous data
+    """
     anonymous_data = None
-    if cfg[1] == "ip":
+    if cfg == "ip":
         anonymous_data = "%d.%d.%d.%d" % (
             random.random() * 255,
             random.random() * 255,
             random.random() * 255,
             random.random() * 255,
         )
-    elif cfg[1] == "uuid":
+    elif cfg == "uuid":
         anonymous_data = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=20)
         )
-    elif cfg[1] == float:
+    elif cfg == float:
         anonymous_data = random.random() * random.random() * 1000
-    elif cfg[1] == int:
+    elif cfg == int:
         anonymous_data = int(random.random() * random.random() * 1000)
-    extract(row, cfg[0], anonymous_data)
+    return anonymous_data
 
 
-def extract(data: Dict, path: str, newval=None) -> Any:
+def extract_elem_recursive(
+    result: list, data: Union[Dict, List], path: Union[str, int], newval=None
+) -> Any:
+    """Extract nested json element for wildcard search.
+
+    :param result: the accumulated search result
+    :param data: the data to extract
+    :param path: path of the element in string format, e.g. response.data
+    :param newval: the new value to assign
+    :return: the extracted json element in string format
+    """
+    if path in data:
+        if newval is not None:
+            data[path] = newval
+        result += [data[path]]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, dict) or isinstance(v, list):
+                extract_elem_recursive(result, v, path, newval)
+    elif isinstance(data, list):
+        for i in data:
+            if isinstance(i, dict) or isinstance(i, list):
+                extract_elem_recursive(result, i, path, newval)
+
+
+def extract_elem(data: Dict, path: Union[str, int], newval=None) -> Any:
     """Extract nested json element by path.
 
     Note that this currently don't support nested json array in path.
 
-    :rtype: str
     :param data: the data to extract
     :param path: path of the element in string format, e.g. response.data
     :param newval: the new value to assign
@@ -142,13 +210,21 @@ def extract(data: Dict, path: str, newval=None) -> Any:
     if path:
         parent = data
         idx = path
-        for i in path.split("."):
-            if i in data:
-                idx = i
-                parent = data
-                data = data[i]
+        if isinstance(path, str):
+            # support simple wildcart path `*.field`
+            if path[0] == "*":
+                idx = path[2:]
+                result = []
+                extract_elem_recursive(result, data, idx, newval)
+                return result
             else:
-                return None
+                for i in path.split("."):
+                    if i in data:
+                        idx = i
+                        parent = data
+                        data = data[i]
+                    else:
+                        return None
         if newval is not None:
             parent[idx] = newval
     return data

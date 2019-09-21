@@ -8,6 +8,7 @@ help:
 	@echo "  lint - check code style"
 	@echo "  test - run tests quickly with the default Python"
 	@echo "  test-mark - run tests with specific marks, e.g. MARK=\"envtest and intgtest\""
+	@echo "  test-doctest - run doctests"
 	@echo "  test-mock - run tests on mock objects"
 	@echo "  test-unit - run unit tests"
 	@echo "  test-env - run environment tests"
@@ -42,16 +43,19 @@ clean-pyc:
 	find . -name '*~' -exec rm -f {} +
 
 lint:
-	pytest -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not envtest and not unittest and not intgtest"
+	pytest -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not mocktest and not envtest and not unittest and not intgtest"
 
 test:
-	py.test
+	py.test --doctest-modules
+
+test-doctest
+	pytest --doctest-modules -m "not mocktest and not envtest and not unittest and not intgtest"
 
 test-mark:
 	pytest -m $(MARK)
 
 test-mock:
-	pytest tests/conftest.py -m "mocktest"
+	pytest -m "mocktest"
 
 test-unit:
 	pytest -m "unittest"

@@ -1,8 +1,7 @@
 import sys
 
-import pytest
-
 import etl
+import pytest
 
 
 @pytest.mark.intgtest

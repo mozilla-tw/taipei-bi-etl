@@ -5,8 +5,12 @@ import logging
 import pandas_gbq
 import pytest
 import requests
+from google.cloud import bigquery
 from google.cloud import storage
 from pandas import DataFrame
+
+from .mockbigquery import MockBigqueryClient
+from .mockio import MockIO
 
 log = logging.getLogger(__name__)
 
@@ -35,31 +39,18 @@ def pdbq():
     return pandas_gbq
 
 
+# TODO: from docs.pytest.org
+# Be advised that it is not recommended to patch builtin functions such as
+# open, compile, etc., because it might break pytest’s internals.
+# If that’s unavoidable, passing --tb=native, --assert=plain and --capture=no
+# might help although there’s no guarantee.
+#
+# defining mock objects
 @pytest.fixture
 def mock_io(monkeypatch):
     """Mock file IO object."""
-    # defining mock objects
-    class MockIO:
-        def __enter__(self, *args, **kwargs):
-            return self
-
-        def __exit__(self, *args, **kwargs):
-            return self
-
-        def read(self, *args, **kwargs):
-            log.warning("mock_io.read")
-            return ""
-
-        def write(self, *args, **kwargs):
-            log.warning("mock_io.write")
-
     mock_io = MockIO()
-
-    def mock_open(file, mode="r"):
-        log.warning("mock_open(%s, %s)" % (file, mode))
-        return mock_io
-
-    monkeypatch.setattr(builtins, "open", mock_open)
+    monkeypatch.setattr(builtins, "open", mock_io.open)
 
     return mock_io
 
@@ -69,17 +60,35 @@ def mock_requests(monkeypatch):
     """Mock http request object."""
     # defining mock objects
     class MockResponse:
+        def __init__(self, content: str):
+            self._content = content
+
+        @property
+        def text(self) -> str:
+            return self._content
+
+    class MockRequest:
+        def __init__(self):
+            self.urls = {}
+
         def get_text(self):
             log.warning("mock_response.text")
             return "test response text"
 
         text = property(get_text)
 
-    mock_response = MockResponse()
+        def get(self, url: str) -> MockResponse:
+            # TODO: return a requests.Response object
+            return MockResponse(self.urls[url])
+
+        def setContent(self, url: str, content: str):
+            self.urls[url] = content
+
+    mock_response = MockRequest()
 
     def mock_get(url, **kwargs):
         log.warning("mock_get(%s)" % url)
-        return mock_response
+        return mock_response.get(url)
 
     monkeypatch.setattr(requests, "get", mock_get)
 
@@ -90,15 +99,37 @@ def mock_requests(monkeypatch):
 def mock_pdbq(monkeypatch):
     """Mock Pandas GBQ object."""
     # defining mock objects
-    df = DataFrame()
+    class MockResponse:
+        def __init__(self):
+            self.results = {}
+            self.default_results = None
 
-    def mock_read_gbq(query, **kwargs):
+        def setResult(self, df: DataFrame):
+            self.default_results = df.copy()
+
+        def setQueryResult(self, query: str, df: DataFrame):
+            self.results[query] = df.copy()
+
+        def read(self, query: str) -> DataFrame:
+            if query in self.results:
+                return self.results[query]
+            return self.default_results
+
+    mock = MockResponse()
+
+    def mock_read_gbq(query: str, **kwargs):
         log.warning("mock_read_gbq(%s)" % query)
-        return df
+        return mock.read(query)
 
     monkeypatch.setattr(pandas_gbq, "read_gbq", mock_read_gbq)
 
-    return df
+    return mock
+
+
+@pytest.fixture
+def mock_bigquery(monkeypatch):
+    """Mock google-cloud-bigquery object."""
+    monkeypatch.setattr(bigquery, "Client", MockBigqueryClient)
 
 
 @pytest.fixture
@@ -141,39 +172,3 @@ def mock_gcs(monkeypatch):
     monkeypatch.setattr(storage, "Client", mock_client)
 
     return mock_gcs_client
-
-
-@pytest.mark.mocktest
-def test_mock_io(mock_io):
-    """Testing mock_io fixture."""
-    with open("test.txt", "w") as f:
-        f.write("test")
-        f.read()
-
-
-@pytest.mark.mocktest
-def test_mock_requests(mock_requests):
-    """Testing mock_requests fixture."""
-    r = requests.get("http://test/")
-    log.warning(r.text)
-
-
-@pytest.mark.mocktest
-def test_mock_pdbq(mock_pdbq):
-    """Testing mock_pdbq fixture."""
-    df = pandas_gbq.read_gbq("select * from test")
-    log.warning(df)
-
-
-@pytest.mark.mocktest
-def test_mock_gcs(mock_gcs):
-    """Testing mock_gcs fixture."""
-    gcs = storage.Client()
-    bucket = gcs.bucket("test bucket")
-    blob = bucket.blob("test blob")
-    log.warning(blob.name)
-    blob.upload_from_filename("test file")
-    blob.download_to_filename("test file")
-    blobs = gcs.list_blobs("test bucket")
-    for b in blobs:
-        log.warning(b.name)

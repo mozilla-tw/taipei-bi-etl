@@ -1,15 +1,16 @@
 """Revenue task."""
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
-
 import pandas as pd
 import datetime
 import pandasql as ps
 from pandas import DataFrame
-
+import utils.config
 from tasks import base
 import numpy as np
 import logging
+
+from utils.marshalling import get_country_tz_str
 
 log = logging.getLogger(__name__)
 
@@ -38,13 +39,15 @@ class RevenueEtlTask(base.EtlTask):
         """
         super().__init__(args, sources, schema, destinations, "staging", "revenue")
 
-    def transform_bukalapak(self, source: str, config: Dict[str, Any]) -> DataFrame:
+    def transform_bukalapak(self, bukalapak: DataFrame, source: str) -> DataFrame:
         """Transform data from bukalapak for revenue reference.
 
+        Input: raw-revenue-bukalapak
+        Output: staging-revenue-bukalapak
+
+        :param bukalapak: extracted source DataFrame that contains transaction data
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
-            specified in task config, see `configs/*.py`
-        :param config: config of the data source to be extracted,
             specified in task config, see `configs/*.py`
         :return: the transformed DataFrame
         """
@@ -78,9 +81,7 @@ class RevenueEtlTask(base.EtlTask):
             d["Country.name"] = [
                 "ID" if x == "Indonesia" else "" for x in d["Country.name"]
             ]
-            d["tz"] = d["Country.name"].apply(
-                lambda x: RevenueEtlTask.get_country_tz_str(x)
-            )
+            d["tz"] = d["Country.name"].apply(lambda x: get_country_tz_str(x))
             d = d[map_cols]
             log.info(">>> Done data preparation...")
             return d
@@ -148,10 +149,10 @@ class RevenueEtlTask(base.EtlTask):
             return do_update
 
         # extract new & old data
-        new_df = data_prep(self.extracted[source])
-        last_df = self.extracted_base[source]
+        new_df = data_prep(bukalapak)
+        last_df = bukalapak
         if not last_df.empty:
-            last_df = data_prep(self.extracted_base[source])
+            last_df = data_prep(bukalapak)
 
             # transform here ------
         # do check
@@ -178,24 +179,38 @@ class RevenueEtlTask(base.EtlTask):
 
         # reformat data types
         df["utc_datetime"] = df["utc_datetime"].astype("datetime64[ns]")
-        df["tz"] = df["country"].apply(lambda x: RevenueEtlTask.get_country_tz_str(x))
+        df["tz"] = df["country"].apply(lambda x: get_country_tz_str(x))
         df["sales_amount"] = df["sales_amount"].astype("float")
         df["payout"] = df["payout"].astype("float")
+
+        # fill N/A columns, so object columns w/t N/A won't be recognized as float64
+        nacols = [
+            "fx_defined1",
+            "fx_defined2",
+            "fx_defined3",
+            "fx_defined4",
+            "fx_defined5",
+        ]
+        for nacol in nacols:
+            df[nacol] = df[nacol].fillna("")
         return df
 
-    def transform_google_search(self, source: str, config: Dict[str, Any]) -> DataFrame:
+    def transform_google_search(
+        self, google_search: DataFrame, google_search_rps: DataFrame
+    ) -> DataFrame:
         """Transform search data from telemetry for revenue reference.
 
+        Input: staging-rps-google_sesarch_rps, raw-revenue-google_search
+        Output: staging-revenue-google_search
+
         :rtype: DataFrame
-        :param source: name of the data source to be extracted,
-            specified in task config, see `configs/*.py`
-        :param config: config of the data source to be extracted,
-            specified in task config, see `configs/*.py`
+        :param google_search: extracted source DataFrame for search volume
+        :param google_search_rps: extracted source DataFrame for search rps
         :return: the transformed DataFrame
         """
-        df = self.extracted[source]
+        df = google_search
         df["country"] = df["country_code"]
-        rps = self.extracted["google_search_rps"]
+        rps = google_search_rps
         df = df.join(rps, rsuffix="_rps")
         # transform here
         td = self.get_target_dataframe()
@@ -204,7 +219,7 @@ class RevenueEtlTask(base.EtlTask):
         # workaround for datetime64 validation since `datetime64[ns, UTC]`
         # will raise "TypeError: data type not understood"
         td["utc_datetime"] = df["day"].astype("datetime64[ns]")
-        td["tz"] = df["country"].apply(lambda x: RevenueEtlTask.get_country_tz_str(x))
+        td["tz"] = df["country"].apply(lambda x: get_country_tz_str(x))
         td["payout"] = df["event_count"] * df["rps"]
         td["payout"] = td["payout"].fillna(0)
         td["sales_amount"] = td["sales_amount"].fillna(0)
@@ -224,11 +239,11 @@ def main(args: Namespace):
         config_name = "debug"
     if args.config:
         config_name = args.config
-    configs = base.get_configs("revenue", config_name)
+    configs = utils.config.get_configs("revenue", config_name)
     task = RevenueEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 
 
 if __name__ == "__main__":
-    arg_parser = base.get_arg_parser()
+    arg_parser = utils.config.get_arg_parser()
     main(arg_parser.parse_args())

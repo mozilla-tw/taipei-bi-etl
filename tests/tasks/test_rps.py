@@ -3,7 +3,7 @@ from typing import Dict, Any
 import pytest
 import requests
 from google.cloud.storage import Bucket
-from tasks import base
+import utils.config
 from tests.utils import inject_fixtures
 
 log = logging.getLogger(__name__)
@@ -12,7 +12,10 @@ task = "rps"
 inject_fixtures(
     globals(),
     task,
-    {"prd": base.get_configs(task, ""), "dbg": base.get_configs(task, "")},
+    {
+        "prd": utils.config.get_configs(task, ""),
+        "dbg": utils.config.get_configs(task, ""),
+    },
 )
 
 
