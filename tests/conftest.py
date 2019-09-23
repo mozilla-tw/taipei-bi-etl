@@ -11,6 +11,7 @@ from pandas import DataFrame
 import utils.file
 
 from .mockbigquery import MockBigqueryClient
+from .mockgcs import MockStorageClient
 from .mockio import MockIO, MockReadWrite
 
 log = logging.getLogger(__name__)
@@ -146,40 +147,4 @@ def mock_bigquery(monkeypatch):
 @pytest.fixture
 def mock_gcs(monkeypatch):
     """Mock GCS client object."""
-    # defining mock objects
-    class MockBlob:
-        def get_name(self):
-            log.warning("mock_blob.name")
-            return "test blob name"
-
-        def upload_from_filename(self, filename, **kwargs):
-            log.warning("mock_blob.upload_from_filename(%s)" % filename)
-
-        def download_to_filename(self, filename, **kwargs):
-            log.warning("mock_blob.download_to_filename(%s)" % filename)
-
-        name = property(get_name)
-
-    class MockBucket:
-        def blob(self, blob_name, **kwargs):
-            log.warning("mock_bucket.bucket(%s)" % blob_name)
-            return MockBlob()
-
-    class MockGCS:
-        def bucket(self, bucket_name, **kwargs):
-            log.warning("mock_gcs.bucket(%s)" % bucket_name)
-            return MockBucket()
-
-        def list_blobs(self, bucket_name, **kwargs):
-            log.warning("mock_gcs.list_blobs(%s)" % bucket_name)
-            return [MockBlob(), MockBlob(), MockBlob()]
-
-    mock_gcs_client = MockGCS()
-
-    def mock_client(**kwargs):
-        log.warning("mock_gcs_client")
-        return mock_gcs_client
-
-    monkeypatch.setattr(storage, "Client", mock_client)
-
-    return mock_gcs_client
+    monkeypatch.setattr(storage, "Client", MockStorageClient)
