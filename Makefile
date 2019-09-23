@@ -48,7 +48,7 @@ lint:
 test:
 	py.test --doctest-modules
 
-test-doctest
+test-doctest:
 	pytest --doctest-modules -m "not mocktest and not envtest and not unittest and not intgtest"
 
 test-mark:
