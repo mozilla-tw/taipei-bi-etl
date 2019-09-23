@@ -17,7 +17,13 @@ from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
 import logging
 from utils.config import DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT, INJECTED_MAPPINGS
-from utils.file import get_path_format, get_file_ext, get_path_prefix
+from utils.file import (
+    get_path_format,
+    get_file_ext,
+    get_path_prefix,
+    read_string,
+    write_string,
+)
 from utils.mapping import map_apply
 from utils.marshalling import lookback_dates, json_extract, convert_df, convert_format
 from utils.query import build_query
@@ -319,11 +325,10 @@ class EtlTask:
         if "iterator" in config:
             extracted = None if "iterator" not in config else dict()
             for fpath in fpaths:
-                with open(fpath, "r") as f:
-                    raw = f.read()
-                    it = get_file_ext(fpath)
-                    self.raw[it] = raw
-                    extracted[it] = convert_df(raw, config)
+                raw = read_string(fpath)
+                it = get_file_ext(fpath)
+                self.raw[it] = raw
+                extracted[it] = convert_df(raw, config)
             log.info(
                 "%s-%s-%s/%s x %d iterators extracted from file system"
                 % (
@@ -337,14 +342,13 @@ class EtlTask:
         else:
             extracted = None
             for fpath in fpaths:
-                with open(fpath, "r") as f:
-                    raw = f.read()
-                    if extracted is None:
-                        self.raw[source] = [raw]
-                        extracted = convert_df(raw, config)
-                    else:
-                        self.raw[source] += [raw]
-                        extracted = extracted.append(convert_df(raw, config))
+                raw = read_string(fpath)
+                if extracted is None:
+                    self.raw[source] = [raw]
+                    extracted = convert_df(raw, config)
+                else:
+                    self.raw[source] += [raw]
+                    extracted = extracted.append(convert_df(raw, config))
             extracted = extracted.reset_index(drop=True)
             log.info(
                 "%s-%s-%s/%s x %d pages extracted from file system"
@@ -743,8 +747,7 @@ class EtlTask:
                     fpath = self.get_or_create_filepath(
                         source, config, stage, "fs", i + 1
                     )
-                    with open(fpath, "w") as f:
-                        f.write(r)
+                    write_string(fpath, r)
                 log.info(
                     "%s-%s-%s/%s x %d pages loaded to file system."
                     % (stage, self.task, source, self.current_date.date(), len(raw))
@@ -752,19 +755,17 @@ class EtlTask:
             elif isinstance(raw, dict):
                 for i, r in raw.items():
                     fpath = self.get_or_create_filepath(source, config, stage, "fs", i)
-                    with open(fpath, "w") as f:
-                        f.write(r)
+                    write_string(fpath, r)
                 log.info(
                     "%s-%s-%s/%s x %d pages loaded to file system."
                     % (stage, self.task, source, self.current_date.date(), len(raw))
                 )
             else:
-                with open(fpath, "w") as f:
-                    f.write(raw)
-                    log.info(
-                        "%s-%s-%s/%s x 1 page loaded to file system."
-                        % (stage, self.task, source, self.current_date.date())
-                    )
+                write_string(fpath, raw)
+                log.info(
+                    "%s-%s-%s/%s x 1 page loaded to file system."
+                    % (stage, self.task, source, self.current_date.date())
+                )
         else:
             df = self.transformed[source]
             if "date_field" in self.destinations["fs"]:
@@ -810,9 +811,8 @@ class EtlTask:
         """
         date = self.current_date if date is None else date
         fpath = self.get_or_create_filepath(source, config, stage, "fs", None, date)
-        with open(fpath, "w") as f:
-            output = convert_format(self.destinations["fs"]["file_format"], df)
-            f.write(output)
+        output = convert_format(self.destinations["fs"]["file_format"], df)
+        write_string(fpath, output)
 
     def load_to_gcs(self, source: str, config: Dict[str, Any], stage: str = "raw"):
         """Load data into Google Cloud Storage based on destination settings.

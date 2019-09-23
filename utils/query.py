@@ -1,6 +1,8 @@
 """Query utilities."""
 from typing import Dict, Any
 
+from utils.file import read_string
+
 
 def build_query(config: Dict[str, Any], start_date: str, end_date: str) -> str:
     """Build query based on configs and args.
@@ -14,19 +16,16 @@ def build_query(config: Dict[str, Any], start_date: str, end_date: str) -> str:
     query = ""
     if "udf" in config:
         for udf in config["udf"]:
-            with open("udf/{}.sql".format(udf)) as f:
-                query += f.read()
+            query += read_string("udf/{}.sql".format(udf))
     if "udf_js" in config:
         for udf_js in config["udf_js"]:
-            with open("udf_js/{}.sql".format(udf_js)) as f:
-                query += f.read()
+            query += read_string("udf_js/{}.sql".format(udf_js))
     if "query" in config:
-        with open("sql/{}.sql".format(config["query"])) as f:
-            query += f.read().format(
-                project=config["project"],
-                dataset=config["dataset"],
-                table=config["table"],
-                start_date=start_date,
-                end_date=end_date,
-            )
+        query += read_string("sql/{}.sql".format(config["query"])).format(
+            project=config["project"],
+            dataset=config["dataset"],
+            table=config["table"],
+            start_date=start_date,
+            end_date=end_date,
+        )
     return query
