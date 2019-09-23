@@ -6,6 +6,8 @@ import pytest
 import requests
 from google.cloud import bigquery, storage
 
+import utils.file
+
 log = logging.getLogger(__name__)
 
 
@@ -29,13 +31,27 @@ def test_mock_io(mock_io):
 
 
 @pytest.mark.mocktest
+def test_mock_readwrite(mock_readwrite):
+    """Testing mock_readwrite fixture."""
+    filename1 = "test1.txt"
+    filename2 = "test2.txt"
+    STR1 = "test1"
+    STR2 = "test2"
+    utils.file.write_string(filename1, STR1)
+    utils.file.write_string(filename2, STR2)
+    data1 = utils.file.read_string(filename1)
+    data2 = utils.file.read_string(filename2)
+    assert data1 == STR1
+    assert data2 == STR2
+
+
+@pytest.mark.mocktest
 def test_mock_requests(mock_requests):
     """Testing mock_requests fixture."""
     CONTENT = "test"
     URL = "http://test/"
     mock_requests.setContent(URL, CONTENT)
     r = requests.get(URL)
-    log.warning(r.text)
     assert CONTENT == r.text
 
 
@@ -47,7 +63,7 @@ def test_mock_pdbq(mock_pdbq):
     EXPECTED = pd.DataFrame(dict(source=tup[0], country=tup[1], os=tup[2]))
     mock_pdbq.setQueryResult(QUERY, EXPECTED)
     df = pandas_gbq.read_gbq(QUERY)
-    log.warning(df)
+    log.debug(df)
     assert isinstance(df, pd.DataFrame)
     assert df.equals(EXPECTED)
 
@@ -65,9 +81,9 @@ def test_mock_gcs(mock_gcs):
     gcs = storage.Client()
     bucket = gcs.bucket("test bucket")
     blob = bucket.blob("test blob")
-    log.warning(blob.name)
+    log.debug(blob.name)
     blob.upload_from_filename("test file")
     blob.download_to_filename("test file")
     blobs = gcs.list_blobs("test bucket")
     for b in blobs:
-        log.warning(b.name)
+        log.debug(b.name)
