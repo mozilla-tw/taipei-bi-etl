@@ -15,7 +15,7 @@ import numpy as np
 from typing import List, Tuple, Union, Dict, Any
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
-import logging
+from utils.cache import check_extract_cache
 from utils.config import DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT, INJECTED_MAPPINGS
 from utils.file import (
     get_path_format,
@@ -27,6 +27,7 @@ from utils.file import (
 from utils.mapping import map_apply
 from utils.marshalling import lookback_dates, json_extract, convert_df, convert_format
 from utils.query import build_query
+import logging
 
 log = logging.getLogger(__name__)
 
@@ -362,6 +363,7 @@ class EtlTask:
             )
         return extracted
 
+    @check_extract_cache
     def extract_via_gcs(
         self,
         source: str,
@@ -384,12 +386,10 @@ class EtlTask:
         :return: the extracted `DataFrame`
         """
         if config["type"] == "gcs":
-            # get cached file if already exists
-            if self.is_cached(source, config, "staging"):
-                return self.extract_via_fs(source, config, stage, date)
             bucket = config["bucket"]
             prefix = self.get_filepath(source, config, stage, "gcs")
         else:
+            # currently used to extract cached API data from GCS for validation
             bucket = self.destinations["gcs"]["bucket"]
             prefix = self.get_filepath(source, config, stage, "gcs", "*", date)
             prefix = get_path_prefix(prefix)
@@ -426,6 +426,7 @@ class EtlTask:
         else:
             return DataFrame()
 
+    @check_extract_cache
     def extract_via_api(
         self,
         source: str,
@@ -534,53 +535,14 @@ class EtlTask:
             )
             return convert_df(raw, config)
 
-    def extract_via_api_or_cache(
+    @check_extract_cache
+    def extract_via_bq(
         self,
         source: str,
         config: Dict[str, Any],
         stage: str = "raw",
         date: datetime.datetime = None,
-    ) -> Tuple[DataFrame, DataFrame]:
-        """Extract data from API and convert into DataFrame.
-
-        The logic is based on task config, see `configs/*.py`
-
-        :rtype: tuple(DataFrame, DataFrame)
-        :param source: name of the data source to be extracted,
-            specified in task config, see `configs/*.py`
-        :param config: config of the data source to be extracted,
-            specified in task config, see `configs/*.py`
-        :param stage: the stage of the loaded data, could be raw/staging/production.
-        :param date: the date part of the data file name,
-            will use `self.current_date` if not specified
-        :return: the extracted `DataFrame` and another base DataFrame for validation
-        """
-        # use file cache to prevent calling partner API too many times
-        if "cache_file" in config and config["cache_file"]:
-            if not self.is_cached(source, config):
-                extracted = self.extract_via_api(source, config, stage, date)
-                self.load_to_fs(source, config)
-                if self.args.dest != "fs":
-                    self.load_to_gcs(source, config)
-            else:
-                extracted = self.extract_via_fs(source, config)
-        else:
-            extracted = self.extract_via_api(source, config, stage, date)
-            if (
-                self.args.dest != "fs"
-                and "force_load_cache" in config
-                and config["force_load_cache"]
-            ):
-                self.load_to_gcs(source, config)
-        # Extract data from previous date for validation
-        yesterday = lookback_dates(self.current_date, 1)
-        if self.args.dest != "fs":
-            extracted_base = self.extract_via_gcs(source, config, "raw", yesterday)
-        else:
-            extracted_base = self.extract_via_fs(source, config, "raw", yesterday)
-        return extracted, extracted_base
-
-    def extract_via_bq(self, source: str, config: Dict[str, Any]) -> DataFrame:
+    ) -> DataFrame:
         """Extract data from Google BigQuery and convert into DataFrame.
 
         The logic is based on task config, see `configs/*.py`
@@ -597,37 +559,17 @@ class EtlTask:
             self.last_month.strftime(config["date_format"]),
             self.current_date.strftime(config["date_format"]),
         )
-        if "cache_file" in config and config["cache_file"]:
-            if self.is_cached(source, config):
-                return self.extract_via_fs(source, config)
-            else:
-                df = pdbq.read_gbq(query)
-                self.raw[source] = convert_format(
-                    self.destinations["fs"]["file_format"],
-                    df,
-                    None if "date_fields" not in config else config["date_fields"],
-                )
-                self.load_to_fs(source, config)
-                if self.args.dest != "fs":
-                    self.load_to_gcs(source, config)
-                log.info(
-                    "%s-%s-%s/%s w/t %d records extracted from BigQuery"
-                    % (
-                        "raw",
-                        self.task,
-                        source,
-                        self.current_date.date(),
-                        len(df.index),
-                    )
-                )
-                return df
-        else:
-            df = pdbq.read_gbq(query)
-            log.info(
-                "%s-%s-%s/%s w/t %d records extracted from BigQuery"
-                % ("raw", self.task, source, self.current_date.date(), len(df.index))
-            )
-            return df
+        df = pdbq.read_gbq(query)
+        self.raw[source] = convert_format(
+            self.destinations["fs"]["file_format"],
+            df,
+            None if "date_fields" not in config else config["date_fields"],
+        )
+        log.info(
+            "%s-%s-%s/%s w/t %d records extracted from BigQuery"
+            % ("raw", self.task, source, self.current_date.date(), len(df.index))
+        )
+        return df
 
     @staticmethod
     def extract_via_const(source: str, config: Dict[str, Any]) -> DataFrame:
@@ -657,10 +599,7 @@ class EtlTask:
             if not self.args.source or source in self.args.source.split(","):
                 config = self.sources[source]
                 if self.sources[source]["type"] == "api":
-                    (
-                        self.extracted[source],
-                        self.extracted_base[source],
-                    ) = self.extract_via_api_or_cache(source, config)
+                    self.extracted[source] = self.extract_via_api(source, config)
                 elif self.sources[source]["type"] == "gcs":
                     self.extracted[source] = self.extract_via_gcs(source, config)
                 elif self.sources[source]["type"] == "bq":

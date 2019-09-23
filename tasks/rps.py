@@ -45,9 +45,9 @@ class RpsEtlTask(base.EtlTask):
         source = "fb_index"
         if not self.args.source or source in self.args.source.split(","):
             config = self.sources[source]
-            self.extracted[source + "_latest"] = self.extract_via_api_or_cache(
+            self.extracted[source + "_latest"] = self.extract_via_api(
                 source, config, "raw", lookfoward_dates(self.current_date, self.period)
-            )[0]
+            )
 
     def transform_google_search_rps(
         self,

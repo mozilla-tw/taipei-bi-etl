@@ -10,7 +10,7 @@ from tasks import base
 import numpy as np
 import logging
 
-from utils.marshalling import get_country_tz_str
+from utils.marshalling import get_country_tz_str, lookback_dates
 
 log = logging.getLogger(__name__)
 
@@ -39,13 +39,32 @@ class RevenueEtlTask(base.EtlTask):
         """
         super().__init__(args, sources, schema, destinations, "staging", "revenue")
 
-    def transform_bukalapak(self, bukalapak: DataFrame, source: str) -> DataFrame:
+    def extract(self):
+        """Inherit from super class and extract latest fb_index for later use."""
+        super().extract()
+        source = "bukalapak"
+        if not self.args.source or source in self.args.source.split(","):
+            config = self.sources[source]
+            yesterday = lookback_dates(self.current_date, 1)
+            if self.args.dest != "fs":
+                self.extracted[source + "_base"] = self.extract_via_gcs(
+                    source, config, "raw", yesterday
+                )
+            else:
+                self.extracted[source + "_base"] = self.extract_via_fs(
+                    source, config, "raw", yesterday
+                )
+
+    def transform_bukalapak(
+        self, bukalapak: DataFrame, bukalapak_base: DataFrame, source: str
+    ) -> DataFrame:
         """Transform data from bukalapak for revenue reference.
 
         Input: raw-revenue-bukalapak
         Output: staging-revenue-bukalapak
 
         :param bukalapak: extracted source DataFrame that contains transaction data
+        :param bukalapak_base: extracted base DataFrame from yesterday for validation
         :rtype: DataFrame
         :param source: name of the data source to be extracted,
             specified in task config, see `configs/*.py`
@@ -150,9 +169,9 @@ class RevenueEtlTask(base.EtlTask):
 
         # extract new & old data
         new_df = data_prep(bukalapak)
-        last_df = bukalapak
+        last_df = bukalapak_base
         if not last_df.empty:
-            last_df = data_prep(bukalapak)
+            last_df = data_prep(bukalapak_base)
 
             # transform here ------
         # do check
