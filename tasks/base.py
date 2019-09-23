@@ -697,7 +697,13 @@ class EtlTask:
                         if transform_arg == "self":
                             continue
                         if transform_arg in avail_args:
-                            transform_kwargs[transform_arg] = avail_args[transform_arg]
+                            # make DataFrame copies to avoid changing the extracted one
+                            arg = (
+                                avail_args[transform_arg].copy()
+                                if isinstance(avail_args[transform_arg], DataFrame)
+                                else avail_args[transform_arg]
+                            )
+                            transform_kwargs[transform_arg] = arg
                         else:
                             assert False, "Invalid transform arg %s" % transform_arg
                     self.transformed[source] = transform_method(**transform_kwargs)
