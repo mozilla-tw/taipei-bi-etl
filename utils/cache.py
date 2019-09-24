@@ -1,7 +1,7 @@
 """Cache utilities."""
 import datetime
 import functools
-from typing import Dict, Any, Tuple, Union
+from typing import Dict, Any
 from pandas import DataFrame
 import logging
 
@@ -22,7 +22,7 @@ def check_extract_cache(extract_func):
         config: Dict[str, Any],
         stage: str = "raw",
         date: datetime.datetime = None,
-    ) -> Union[DataFrame, Tuple[DataFrame, DataFrame]]:
+    ) -> DataFrame:
         if "cache_file" in config and config["cache_file"]:
             if not self.is_cached(source, config):
                 extracted = extract_func(self, source, config, stage, date)
