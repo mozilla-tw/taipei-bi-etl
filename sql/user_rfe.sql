@@ -1,11 +1,7 @@
 
 WITH events AS (
     SELECT 
-      FARM_FINGERPRINT(CONCAT(
-            CAST(DATE(submission_timestamp) as STRING), 
-            metadata.geo.country,
-            CAST(ROW_NUMBER() OVER(PARTITION BY DATE(submission_timestamp), metadata.geo.country) as STRING)
-        )) as id,
+      GENERATE_UUID() as id,
       *
     FROM
       `moz-fx-data-shared-prod.telemetry.focus_event`,
@@ -25,7 +21,7 @@ SELECT
        settings.key as settings_key, settings.value as settings_value
 FROM
   events
-left join 
+LEFT JOIN
   UNNEST(event_extra) as extra,
   UNNEST(settings) as settings
-limit 10
+LIMIT 1000
