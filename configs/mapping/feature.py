@@ -1,4 +1,6 @@
 """Filter events and label with features."""
+from typing import List, Union
+
 from pandas import Series
 
 
@@ -11,14 +13,14 @@ class FirefoxLiteApp:
         """Browser Vertical."""
 
         @staticmethod
-        def add_tab_feature(e: Series):
+        def add_tab_feature(e: Series) -> Union[List[str], bool]:
             if (e['event_method'] == 'add' and
                e['event_object'] == 'tab'):
                 return ['feature: add_tab']
             return False
 
         @staticmethod
-        def change_tab_feature(e: Series):
+        def change_tab_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'change' and
                 e['event_object'] == 'tab'
@@ -27,7 +29,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def close_all_tab_feature(e: Series):
+        def close_all_tab_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'close_all' and
@@ -37,7 +39,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def remove_tab_feature(e: Series):
+        def remove_tab_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] in ['remove', 'swipe'] and
                 e['event_object'] == 'tab' and
@@ -47,7 +49,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def change_block_image_feature(e: Series):
+        def change_block_image_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'block_image'
             ):
@@ -55,7 +57,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def bookmark_feature(e: Series):
+        def bookmark_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] != 'share' and
                 e['event_value'] == 'bookmark'
@@ -64,7 +66,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def visit_history_feature(e: Series):
+        def visit_history_feature(e: Series) -> Union[List[str], bool]:
             if ((
                 e['event_method'] in ['click', 'show'] and
                 e['event_value'] == 'history'
@@ -77,7 +79,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def clean_history_feature(e: Series):
+        def clean_history_feature(e: Series) -> Union[List[str], bool]:
             if ((
                     # clear all
                     e['event_method'] == 'clear' and
@@ -93,7 +95,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def clear_cache_feature(e: Series):
+        def clear_cache_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'clear_cache'
             ):
@@ -101,7 +103,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def change_default_browser_feature(e: Series):
+        def change_default_browser_feature(e: Series) -> Union[List[str], bool]:
             if ((
                 e['event_method'] in ['change', 'click'] and
                 e['event_object'] == 'default_browser'
@@ -115,7 +117,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def settings_change_download_location_feature(e: Series):
+        def settings_change_download_location_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] in ['click', 'change'] and
                 e['event_value'] is not None and
@@ -125,7 +127,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def settings_clear_browsing_data_feature(e: Series):
+        def settings_clear_browsing_data_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] is not None and
                 'clear_browsing_data' in e['event_value']
@@ -134,7 +136,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def settings_change_locale_feature(e: Series):
+        def settings_change_locale_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'pref_locale'
             ):
@@ -142,7 +144,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def settings_change_collection_telemetry_feature(e: Series):
+        def settings_change_collection_telemetry_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_object'] == 'setting' and
                 e['event_value'] == 'telemetry'
@@ -151,7 +153,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def visit_settings_feature(e: Series):
+        def visit_settings_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'menu' and
@@ -161,7 +163,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def visit_download_feature(e: Series):
+        def visit_download_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'download' or
                 (
@@ -174,7 +176,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def clean_download_file_feature(e: Series):
+        def clean_download_file_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] in ['remove', 'delete'] and
                 e['event_object'] == 'panel' and
@@ -184,7 +186,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def exit_feature(e: Series):
+        def exit_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'menu' and
@@ -194,7 +196,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def give_feedback_feature(e: Series):
+        def give_feedback_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 (
@@ -208,7 +210,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def find_in_page_feature(e: Series):
+        def find_in_page_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_object'] == 'find_in_page' or
                 e['event_value'] == 'find_in_page'
@@ -217,7 +219,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def forward_page_feature(e: Series):
+        def forward_page_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'forward'
             ):
@@ -225,7 +227,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def fullscreen_feature(e: Series):
+        def fullscreen_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'fullscreen'
             ):
@@ -233,7 +235,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def landscape_mode_feature(e: Series):
+        def landscape_mode_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_object'] == 'landscape_mode'
             ):
@@ -241,7 +243,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def visit_topsite_feature(e: Series):
+        def visit_topsite_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'open' and
                 e['event_object'] == 'home' and
@@ -251,7 +253,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def visit_topsite_bukalapak_feature(e: Series):
+        def visit_topsite_bukalapak_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'open' and
                 e['event_object'] == 'home' and
@@ -265,7 +267,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def remove_topsite_feature(e: Series):
+        def remove_topsite_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'remove' and
                 e['event_object'] == 'home' and
@@ -275,7 +277,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def change_night_mode_feature(e: Series):
+        def change_night_mode_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'change' and
                 e['event_value'] is not None and
@@ -285,7 +287,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def pin_shortcut_feature(e: Series):
+        def pin_shortcut_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'pin_shortcut'
             ):
@@ -293,7 +295,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def private_mode_feature(e: Series):
+        def private_mode_feature(e: Series) -> Union[List[str], bool]:
             if ((
                 e['event_method'] != 'show' and
                 (
@@ -311,7 +313,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def reload_page_feature(e: Series):
+        def reload_page_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'reload_page'
             ):
@@ -319,7 +321,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def screenshot_feature(e: Series):
+        def screenshot_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] != 'share' and
                 (
@@ -331,7 +333,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def tab_swipe_feature(e: Series):
+        def tab_swipe_feature(e: Series) -> Union[List[str], bool]:
             if (
                 # enter & leave
                 (
@@ -358,7 +360,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def tab_swipe_feed_feature(e: Series):
+        def tab_swipe_feed_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'end' and
                 e['event_object'] == 'tab_swipe' and
@@ -368,7 +370,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def tab_swipe_source_feature(e: Series):
+        def tab_swipe_source_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'end' and
                 e['event_object'] == 'tab_swipe' and
@@ -378,7 +380,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def tab_swipe_partner_feature(e: Series):
+        def tab_swipe_partner_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'end' and
                 e['event_object'] == 'tab_swipe' and
@@ -389,7 +391,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def browse_feature(e: Series):
+        def browse_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_object'] == 'browser_contextmenu' or
                 (
@@ -401,7 +403,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def pre_search_feature(e: Series):
+        def pre_search_feature(e: Series) -> Union[List[str], bool]:
             if ((
                 e['event_method'] in ['show', 'cancel', 'clear'] and
                 e['event_object'] == 'search_bar'
@@ -413,7 +415,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def search_feature(e: Series):
+        def search_feature(e: Series) -> Union[List[str], bool]:
             if ((
                 e['event_method'] in ['type_query', 'select_query'] and
                 e['event_object'] == 'search_bar'
@@ -429,7 +431,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def search_keyword_google_feature(e: Series):
+        def search_keyword_google_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] in ['type_query', 'select_query'] and
                 e['event_object'] == 'search_bar' and
@@ -445,7 +447,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def search_keyword_feature(e: Series):
+        def search_keyword_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] in ['type_query', 'select_query'] and
                 e['event_object'] == 'search_bar'
@@ -454,7 +456,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def search_quicksearch_feature(e: Series):
+        def search_quicksearch_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'quicksearch'
@@ -463,7 +465,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def search_partner_quicksearch_feature(e: Series):
+        def search_partner_quicksearch_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'quicksearch' and
@@ -476,7 +478,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def search_url_feature(e: Series):
+        def search_url_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'open' and
                 e['event_object'] == 'search_bar' and
@@ -486,7 +488,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def settings_change_search_engine_feature(e: Series):
+        def settings_change_search_engine_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] in ['change', 'click'] and
                 e['event_object'] == 'setting' and
@@ -496,7 +498,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def share_feature(e: Series):
+        def share_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'share' or
                 (
@@ -509,7 +511,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def themetoy_feature(e: Series):
+        def themetoy_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_object'] == 'themetoy'
             ):
@@ -517,7 +519,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def change_turbo_mode_feature(e: Series):
+        def change_turbo_mode_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'change' and
                 e['event_value'] is not None and
@@ -527,7 +529,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def vpn_feature(e: Series):
+        def vpn_feature(e: Series) -> Union[List[str], bool]:
             if ((
                 e['event_method'] == 'click' and
                 e['event_object'] is not None and
@@ -541,7 +543,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def settings_learn_more_feature(e: Series):
+        def settings_learn_more_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'setting' and
@@ -551,7 +553,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def launch_app_feature(e: Series):
+        def launch_app_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'launch' and
                 e['event_object'] == 'app'
@@ -560,7 +562,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def launch_app_from_external_feature(e: Series):
+        def launch_app_from_external_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'launch' and
                 e['event_object'] == 'app' and
@@ -570,7 +572,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def launch_app_from_launcher_feature(e: Series):
+        def launch_app_from_launcher_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'launch' and
                 e['event_object'] == 'app' and
@@ -580,7 +582,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def launch_app_from_shortcut_feature(e: Series):
+        def launch_app_from_shortcut_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'launch' and
                 e['event_object'] == 'app' and
@@ -593,7 +595,7 @@ class FirefoxLiteApp:
         """Shopping Vertical."""
 
         @staticmethod
-        def lifefeed_e_ticket_feature(e: Series):
+        def lifefeed_e_ticket_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'lifefeed_ec'
             ):
@@ -602,7 +604,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_e_ticket_click_tags_feature(e: Series):
+        def lifefeed_e_ticket_click_tags_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_value'] == 'lifefeed_ec' and
@@ -613,7 +615,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_e_ticket_click_source_feature(e: Series):
+        def lifefeed_e_ticket_click_source_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_value'] == 'lifefeed_ec' and
@@ -625,7 +627,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_e_ticket_click_partner_feature(e: Series):
+        def lifefeed_e_ticket_click_partner_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_value'] == 'lifefeed_ec' and
@@ -636,7 +638,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_coupon_feature(e: Series):
+        def lifefeed_coupon_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'lifefeed_promo'
             ):
@@ -645,7 +647,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_coupon_click_list_feature(e: Series):
+        def lifefeed_coupon_click_list_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_value'] == 'lifefeed_promo' and
@@ -656,7 +658,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_coupon_click_banner_feature(e: Series):
+        def lifefeed_coupon_click_banner_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_value'] == 'lifefeed_promo' and
@@ -667,7 +669,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_coupon_click_source_feature(e: Series):
+        def lifefeed_coupon_click_source_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_value'] == 'lifefeed_promo' and
@@ -678,7 +680,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_coupon_click_tags_feature(e: Series):
+        def lifefeed_coupon_click_tags_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_value'] == 'lifefeed_promo' and
@@ -688,7 +690,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_coupon_click_partner_feature(e: Series):
+        def lifefeed_coupon_click_partner_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_value'] == 'lifefeed_promo' and
@@ -701,7 +703,7 @@ class FirefoxLiteApp:
     class LifestyleVertical:
         """Lifestyle Vertical."""
         @staticmethod
-        def lifefeed_news_feature(e: Series):
+        def lifefeed_news_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_value'] == 'lifefeed_news'
             ):
@@ -709,7 +711,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_news_category_feature(e: Series):
+        def lifefeed_news_category_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'open' and
                 e['event_value'] == 'lifefeed_news' and
@@ -719,7 +721,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_news_click_feed_feature(e: Series):
+        def lifefeed_news_click_feed_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'panel' and
@@ -731,7 +733,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_news_click_source_feature(e: Series):
+        def lifefeed_news_click_source_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'panel' and
@@ -743,7 +745,7 @@ class FirefoxLiteApp:
             return False
 
         @staticmethod
-        def lifefeed_news_click_partner_feature(e: Series):
+        def lifefeed_news_click_partner_feature(e: Series) -> Union[List[str], bool]:
             if (
                 e['event_method'] == 'click' and
                 e['event_object'] == 'panel' and

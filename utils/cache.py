@@ -1,14 +1,14 @@
 """Cache utilities."""
 import datetime
 import functools
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 from pandas import DataFrame
 import logging
 
 log = logging.getLogger(__name__)
 
 
-def check_extract_cache(extract_func):
+def check_extract_cache(extract_func: Callable):
     """Return cached extracted results when cache hit.
 
     :param extract_func: the extract function to decorate

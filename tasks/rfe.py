@@ -34,22 +34,20 @@ class RfeEtlTask(base.EtlTask):
         """
         super().__init__(args, sources, schema, destinations, "staging", "rfe")
 
-    def transform_rfe(self, source, config):
+    def transform_rfe(self, rfe):
         """Transform RFE data."""
         # trasnform here
-        df = self.extracted[source]
-        print(df)
-        return df
+        print(rfe)
+        return rfe
 
-    def transform_test(self, source, config):
+    def transform_test(self, test):
         """Transform test data."""
         # trasnform here
-        df = self.extracted[source]
-        print(df)
-        return df
+        print(test)
+        return test
 
 
-def main(args):
+def main(args: Namespace):
     """Take args and pass them to RfeEtlTask.
 
     :param args: args passed from command line, see `base.get_arg_parser()`
