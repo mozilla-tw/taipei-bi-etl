@@ -10,32 +10,47 @@ class BqTask:
     def __init__(self):
         pass
 
-    def run(self):
+    def create_schema(self):
+        pass
+
+    def daily_run(self):
         pass
 
 
+# https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json
 class BqGcsTask(BqTask):
     def __init__(self, config: Dict):
         super().__init__()
 
-    def run(self):
-        super().run()
+    def create_schema(self):
+        pass
+
+    def daily_run(self):
+        super().daily_run()
 
 
+# https://cloud.google.com/bigquery/docs/tables
 class BqTableTask(BqTask):
     def __init__(self, config: Dict):
         super().__init__()
 
-    def run(self):
-        super().run()
+    def create_schema(self):
+        pass
+
+    def daily_run(self):
+        super().daily_run()
 
 
+# https://cloud.google.com/bigquery/docs/views
 class BqViewTask(BqTask):
     def __init__(self, config: Dict):
         super().__init__()
 
-    def run(self):
-        super().run()
+    def create_schema(self):
+        pass
+
+    def daily_run(self):
+        assert False, "daily_run shouldn't be called for BqViewTask"
 
 
 def get_task_by_config(config: Dict):
