@@ -5,7 +5,7 @@ It will run task specified in args, or if not specified,
 run all tasks in the correct sequence.
 """
 import utils.config
-from tasks import rps, revenue  # , rfe
+from tasks import rps, revenue, bigquery  # , rfe
 import logging as log
 
 
@@ -20,8 +20,10 @@ def main():
             log.basicConfig(level=log.DEBUG)
     task = None
     if args.task:
-        if args.task == "rps":
-            task = rps
+        if args.task == "bigquery":
+            task = bigquery
+        elif args.task == "rps":
+                task = rps
         elif args.task == "revenue":
             task = revenue
         # elif args.task == "rfe":
@@ -32,6 +34,7 @@ def main():
         arg_parser = utils.config.get_arg_parser(**task.DEFAULTS)
         task.main(arg_parser.parse_args())
     else:  # Run all tasks in sequence
+        bigquery.main(utils.config.get_arg_parser(**bigquery.DEFAULTS).parse_args())
         rps.main(utils.config.get_arg_parser(**rps.DEFAULTS).parse_args())
         revenue.main(utils.config.get_arg_parser(**revenue.DEFAULTS).parse_args())
 

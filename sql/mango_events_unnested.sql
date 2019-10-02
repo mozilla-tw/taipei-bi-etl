@@ -3,7 +3,7 @@ WITH
   SELECT
     * EXCEPT(additional_properties)
   FROM
-    `{project}.{dataset}.{table}`,
+    `{project}.{dataset}.{src}`,
     UNNEST(`{project}.{dataset}`.udf_js_json_extract_events(JSON_EXTRACT(additional_properties,
           '$.events'))) AS event
   WHERE
