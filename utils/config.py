@@ -45,10 +45,16 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
     """
     parser = ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--schema",
-        default=False if "schema" not in kwargs else kwargs["schema"],
+        "--createschema",
+        default=False if "createschema" not in kwargs else kwargs["createschema"],
         action="store_true",
         help="Create schema before run tasks.",
+    )
+    parser.add_argument(
+        "--dropschema",
+        default=False if "dropschema" not in kwargs else kwargs["dropschema"],
+        action="store_true",
+        help="Drop schema before run tasks.",
     )
     parser.add_argument(
         "--debug",

@@ -13,6 +13,9 @@ class BqTask:
     def create_schema(self):
         pass
 
+    def drop_schema(self):
+        pass
+
     def daily_run(self):
         pass
 
@@ -23,6 +26,9 @@ class BqGcsTask(BqTask):
         super().__init__()
 
     def create_schema(self):
+        pass
+
+    def drop_schema(self):
         pass
 
     def daily_run(self):
@@ -37,6 +43,9 @@ class BqTableTask(BqTask):
     def create_schema(self):
         pass
 
+    def drop_schema(self):
+        pass
+
     def daily_run(self):
         super().daily_run()
 
@@ -47,6 +56,9 @@ class BqViewTask(BqTask):
         super().__init__()
 
     def create_schema(self):
+        pass
+
+    def drop_schema(self):
         pass
 
     def daily_run(self):
@@ -76,7 +88,10 @@ def main(args: Namespace):
     configs = utils.config.get_configs("bigquery", config_name)
     events_task = get_task_by_config(configs.MANGO_EVENTS)
     unnested_events_task = get_task_by_config(configs.MANGO_EVENTS_UNNESTED)
-    if args.schema:
+    if args.dropschema:
+        events_task.drop_schema()
+        unnested_events_task.drop_schema()
+    if args.createschema:
         events_task.create_schema()
         unnested_events_task.create_schema()
     events_task.daily_run()
