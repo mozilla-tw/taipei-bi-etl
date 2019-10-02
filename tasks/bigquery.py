@@ -74,8 +74,13 @@ def main(args: Namespace):
     if args.config:
         config_name = args.config
     configs = utils.config.get_configs("bigquery", config_name)
-    get_task_by_config(configs.MANGO_EVENTS).run()
-    get_task_by_config(configs.MANGO_EVENTS_UNNESTED).run()
+    events_task = get_task_by_config(configs.MANGO_EVENTS)
+    unnested_events_task = get_task_by_config(configs.MANGO_EVENTS_UNNESTED)
+    if args.schema:
+        events_task.create_schema()
+        unnested_events_task.create_schema()
+    events_task.daily_run()
+    unnested_events_task.daily_run()
 
 
 if __name__ == "__main__":
