@@ -8,6 +8,12 @@ log = logging.getLogger(__name__)
 
 DEFAULTS = {}
 
+try:
+    import importlib.resources as pkg_resources
+except ImportError:
+    # Try backported to PY<37 `importlib_resources`.
+    import importlib_resources as pkg_resources
+
 
 class BqTask:
     def __init__(self, config: Dict):
@@ -64,8 +70,22 @@ class BqTableTask(BqTask):
     def drop_schema(self):
         pass
 
-    def daily_run(self):
-        pass
+    def daily_run(self, date="2019-09-28"):
+        import sql
+
+        queryString = pkg_resources.read_text(sql, self.config["sql_file"])
+        table_ref = self.client.dataset(self.config["dataset"]).table(
+            self.config["dest"]
+        )
+        job_config = bigquery.QueryJobConfig()
+        job_config.write_disposition = bigquery.job.WriteDisposition.WRITE_APPEND
+        job_config.destination = table_ref
+
+        query = self.client.query(
+            queryString.format(src=self.config["src"], start_date=date),
+            job_config=job_config,
+        )
+        query.result()
 
 
 # https://cloud.google.com/bigquery/docs/views
