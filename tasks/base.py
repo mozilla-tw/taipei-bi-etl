@@ -16,7 +16,7 @@ from typing import List, Tuple, Union, Dict, Any
 from pandas_schema import Column, Schema
 from pandas_schema.validation import IsDtypeValidation
 from utils.cache import check_extract_cache
-from utils.config import DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT, INJECTED_MAPPINGS
+from utils.config import DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT
 from utils.file import (
     get_path_format,
     get_file_ext,
@@ -24,7 +24,6 @@ from utils.file import (
     read_string,
     write_string,
 )
-from utils.mapping import map_apply
 from utils.marshalling import lookback_dates, json_extract, convert_df, convert_format
 from utils.query import build_query
 import logging
@@ -608,9 +607,6 @@ class EtlTask:
                     self.extracted[source] = self.extract_via_fs(source, config)
                 elif self.sources[source]["type"] == "const":
                     self.extracted[source] = self.extract_via_const(source, config)
-                if "inject_mapping" in config:
-                    INJECTED_MAPPINGS[config["inject_mapping"]] = self.extracted[source]
-                self.extracted[source] = map_apply(config, self.extracted[source])
 
     def transform(self):
         """Transform extracted data into target format DataFrames.

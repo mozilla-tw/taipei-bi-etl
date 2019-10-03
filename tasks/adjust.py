@@ -1,4 +1,4 @@
-"""RFE task."""
+"""Adjust ETL task."""
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
 from tasks import base
@@ -9,11 +9,13 @@ import numpy as np
 
 from utils.config import get_configs, get_arg_parser
 
-DEFAULTS = {}
+DEFAULTS = {
+    "rm": True,
+}
 
 
-class RfeEtlTask(base.EtlTask):
-    """ETL task to compute RFE from events."""
+class AdjustEtlTask(base.EtlTask):
+    """ETL task to compute Adjust from events."""
 
     def __init__(
         self,
@@ -22,7 +24,7 @@ class RfeEtlTask(base.EtlTask):
         schema: List[Tuple[str, np.generic]],
         destinations: Dict[str, Any],
     ):
-        """Initialize RPS ETL task.
+        """Initialize Adjust ETL task.
 
         :param args: args passed from command line,
         see `get_arg_parser()`
@@ -32,23 +34,17 @@ class RfeEtlTask(base.EtlTask):
         :param destinations: destinations to load data to,
         specified in task config, see `configs/*.py`
         """
-        super().__init__(args, sources, schema, destinations, "staging", "rfe")
+        super().__init__(args, sources, schema, destinations, "staging", "adjust")
 
-    def transform_rfe(self, rfe):
-        """Transform RFE data."""
+    def transform_adjust_trackers(self, adjust_trackers):
+        """Transform Adjust data."""
         # trasnform here
-        print(rfe)
-        return rfe
-
-    def transform_test(self, test):
-        """Transform test data."""
-        # trasnform here
-        print(test)
-        return test
+        print(adjust_trackers)
+        return adjust_trackers
 
 
 def main(args: Namespace):
-    """Take args and pass them to RfeEtlTask.
+    """Take args and pass them to AdjustEtlTask.
 
     :param args: args passed from command line, see `base.get_arg_parser()`
     """
@@ -57,8 +53,8 @@ def main(args: Namespace):
         config_name = "debug"
     if args.config:
         config_name = args.config
-    configs = get_configs("rfe", config_name)
-    task = RfeEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
+    configs = get_configs("adjust", config_name)
+    task = AdjustEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
     task.run()
 
 

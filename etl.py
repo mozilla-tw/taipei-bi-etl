@@ -5,7 +5,7 @@ It will run task specified in args, or if not specified,
 run all tasks in the correct sequence.
 """
 import utils.config
-from tasks import rps, revenue, bigquery  # , rfe
+from tasks import rps, revenue, bigquery, adjust
 import logging as log
 
 
@@ -26,8 +26,8 @@ def main():
                 task = rps
         elif args.task == "revenue":
             task = revenue
-        # elif args.task == "rfe":
-        #     task = rfe
+        elif args.task == "adjust":
+            task = adjust
         else:
             assert False, "Invalid task name %s" % args.task
     if task:
