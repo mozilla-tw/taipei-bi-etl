@@ -39,7 +39,6 @@ class AdjustEtlTask(base.EtlTask):
     def transform_adjust_trackers(self, adjust_trackers):
         """Transform Adjust data."""
         # trasnform here
-        print(adjust_trackers)
         return adjust_trackers
 
 
