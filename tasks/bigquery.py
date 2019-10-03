@@ -36,6 +36,7 @@ class BqGcsTask(BqTask):
 
 
 # https://cloud.google.com/bigquery/docs/tables
+# https://cloud.google.com/bigquery/docs/writing-results
 class BqTableTask(BqTask):
     def __init__(self, config: Dict):
         super().__init__()
