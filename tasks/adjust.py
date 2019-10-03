@@ -2,9 +2,6 @@
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
 from tasks import base
-
-# import pandas as pd
-# import pandasql as ps
 import numpy as np
 
 from utils.config import get_configs, get_arg_parser

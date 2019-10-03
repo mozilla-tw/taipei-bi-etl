@@ -1,12 +1,12 @@
+import logging
 from argparse import Namespace
 from typing import Dict
 import utils.config
 from google.cloud import bigquery
 
+log = logging.getLogger(__name__)
 
 DEFAULTS = {}
-
-DATASET_LOCATION = "US"
 
 
 class BqTask:
@@ -46,13 +46,13 @@ class BqGcsTask(BqTask):
             location=self.config["location"],
             job_config=job_config,
         )
-        print("Starting job {}".format(load_job.job_id))
+        log.info("Starting job {}".format(load_job.job_id))
 
         load_job.result()  # Waits for table load to complete.
-        print("Job finished.")
+        log.info("Job finished.")
 
         destination_table = self.client.get_table(dataset_ref.table(self.config["dest"]))
-        print("Loaded {} rows.".format(destination_table.num_rows))
+        log.info("Loaded {} rows.".format(destination_table.num_rows))
 
 
 # https://cloud.google.com/bigquery/docs/tables
