@@ -18,6 +18,10 @@ class BqTask:
         self.config = config
         self.client = bigquery.Client(config["id"]["project"])
 
+    def is_write_append(self):
+        # default write append=true
+        return "append" not in self.config or self.config["append"]
+
     def create_schema(self):
         udfs = []
         if "udf" in self.config:
@@ -58,7 +62,7 @@ class BqGcsTask(BqTask):
     def daily_run(self):
         dataset_ref = self.client.dataset(self.config["id"]["dataset"])
         job_config = bigquery.LoadJobConfig()
-        job_config.write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE
+        job_config.write_disposition = bigquery.WriteDisposition.WRITE_APPEND if self.is_write_append() else bigquery.WriteDisposition.WRITE_TRUNCATE
         job_config.autodetect = True
         job_config.source_format = bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
         if "partition_field" in self.config:
@@ -102,7 +106,7 @@ class BqTableTask(BqTask):
             self.config["params"]["dest"]
         )
         job_config = bigquery.QueryJobConfig()
-        job_config.write_disposition = self.config["write_disposition"] if "write_disposition" in self.config else bigquery.job.WriteDisposition.WRITE_APPEND
+        job_config.write_disposition = bigquery.WriteDisposition if self.is_write_append() else bigquery.WriteDisposition.WRITE_TRUNCATE
         job_config.destination = table_ref
         if "partition_field" in self.config:
             job_config.time_partitioning = bigquery.TimePartitioning(
