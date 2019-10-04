@@ -11,12 +11,6 @@ log = logging.getLogger(__name__)
 
 DEFAULTS = {}
 
-try:
-    import importlib.resources as pkg_resources
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
-    import importlib_resources as pkg_resources
-
 
 class BqTask:
     def __init__(self, config: Dict, date: datetime.datetime):
@@ -59,7 +53,7 @@ class BqGcsTask(BqTask):
         super().__init__(config, date)
 
     def create_schema(self):
-        pass
+        self.daily_run()
 
     def daily_run(self):
         dataset_ref = self.client.dataset(self.config["dataset"])
@@ -90,21 +84,30 @@ class BqTableTask(BqTask):
     def __init__(self, config: Dict, date: datetime):
         super().__init__(config, date)
 
+    def create_schema(self):
+        # Run a empty query to create schema
+        self.run_query('1970-01-01')
+
     def daily_run(self):
-        queryString = read_string("sql/{}.sql".format(self.config["query"]))
+        self.run_query(self.date)
+
+    def run_query(self, date):
+        qstring = read_string("sql/{}.sql".format(self.config["query"]))
         table_ref = self.client.dataset(self.config["dataset"]).table(
             self.config["dest"]
         )
         job_config = bigquery.QueryJobConfig()
-        job_config.write_disposition = bigquery.job.WriteDisposition.WRITE_APPEND
+        job_config.write_disposition = self.config["write_disposition"] if "write_disposition" in self.config else bigquery.job.WriteDisposition.WRITE_APPEND
         job_config.destination = table_ref
-
+        qparams = {
+            **self.config,
+            'start_date': date,
+        }
         query = self.client.query(
-            queryString.format(src=self.config["src"], start_date=self.date),
+            qstring.format(**qparams),
             job_config=job_config,
         )
         query.result()
-
 
 # https://cloud.google.com/bigquery/docs/views
 class BqViewTask(BqTask):
@@ -113,6 +116,18 @@ class BqViewTask(BqTask):
 
     def create_schema(self):
         super().create_schema()
+        qstring = read_string("sql/{}.sql".format(self.config["query"]))
+        shared_dataset_ref = self.client.dataset(self.config["dataset"])
+        view_ref = shared_dataset_ref.table(self.config["dest"])
+        view = bigquery.Table(view_ref)
+        qparams = {
+            **self.config,
+            'start_date': self.date,
+        }
+        view.view_query = qstring.format(**qparams)
+        view = self.client.create_table(view)  # API request
+
+        print("Successfully created view at {}".format(view.full_table_id))
 
 
 def get_task_by_config(config: Dict, date: datetime.datetime):
@@ -146,10 +161,12 @@ def main(args: Namespace):
         channel_mapping_task.drop_schema()
         user_channels_task.drop_schema()
     if args.createschema:
+        events_task.create_schema()
         unnested_events_task.create_schema()
+        channel_mapping_task.create_schema()
         user_channels_task.create_schema()
     events_task.daily_run()
-    # channel_mapping_task.daily_run()
+    channel_mapping_task.daily_run()
 
 
 if __name__ == "__main__":
