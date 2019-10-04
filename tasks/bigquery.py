@@ -1,8 +1,15 @@
 import logging
 from argparse import Namespace
 from typing import Dict
+
+from google.cloud.bigquery import Routine, RoutineReference, RoutineArgument
+from google.cloud.bigquery_v2.proto.standard_sql_pb2 import StandardSqlDataType
+
 import utils.config
 from google.cloud import bigquery
+
+from utils.file import read_string
+from utils.query import parse_udf
 
 log = logging.getLogger(__name__)
 
@@ -15,10 +22,18 @@ class BqTask:
         self.client = bigquery.Client(config["project"])
 
     def create_schema(self):
-        assert False, "create_schema not implemented."
+        pass
 
     def drop_schema(self):
-        assert False, "drop_schema not implemented."
+        udfs = []
+        if "udf" in self.config:
+            udfs += ["udf_%s" % x for x in self.config["udf"]]
+        if "udf_js" in self.config:
+            udfs += ["udf_js_%s" % x for x in self.config["udf_js"]]
+        for udf in udfs:
+            self.client.delete_routine("%s.%s.%s" % (self.config["project"], self.config["dataset"], udf), not_found_ok=True)
+        self.client.delete_table("%s.%s.%s" % (self.config["project"], self.config["dataset"], self.config["dest"]), not_found_ok=True)
+        log.info("Deleted table '{}'.".format(self.config["dest"]))
 
     def daily_run(self):
         assert False, "daily_run not implemented."
@@ -29,7 +44,7 @@ class BqGcsTask(BqTask):
     def __init__(self, config: Dict):
         super().__init__(config)
 
-    def drop_schema(self):
+    def create_schema(self):
         pass
 
     def daily_run(self):
@@ -61,9 +76,6 @@ class BqTableTask(BqTask):
     def __init__(self, config: Dict):
         super().__init__(config)
 
-    def drop_schema(self):
-        pass
-
     def daily_run(self):
         pass
 
@@ -74,10 +86,7 @@ class BqViewTask(BqTask):
         super().__init__(config)
 
     def create_schema(self):
-        pass
-
-    def drop_schema(self):
-        pass
+        super().create_schema()
 
 
 def get_task_by_config(config: Dict):
