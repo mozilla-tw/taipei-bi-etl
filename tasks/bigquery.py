@@ -2,9 +2,6 @@ import datetime
 import logging
 from argparse import Namespace
 from typing import Dict, Callable, Optional
-
-import pandas as pd
-
 import utils.config
 from google.cloud import bigquery
 
@@ -17,7 +14,7 @@ DEFAULTS = {}
 
 class BqTask:
     def __init__(self, config: Dict, date: datetime.datetime):
-        self.date = date.strftime(utils.config.DEFAULT_DATE_FORMAT)
+        self.date = (date - datetime.timedelta(days=1)).strftime(utils.config.DEFAULT_DATE_FORMAT)
         self.config = config
         self.client = bigquery.Client(config["id"]["project"])
 
@@ -167,9 +164,9 @@ def main(args: Namespace):
     if args.config:
         config_name = args.config
     cfgs = utils.config.get_configs("bigquery", config_name)
-    # init(args, cfgs)
+    init(args, cfgs)
     # daily_run(args.date, cfgs)
-    # backfill('2019-09-01', '2019-09-04', cfgs)
+    backfill('2019-09-01', '2019-10-03', cfgs)
 
 
 def backfill(start, end, configs: Optional[Callable]):
@@ -179,23 +176,31 @@ def backfill(start, end, configs: Optional[Callable]):
 
 def daily_run(d: datetime, configs: Optional[Callable]):
     print(d)
+    core_task = get_task_by_config(configs.MANGO_CORE, d)
+    core_task.daily_run()
     events_task = get_task_by_config(configs.MANGO_EVENTS, d)
     events_task.daily_run()
 
 
 def init(args, configs: Optional[Callable]):
+    core_task = get_task_by_config(configs.MANGO_CORE, args.date)
     events_task = get_task_by_config(configs.MANGO_EVENTS, args.date)
     unnested_events_task = get_task_by_config(configs.MANGO_EVENTS_UNNESTED, args.date)
+    feature_events_task = get_task_by_config(configs.MANGO_EVENTS_FEATURE_MAPPING, args.date)
     channel_mapping_task = get_task_by_config(configs.CHANNEL_MAPPING, args.date)
     user_channels_task = get_task_by_config(configs.USER_CHANNELS, args.date)
     if args.dropschema:
+        core_task.drop_schema()
         events_task.drop_schema()
         unnested_events_task.drop_schema()
+        feature_events_task.drop_schema()
         channel_mapping_task.drop_schema()
         user_channels_task.drop_schema()
     if args.createschema:
+        core_task.create_schema()
         events_task.create_schema()
         unnested_events_task.create_schema()
+        feature_events_task.create_schema()
         channel_mapping_task.create_schema()
         user_channels_task.create_schema()
 

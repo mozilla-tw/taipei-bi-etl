@@ -1,5 +1,5 @@
 SELECT
-  *
+  *, DATE(submission_timestamp) AS submission_date
 FROM
   `{src}`
 WHERE
