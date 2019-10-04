@@ -1,13 +1,9 @@
-CREATE OR REPLACE FUNCTION
-  `{project}.{dataset}`.udf_js_json_extract_events (input STRING)
-  RETURNS ARRAY<STRUCT< event_timestamp INT64,
-  event_category STRING,
-  event_object STRING,
-  event_method STRING,
-  event_value STRING,
-  event_extra ARRAY<STRUCT<key STRING,
-  value STRING>> >>
-  LANGUAGE js AS """
+CREATE FUNCTION `{project}.{dataset}`.udf_js_json_extract_events (
+  input STRING
+)
+RETURNS ARRAY<STRUCT< event_timestamp INT64,event_category STRING,event_object STRING,event_method STRING,event_value STRING,event_extra ARRAY<STRUCT<key STRING,value STRING>> >>
+  LANGUAGE js
+AS """
     if (input == null) {
       return null;
     }

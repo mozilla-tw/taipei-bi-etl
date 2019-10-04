@@ -1,0 +1,630 @@
+CREATE FUNCTION `{project}.{dataset}`.udf_js_feature_mapping (
+event_method STRING, event_object STRING, event_value STRING, extra_key STRING, extra_value STRING, settings_key STRING, settings_value STRING
+)
+RETURNS STRUCT<feature ARRAY<STRING>, vertical STRING, app STRING>
+LANGUAGE js
+AS """
+
+  var partner_list = ['bukalapak', 'flipkart', 'jd.id', 'gamezop', 'google'];
+
+
+    // vertical = Browser
+    // app = App
+    function do_browser() {
+        var feature = [];
+        var vertical = '';
+        var app = '';
+
+        if (event_method == 'add' &&
+            event_object == 'tab'
+        ) {
+          feature.push('feature: add_tab');
+        }
+
+        if (event_method == 'change' &&
+            event_object == 'tab'
+        ) {
+          feature.push('feature: change_tab');
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'close_all' &&
+            event_value == 'tab_tray'
+        ) {
+          feature.push('feature: close_all_tab');
+        }
+
+        if (['remove', 'swipe'].includes(event_method) &&
+            event_object == 'tab' &&
+            ['tab_tray', 'tab_swipe'].includes(event_value)
+        ) {
+          feature.push('feature: remove_tab');
+        }
+
+        if (event_value == 'block_image'
+        ) {
+          feature.push('feature: change_block_image');
+        }
+
+        if (event_method != 'share' &&
+            event_value == 'bookmark'
+        ) {
+          feature.push('feature: bookmark');
+        }
+
+        if ((
+            ['click', 'show'].includes(event_method) &&
+            event_value == 'history'
+           ) || (
+            event_method == 'open' &&
+            event_object == 'panel' &&
+            event_value == 'link'
+        )) {
+          feature.push('feature: visit_history');
+        }
+
+        if ((
+             // clear all
+             event_method == 'clear' &&
+             event_object == 'panel' &&
+             event_value == 'history'
+           ) || (
+             // remove one
+             event_method == 'remove' &&
+             event_object == 'panel' &&
+             event_value == 'link'
+        )) {
+          feature.push('feature: clean_history');
+        }
+
+        if (event_value == 'clear_cache'
+        ) {
+          feature.push('feature: clear_cache');
+        }
+
+        if ((
+              ['change', 'click'].includes(event_method) &&
+              event_object == 'default_browser'
+        ) || (
+              ['change', 'click'].includes(event_method) &&
+              event_value.includes('default_browser')
+        )) {
+          feature.push('feature: change_default_browser');
+        }
+
+        if (['click', 'change'].includes(event_method) &&
+            event_value.includes('save_downloads_to')
+        ) {
+          feature.push('feature: settings_change_download_location');
+        }
+
+        if (event_value.includes('clear_browsing_data')
+        ) {
+          feature.push('feature: settings_clear_browsing_data');
+        }
+
+        if (event_value == 'pref_locale'
+        ) {
+          feature.push('feature: settings_change_locale');
+        }
+
+        if (event_object == 'setting' &&
+            event_value == 'telemetry'
+        ) {
+          feature.push('feature: settings_change_collection_telemetry');
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'menu' &&
+            event_value == 'settings'
+        ) {
+          feature.push('feature: visit_settings');
+        }
+
+        if (event_value == 'download' ||
+            (
+              event_method == 'open' &&
+              event_object == 'panel' &&
+              event_value == 'file'
+        )) {
+          feature.push('feature: visit_download');
+        }
+
+        if (['remove', 'delete'].includes(event_method) &&
+            event_object == 'panel' &&
+            event_value == 'file'
+        ) {
+          feature.push('feature: clean_download_file');
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'menu' &&
+            event_value == 'exit'
+        ) {
+          feature.push('feature: exit');
+        }
+
+        if (event_method == 'click' &&
+            (
+              event_object == 'feedback' ||
+              event_value.includes('feedback')
+        )) {
+          feature.push('feature: give_feedback');
+        }
+
+        if (event_object == 'find_in_page' ||
+            event_value == 'find_in_page'
+        ) {
+          feature.push('feature: find_in_page');
+        }
+
+        if (event_value == 'forward'
+        ) {
+          feature.push('feature: forward_page');
+        }
+
+        if (event_value == 'fullscreen'
+        ) {
+          feature.push('feature: fullscreen');
+        }
+
+        if (event_object == 'landscape_mode'
+        ) {
+          feature.push('feature: landscape_mode');
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'home' &&
+            event_value == 'link'
+        ) {
+          feature.push('feature: visit_topsite');
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'home' &&
+            event_value == 'link' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('source: '.concat(extra_value));
+          feature.push('partner: true');
+        }
+
+        if (event_method == 'remove' &&
+            event_object == 'home' &&
+            event_value == 'link'
+        ) {
+          feature.push('feature: remove_topsite');
+        }
+
+        if (event_method == 'change' &&
+            event_value.includes('night_mode')
+        ) {
+          feature.push('feature: change_night_mode');
+        }
+
+        if (event_method == 'pin_shortcut'
+        ) {
+          feature.push('feature: pin_shortcut');
+        }
+
+        if ((event_method != 'show' &&
+             event_object.includes('private_')
+            ) || (
+
+            !['show', 'launch'].includes(event_method) &&
+             event_value.includes('private_')
+        )) {
+          feature.push('feature: private_mode');
+        }
+
+        if (event_value == 'reload_page'
+        ) {
+          feature.push('feature: reload_page');
+        }
+
+        if (event_method != 'share' &&
+            (
+              event_object == 'capture' ||
+              event_value == 'capture'
+            )
+        ) {
+          feature.push('feature: screenshot');
+        }
+
+        if (// enter & leave
+            (
+              ['click', 'start', 'end', 'clear'].includes(event_method) &&
+              (
+                event_value.includes('tab_swipe') ||
+                event_object == 'tab_swipe'
+              ) &&
+              extra_key == 'vertical' &&
+              extra_value == 'shopping'
+            ) ||
+
+            // visit tab swipe setting
+            (
+              event_method == 'change' &&
+              event_object == 'setting' &&
+              event_value == 'tab_swipe'
+            )
+        ) {
+          feature.push('feature: tab_swipe');
+        }
+
+        if (event_method == 'end' &&
+            event_object == 'tab_swipe' &&
+            extra_key == 'feed'
+        ) {
+          feature.push('feed: '.concat(extra_value));
+        }
+
+        if (event_method == 'end' &&
+            event_object == 'tab_swipe' &&
+            extra_key == 'source'
+        ) {
+          feature.push('source: '.concat(extra_value));
+        }
+
+        if (event_method == 'end' &&
+            event_object == 'tab_swipe' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('partner: true');
+        }
+
+        if (event_object == 'browser_contextmenu' ||
+              (
+                event_method == 'long_press' &&
+                event_object == 'browser'
+              )
+        ) {
+          feature.push('feature: browse');
+        }
+
+        if ((['show', 'cancel', 'clear'].includes(event_method) &&
+             event_object == 'search_bar'
+            ) || (
+             event_method == 'long_press' &&
+             event_object == 'search_suggestion'
+        )) {
+          feature.push('feature: pre_search');
+        }
+
+        if ((['type_query', 'select_query'].includes(event_method) &&
+             event_object == 'search_bar'
+            ) || (
+             event_method == 'click' &&
+             event_object == 'quicksearch'
+            ) || (
+             event_method == 'open' &&
+             event_object == 'search_bar' &&
+             event_value == 'link'
+        )) {
+          feature.push('feature: search');
+        }
+
+        if (['type_query', 'select_query'].includes(event_method) &&
+            event_object == 'search_bar' &&
+            settings_key == 'pref_search_engine' &&
+            (
+              settings_value == 'google' ||
+              settings_value == '' // null as default
+            )
+        ) {
+          feature.push('source: google');
+          feature.push('partner: true');
+        }
+
+        if (['type_query', 'select_query'].includes(event_method) &&
+            event_object == 'search_bar'
+        ) {
+          feature.push('tags: keyword_search');
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'quicksearch'
+        ) {
+          feature.push('tags: quicksearch');
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'quicksearch' &&
+            extra_key == 'engine' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('source: '.concat(extra_value));
+          feature.push('partner: true');
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'search_bar' &&
+            extra_key == 'link'
+        ) {
+          feature.push('tags: url_search');
+        }
+
+        if (['change', 'click'].includes(event_method) &&
+            event_object == 'setting' &&
+            event_value == 'search_engine'
+        ) {
+          feature.push('feature: settings_change_search_engine');
+        }
+
+        if (event_method == 'share' ||
+            (
+              event_object == 'setting' &&
+              event_value.includes('share_with_friends')
+            )
+        ) {
+          feature.push('feature: share');
+        }
+
+        if (event_object == 'themetoy'
+        ) {
+          feature.push('feature: themetoy');
+        }
+
+        if (event_method == 'change' &&
+            event_value.includes('turbo')
+        ) {
+          feature.push('feature: change_turbo_mode');
+        }
+
+        if ((event_method == 'click' &&
+             event_object.includes('vpn') &&
+             event_value == 'positive'
+            ) || (
+             event_method == 'click' &&
+             event_value.includes('vpn')
+        )) {
+          feature.push('feature: vpn');
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'setting' &&
+            event_value == 'learn_more'
+        ) {
+          feature.push('feature: settings_learn_more');
+        }
+
+        if (event_method == 'launch' &&
+            event_object == 'app'
+        ) {
+          feature.push('feature: launch_app');
+        }
+
+        if (event_method == 'launch' &&
+            event_object == 'app' &&
+            event_value == 'external_app'
+        ) {
+          feature.push('tags: launch_app_from_external');
+        }
+
+        if (event_method == 'launch' &&
+            event_object == 'app' &&
+            event_value == 'launcher'
+        ) {
+          feature.push('tags: launch_app_from_launcher');
+        }
+
+        if (event_method == 'launch' &&
+            event_object == 'app' &&
+            ['shortcut', 'private_mode', 'game_shortcut'].includes(event_value)
+        ) {
+          feature.push('tags: launch_app_from_shortcut');
+        }
+
+        if (feature.length > 0
+        ) {
+          vertical = 'Browser';
+          app = 'App';
+        }
+        return [feature, vertical, app];
+    }
+
+
+    // vertical = Shopping
+    // app = App
+    function do_shopping() {
+        var feature = [];
+        var vertical = '';
+        var app = '';
+
+        if (event_value == 'lifefeed_ec'
+        ) {
+          feature.push('feature: lifefeed');
+          feature.push('category: e_ticket');
+        }
+
+        if (event_method == 'click' &&
+            event_value == 'lifefeed_ec' &&
+            extra_key == 'category'
+        ) {
+          feature.push('component_type_id: 9'); // icon_card
+          feature.push('tags: '.concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_value == 'lifefeed_ec' &&
+            extra_key == 'source'
+        ) {
+          feature.push('component_type_id: 9'); // icon_card
+          feature.push('feed: '.concat(extra_value));
+          feature.push('source: '.concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_value == 'lifefeed_ec' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('partner: true');
+        }
+
+        if (event_value == 'lifefeed_promo'
+        ) {
+          feature.push('feature: lifefeed');
+          feature.push('category: coupon');
+        }
+
+        if (event_method == 'click' &&
+            event_value == 'lifefeed_promo' &&
+            extra_key == 'feed' &&
+            extra_value == 'list'
+        ) {
+          feature.push('component_type_id: 7'); // list
+        }
+
+        if (event_method == 'click' &&
+            event_value == 'lifefeed_promo' &&
+            extra_key == 'feed' &&
+            extra_value == 'banner'
+        ) {
+          feature.push('component_type_id: 6'); // banner
+        }
+
+        if (event_method == 'click' &&
+            event_value == 'lifefeed_promo' &&
+            extra_key == 'source'
+        ) {
+          feature.push('feed: '.concat(extra_value));
+          feature.push('source: '.concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_value == 'lifefeed_promo' &&
+            extra_key == 'subcategory'
+        ) {
+          feature.push('tags: '.concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_value == 'lifefeed_promo' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('partner: true');
+        }
+
+        if (feature.length > 0
+        ) {
+          vertical = 'Shopping';
+          app = 'App';
+        }
+        return [feature, vertical, app];
+    }
+
+    // vertical = Lifestyle
+    // app = App
+    function do_lifestyle() {
+        var feature = [];
+        var vertical = '';
+        var app = '';
+
+        if (event_value == 'lifefeed_news'
+        ) {
+          feature.push('feature: lifefeed_news');
+        }
+
+        if (event_method == 'open' &&
+            event_value == 'lifefeed_news' &&
+            extra_key == 'category'
+        ) {
+          feature.push('category: '.concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'panel' &&
+            event_value == 'lifefeed_news' &&
+            extra_key == 'feed'
+        ) {
+          feature.push('component_type_id: 7'); // list
+          feature.push('feed: '.concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'panel' &&
+            event_value == 'lifefeed_news' &&
+            extra_key == 'source'
+        ) {
+          feature.push('component_type_id: 7'); // list
+          feature.push('source: '.concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'panel' &&
+            event_value == 'lifefeed_news' &&
+            extra_key == 'feed' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('partner: true');
+        }
+
+        if (feature.length > 0
+        ) {
+          vertical = 'Lifestyle';
+          app = 'App';
+        }
+        return [feature, vertical, app];
+    }
+
+    // vertical = Game
+    // app = App
+    function do_game() {
+        var feature = [];
+        var vertical = '';
+        var app = '';
+        return [feature, vertical, app];
+    }
+
+    // vertical = Travel
+    // app = App
+    function do_travel() {
+        var feature = [];
+        var vertical = '';
+        var app = '';
+        return [feature, vertical, app];
+    }
+
+    // vertical = Others
+    // app = Others
+    function do_others() {
+        return [['feature: others'], 'Others', 'Others'];
+    }
+
+    function run_mapping() {
+      var browser = do_browser();
+      var shopping = do_shopping();
+      var lifestyle = do_lifestyle();
+      var game = do_game();
+      var travel = do_travel();
+      var others = do_others();
+
+      var checker_do_next = function(x){ return (x[0].length == 0) && (x[1] == '') && (x[2] == '') };
+      var result = [];
+
+      if(!checker_do_next(browser)) {
+        result = browser;
+      } else if(!checker_do_next(shopping)) {
+        result = shopping;
+      } else if(!checker_do_next(lifestyle)) {
+        result = lifestyle;
+      } else if(!checker_do_next(game)) {
+        result = game;
+      } else if(!checker_do_next(travel)) {
+        result = travel;
+      } else {
+        result = others;
+      }
+      return {
+        'feature': result[0],
+        'vertical': result[1],
+        'app': result[2]
+      };
+    }
+
+    return run_mapping();
+""";
