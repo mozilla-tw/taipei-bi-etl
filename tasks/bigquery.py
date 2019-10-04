@@ -1,28 +1,42 @@
+import datetime
 import logging
 from argparse import Namespace
 from typing import Dict
-
-from google.cloud.bigquery import Routine, RoutineReference, RoutineArgument
-from google.cloud.bigquery_v2.proto.standard_sql_pb2 import StandardSqlDataType
-
 import utils.config
 from google.cloud import bigquery
 
 from utils.file import read_string
-from utils.query import parse_udf
 
 log = logging.getLogger(__name__)
 
 DEFAULTS = {}
 
+try:
+    import importlib.resources as pkg_resources
+except ImportError:
+    # Try backported to PY<37 `importlib_resources`.
+    import importlib_resources as pkg_resources
+
 
 class BqTask:
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict, date: datetime.datetime):
+        self.date = date.strftime(utils.config.DEFAULT_DATE_FORMAT)
         self.config = config
         self.client = bigquery.Client(config["project"])
 
     def create_schema(self):
-        pass
+        udfs = []
+        if "udf" in self.config:
+            udfs += [("udf_%s" % x, read_string("udf/{}.sql".format(x))) for x in self.config["udf"]]
+        if "udf_js" in self.config:
+            udfs += [("udf_js_%s" % x, read_string("udf_js/{}.sql".format(x))) for x in self.config["udf_js"]]
+        for udf, qstring in udfs:
+            qstring = qstring % (self.config["project"], self.config["dataset"])
+            # Initiate the query to create the routine.
+            query_job = self.client.query(qstring)  # Make an API request.
+            # Wait for the query to complete.
+            query_job.result()  # Waits for the job to complete.
+            log.info("Created routine {}".format(query_job.ddl_target_routine))
 
     def drop_schema(self):
         udfs = []
@@ -41,8 +55,8 @@ class BqTask:
 
 # https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json
 class BqGcsTask(BqTask):
-    def __init__(self, config: Dict):
-        super().__init__(config)
+    def __init__(self, config: Dict, date: datetime):
+        super().__init__(config, date)
 
     def create_schema(self):
         pass
@@ -73,30 +87,42 @@ class BqGcsTask(BqTask):
 # https://cloud.google.com/bigquery/docs/tables
 # https://cloud.google.com/bigquery/docs/writing-results
 class BqTableTask(BqTask):
-    def __init__(self, config: Dict):
-        super().__init__(config)
+    def __init__(self, config: Dict, date: datetime):
+        super().__init__(config, date)
 
     def daily_run(self):
-        pass
+        queryString = read_string("sql/{}.sql".format(self.config["query"]))
+        table_ref = self.client.dataset(self.config["dataset"]).table(
+            self.config["dest"]
+        )
+        job_config = bigquery.QueryJobConfig()
+        job_config.write_disposition = bigquery.job.WriteDisposition.WRITE_APPEND
+        job_config.destination = table_ref
+
+        query = self.client.query(
+            queryString.format(src=self.config["src"], start_date=self.date),
+            job_config=job_config,
+        )
+        query.result()
 
 
 # https://cloud.google.com/bigquery/docs/views
 class BqViewTask(BqTask):
-    def __init__(self, config: Dict):
-        super().__init__(config)
+    def __init__(self, config: Dict, date: datetime.datetime):
+        super().__init__(config, date)
 
     def create_schema(self):
         super().create_schema()
 
 
-def get_task_by_config(config: Dict):
+def get_task_by_config(config: Dict, date: datetime.datetime):
     assert "type" in config, "Task type is required in BigQuery config."
     if config["type"] == "gcs":
-        return BqGcsTask(config)
+        return BqGcsTask(config, date)
     elif config["type"] == "view":
-        return BqViewTask(config)
+        return BqViewTask(config, date)
     elif config["type"] == "table":
-        return BqTableTask(config)
+        return BqTableTask(config, date)
 
 
 def main(args: Namespace):
@@ -110,10 +136,10 @@ def main(args: Namespace):
     if args.config:
         config_name = args.config
     configs = utils.config.get_configs("bigquery", config_name)
-    events_task = get_task_by_config(configs.MANGO_EVENTS)
-    unnested_events_task = get_task_by_config(configs.MANGO_EVENTS_UNNESTED)
-    channel_mapping_task = get_task_by_config(configs.CHANNEL_MAPPING)
-    user_channels_task = get_task_by_config(configs.USER_CHANNELS)
+    events_task = get_task_by_config(configs.MANGO_EVENTS, args.date)
+    unnested_events_task = get_task_by_config(configs.MANGO_EVENTS_UNNESTED, args.date)
+    channel_mapping_task = get_task_by_config(configs.CHANNEL_MAPPING, args.date)
+    user_channels_task = get_task_by_config(configs.USER_CHANNELS, args.date)
     if args.dropschema:
         events_task.drop_schema()
         unnested_events_task.drop_schema()
@@ -123,7 +149,7 @@ def main(args: Namespace):
         unnested_events_task.create_schema()
         user_channels_task.create_schema()
     events_task.daily_run()
-    channel_mapping_task.daily_run()
+    # channel_mapping_task.daily_run()
 
 
 if __name__ == "__main__":

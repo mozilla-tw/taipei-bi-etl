@@ -1,4 +1,4 @@
-CREATE FUNCTION `{project}.{dataset}`.udf_js_feature_mapping (
+CREATE FUNCTION `%s.%s`.udf_js_feature_mapping (
 event_method STRING, event_object STRING, event_value STRING, extra_key STRING, extra_value STRING, settings_key STRING, settings_value STRING
 )
 RETURNS STRUCT<feature ARRAY<STRING>, vertical STRING, app STRING>
