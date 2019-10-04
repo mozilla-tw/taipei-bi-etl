@@ -4,22 +4,6 @@ from typing import Dict, Any
 from utils.file import read_string
 
 
-def parse_udf(definition: str):
-    lines = definition.split("\n")
-    lang_map = {"js": "JAVASCRIPT", "sql": "SQL"}
-    args = {}
-    for arg in lines[1].strip().split(","):
-        a = arg.strip().split(" ")
-        args[a[0].strip()] = a[1].strip()
-    result = {
-        "args": args,
-        "return": lines[3].strip(),
-        "lang": lang_map[lines[4].replace("LANGUAGE", "").strip()],
-        "body": "\n".join(lines[6:-1]),
-    }
-    return result
-
-
 def build_query(config: Dict[str, Any], start_date: str, end_date: str) -> str:
     """Build query based on configs and args.
 
