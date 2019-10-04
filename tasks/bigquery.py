@@ -1,7 +1,10 @@
 import datetime
 import logging
 from argparse import Namespace
-from typing import Dict
+from typing import Dict, Callable, Optional
+
+import pandas as pd
+
 import utils.config
 from google.cloud import bigquery
 
@@ -16,7 +19,7 @@ class BqTask:
     def __init__(self, config: Dict, date: datetime.datetime):
         self.date = date.strftime(utils.config.DEFAULT_DATE_FORMAT)
         self.config = config
-        self.client = bigquery.Client(config["project"])
+        self.client = bigquery.Client(config["id"]["project"])
 
     def create_schema(self):
         udfs = []
@@ -25,7 +28,7 @@ class BqTask:
         if "udf_js" in self.config:
             udfs += [("udf_js_%s" % x, read_string("udf_js/{}.sql".format(x))) for x in self.config["udf_js"]]
         for udf, qstring in udfs:
-            qstring = qstring % (self.config["project"], self.config["dataset"])
+            qstring = qstring % (self.config["id"]["project"], self.config["id"]["dataset"])
             # Initiate the query to create the routine.
             query_job = self.client.query(qstring)  # Make an API request.
             # Wait for the query to complete.
@@ -39,9 +42,9 @@ class BqTask:
         if "udf_js" in self.config:
             udfs += ["udf_js_%s" % x for x in self.config["udf_js"]]
         for udf in udfs:
-            self.client.delete_routine("%s.%s.%s" % (self.config["project"], self.config["dataset"], udf), not_found_ok=True)
-        self.client.delete_table("%s.%s.%s" % (self.config["project"], self.config["dataset"], self.config["dest"]), not_found_ok=True)
-        log.info("Deleted table '{}'.".format(self.config["dest"]))
+            self.client.delete_routine("%s.%s.%s" % (self.config["id"]["project"], self.config["id"]["dataset"], udf), not_found_ok=True)
+        self.client.delete_table("%s.%s.%s" % (self.config["id"]["project"], self.config["id"]["dataset"], self.config["params"]["dest"]), not_found_ok=True)
+        log.info("Deleted table '{}'.".format(self.config["params"]["dest"]))
 
     def daily_run(self):
         assert False, "daily_run not implemented."
@@ -56,17 +59,22 @@ class BqGcsTask(BqTask):
         self.daily_run()
 
     def daily_run(self):
-        dataset_ref = self.client.dataset(self.config["dataset"])
+        dataset_ref = self.client.dataset(self.config["id"]["dataset"])
         job_config = bigquery.LoadJobConfig()
         job_config.write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE
         job_config.autodetect = True
         job_config.source_format = bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
-        uri = "gs://%s" % self.config["src"]
+        if "partition_field" in self.config:
+            job_config.time_partitioning = bigquery.TimePartitioning(
+                type_=bigquery.TimePartitioningType.DAY,
+                field=self.config["partition_field"],
+            )
+        uri = "gs://%s" % self.config["params"]["src"]
 
         load_job = self.client.load_table_from_uri(
             uri,
-            dataset_ref.table(self.config["dest"]),
-            location=self.config["location"],
+            dataset_ref.table(self.config["params"]["dest"]),
+            location=self.config["id"]["location"],
             job_config=job_config,
         )
         log.info("Starting job {}".format(load_job.job_id))
@@ -74,7 +82,7 @@ class BqGcsTask(BqTask):
         load_job.result()  # Waits for table load to complete.
         log.info("Job finished.")
 
-        destination_table = self.client.get_table(dataset_ref.table(self.config["dest"]))
+        destination_table = self.client.get_table(dataset_ref.table(self.config["params"]["dest"]))
         log.info("Loaded {} rows.".format(destination_table.num_rows))
 
 
@@ -93,14 +101,20 @@ class BqTableTask(BqTask):
 
     def run_query(self, date):
         qstring = read_string("sql/{}.sql".format(self.config["query"]))
-        table_ref = self.client.dataset(self.config["dataset"]).table(
-            self.config["dest"]
+        table_ref = self.client.dataset(self.config["id"]["dataset"]).table(
+            self.config["params"]["dest"]
         )
         job_config = bigquery.QueryJobConfig()
         job_config.write_disposition = self.config["write_disposition"] if "write_disposition" in self.config else bigquery.job.WriteDisposition.WRITE_APPEND
         job_config.destination = table_ref
+        if "partition_field" in self.config:
+            job_config.time_partitioning = bigquery.TimePartitioning(
+                type_=bigquery.TimePartitioningType.DAY,
+                field=self.config["partition_field"],
+            )
         qparams = {
-            **self.config,
+            **self.config["id"],
+            **self.config["params"],
             'start_date': date,
         }
         query = self.client.query(
@@ -108,6 +122,7 @@ class BqTableTask(BqTask):
             job_config=job_config,
         )
         query.result()
+
 
 # https://cloud.google.com/bigquery/docs/views
 class BqViewTask(BqTask):
@@ -117,11 +132,12 @@ class BqViewTask(BqTask):
     def create_schema(self):
         super().create_schema()
         qstring = read_string("sql/{}.sql".format(self.config["query"]))
-        shared_dataset_ref = self.client.dataset(self.config["dataset"])
-        view_ref = shared_dataset_ref.table(self.config["dest"])
+        shared_dataset_ref = self.client.dataset(self.config["id"]["dataset"])
+        view_ref = shared_dataset_ref.table(self.config["params"]["dest"])
         view = bigquery.Table(view_ref)
         qparams = {
-            **self.config,
+            **self.config["id"],
+            **self.config["params"],
             'start_date': self.date,
         }
         view.view_query = qstring.format(**qparams)
@@ -150,7 +166,24 @@ def main(args: Namespace):
         config_name = "debug"
     if args.config:
         config_name = args.config
-    configs = utils.config.get_configs("bigquery", config_name)
+    cfgs = utils.config.get_configs("bigquery", config_name)
+    # init(args, cfgs)
+    # daily_run(args.date, cfgs)
+    # backfill('2019-09-01', '2019-09-04', cfgs)
+
+
+def backfill(start, end, configs: Optional[Callable]):
+    for d in get_date_range(start, end):
+        daily_run(d, configs)
+
+
+def daily_run(d: datetime, configs: Optional[Callable]):
+    print(d)
+    events_task = get_task_by_config(configs.MANGO_EVENTS, d)
+    events_task.daily_run()
+
+
+def init(args, configs: Optional[Callable]):
     events_task = get_task_by_config(configs.MANGO_EVENTS, args.date)
     unnested_events_task = get_task_by_config(configs.MANGO_EVENTS_UNNESTED, args.date)
     channel_mapping_task = get_task_by_config(configs.CHANNEL_MAPPING, args.date)
@@ -165,8 +198,12 @@ def main(args: Namespace):
         unnested_events_task.create_schema()
         channel_mapping_task.create_schema()
         user_channels_task.create_schema()
-    events_task.daily_run()
-    channel_mapping_task.daily_run()
+
+
+def get_date_range(start: str, end: str):
+    starttime = datetime.datetime.strptime(start, utils.config.DEFAULT_DATE_FORMAT)
+    endtime = datetime.datetime.strptime(end, utils.config.DEFAULT_DATE_FORMAT)
+    return [starttime + datetime.timedelta(days=x) for x in range(0, (endtime - starttime).days)]
 
 
 if __name__ == "__main__":
