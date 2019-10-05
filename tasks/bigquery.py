@@ -70,6 +70,7 @@ class BqGcsTask(BqTask):
                 type_=bigquery.TimePartitioningType.DAY,
                 field=self.config["partition_field"],
             )
+        # FIXME: handle date here
         uri = "gs://%s" % self.config["params"]["src"]
 
         load_job = self.client.load_table_from_uri(
