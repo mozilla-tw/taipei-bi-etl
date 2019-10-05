@@ -29,11 +29,11 @@ def to_delete(client):
 def test_BqTableTask(client, to_delete):
     configs = utils.config.get_configs("bigquery", "test")
 
-    configs.SELECT_TABLE["id"]["project"] = client.project
+    configs.SELECT_TABLE["params"]["project"] = client.project
 
     # Now default location is US. Not configurable.
     # https://github.com/googleapis/google-cloud-python/blob/bigquery-1.17.0/bigquery/samples/create_dataset.py#L31
-    dataset = client.create_dataset(configs.SELECT_TABLE["id"]["dataset"])
+    dataset = client.create_dataset(configs.SELECT_TABLE["params"]["dataset"])
     to_delete.extend([dataset])
 
     task = tasks.bigquery.get_task_by_config(
@@ -44,7 +44,7 @@ def test_BqTableTask(client, to_delete):
     table = client.get_table(
         "%s.%s"
         % (
-            configs.SELECT_TABLE["id"]["dataset"],
+            configs.SELECT_TABLE["params"]["dataset"],
             configs.SELECT_TABLE["params"]["dest"],
         )
     )

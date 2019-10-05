@@ -119,3 +119,8 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
         help="Clean up cached files.",
     )
     return parser
+
+
+def merge_config(cfgs, newcfgs):
+    for k, v in newcfgs.items():
+        cfgs[k] = v

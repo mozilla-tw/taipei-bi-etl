@@ -18,7 +18,7 @@ class BqTask:
             utils.config.DEFAULT_DATE_FORMAT
         )
         self.config = config
-        self.client = bigquery.Client(config["id"]["project"])
+        self.client = bigquery.Client(config["params"]["project"])
 
     def is_write_append(self):
         # default write append=true
@@ -38,8 +38,8 @@ class BqTask:
             ]
         for udf, qstring in udfs:
             qstring = qstring % (
-                self.config["id"]["project"],
-                self.config["id"]["dataset"],
+                self.config["params"]["project"],
+                self.config["params"]["dataset"],
             )
             # Initiate the query to create the routine.
             query_job = self.client.query(qstring)  # Make an API request.
@@ -56,14 +56,14 @@ class BqTask:
         for udf in udfs:
             self.client.delete_routine(
                 "%s.%s.%s"
-                % (self.config["id"]["project"], self.config["id"]["dataset"], udf),
+                % (self.config["params"]["project"], self.config["params"]["dataset"], udf),
                 not_found_ok=True,
             )
         self.client.delete_table(
             "%s.%s.%s"
             % (
-                self.config["id"]["project"],
-                self.config["id"]["dataset"],
+                self.config["params"]["project"],
+                self.config["params"]["dataset"],
                 self.config["params"]["dest"],
             ),
             not_found_ok=True,
@@ -83,7 +83,7 @@ class BqGcsTask(BqTask):
         self.daily_run()
 
     def daily_run(self):
-        dataset_ref = self.client.dataset(self.config["id"]["dataset"])
+        dataset_ref = self.client.dataset(self.config["params"]["dataset"])
         job_config = bigquery.LoadJobConfig()
         job_config.write_disposition = (
             bigquery.WriteDisposition.WRITE_APPEND
@@ -103,7 +103,7 @@ class BqGcsTask(BqTask):
         load_job = self.client.load_table_from_uri(
             uri,
             dataset_ref.table(self.config["params"]["dest"]),
-            location=self.config["id"]["location"],
+            location=self.config["params"]["location"],
             job_config=job_config,
         )
         log.info("Starting job {}".format(load_job.job_id))
@@ -132,7 +132,7 @@ class BqTableTask(BqTask):
 
     def run_query(self, date):
         qstring = read_string("sql/{}.sql".format(self.config["query"]))
-        table_ref = self.client.dataset(self.config["id"]["dataset"]).table(
+        table_ref = self.client.dataset(self.config["params"]["dataset"]).table(
             self.config["params"]["dest"]
         )
         job_config = bigquery.QueryJobConfig()
@@ -147,7 +147,7 @@ class BqTableTask(BqTask):
                 type_=bigquery.TimePartitioningType.DAY,
                 field=self.config["partition_field"],
             )
-        qparams = {**self.config["id"], **self.config["params"], "start_date": date}
+        qparams = {**self.config["params"], **self.config["params"], "start_date": date}
         query = self.client.query(qstring.format(**qparams), job_config=job_config)
         query.result()
 
@@ -160,11 +160,11 @@ class BqViewTask(BqTask):
     def create_schema(self):
         super().create_schema()
         qstring = read_string("sql/{}.sql".format(self.config["query"]))
-        shared_dataset_ref = self.client.dataset(self.config["id"]["dataset"])
+        shared_dataset_ref = self.client.dataset(self.config["params"]["dataset"])
         view_ref = shared_dataset_ref.table(self.config["params"]["dest"])
         view = bigquery.Table(view_ref)
         qparams = {
-            **self.config["id"],
+            **self.config["params"],
             **self.config["params"],
             "start_date": self.date,
         }
