@@ -1,24 +1,12 @@
-import csv
+"""Mozilla dag."""
 import datetime
-import inspect
-import io
-import logging
-import time
 
 from google.cloud import bigquery
 
 from airflow import models
-from airflow.operators import dummy_operator
 from airflow.operators.python_operator import PythonOperator
 
 yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-
-try:
-    import importlib.resources as pkg_resources
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
-    import importlib_resources as pkg_resources
-
 
 default_args = {
     "owner": "airflow",
@@ -36,30 +24,37 @@ client = bigquery.Client()
 
 
 def func_drop(**context):
+    """Callable Function."""
     pass
 
 
 def func_rawEvent(**context):
+    """Callable Function."""
     pass
 
 
 def func_unnestEvent(**context):
+    """Callable Function."""
     pass
 
 
 def func_channelRFELatestView(**context):
+    """Callable Function."""
     pass
 
 
 def func_channelRFE(**context):
+    """Callable Function."""
     pass
 
 
 def func_featureRFELatestView(**context):
+    """Callable Function."""
     pass
 
 
 def func_featureRFE(**context):
+    """Callable Function."""
     pass
 
 

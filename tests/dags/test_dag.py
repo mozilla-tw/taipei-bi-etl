@@ -1,11 +1,5 @@
 """Testing DAG."""
-import os
-import os.path
-import sys
-
 import pytest
-
-from airflow import models
 
 from . import unit_testing
 
