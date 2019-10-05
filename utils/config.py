@@ -109,7 +109,7 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
     parser.add_argument(
         "--date",
         type=lambda x: datetime.datetime.strptime(x, DEFAULT_DATE_FORMAT),
-        default=datetime.datetime.today() if "date" not in kwargs else kwargs["date"],
+        default=datetime.datetime.utcnow() if "date" not in kwargs else kwargs["date"],
         help="The base (latest) date of the data in YYYY-MM-DD format.",
     )
     parser.add_argument(

@@ -3,14 +3,6 @@
 import numpy as np
 
 SOURCES = {
-    "google_search_rps": {
-        "type": "gcs",
-        "bucket": "moz-fx-data",
-        "prefix": "taipei/",
-        "path": "staging-rps-google_search_rps/",
-        "filename": "2018-01-01.csv",
-        "file_format": "csv",
-    },
     "bukalapak": {
         "type": "api",
         "url": "https://api.test.com/resource.csv?api_key={api_key}&date_range={start_date}%2C{end_date}",
@@ -26,6 +18,14 @@ SOURCES = {
         "page_size": 100,
         "country_code": "ID",  # for detecting timezone,
         "datetime_fields": ["Stat.date", "Stat.datetime", "Stat.session_datetime"],
+    },
+    "google_search_rps": {
+        "type": "gcs",
+        "bucket": "moz-fx-data",
+        "prefix": "taipei/",
+        "path": "staging-rps-google_search_rps/",
+        "filename": "2018-01-01.csv",
+        "file_format": "csv",
     },
     "google_search": {
         "type": "bq",

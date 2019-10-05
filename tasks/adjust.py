@@ -1,13 +1,13 @@
 """Adjust ETL task."""
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
-
 import pandas as pd
-
 from tasks import base
 import numpy as np
-
 from utils.config import get_configs, get_arg_parser
+import logging
+
+log = logging.getLogger(__name__)
 
 DEFAULTS = {"rm": True}
 
@@ -56,7 +56,9 @@ def main(args: Namespace):
         config_name = args.config
     configs = get_configs("adjust", config_name)
     task = AdjustEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
+    log.info("Running Adjust Task.")
     task.run()
+    log.info("Adjust Task Finished.")
 
 
 if __name__ == "__main__":

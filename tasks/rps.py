@@ -186,7 +186,9 @@ def main(args: Namespace):
         config_name = args.config
     configs = utils.config.get_configs("rps", config_name)
     task = RpsEtlTask(args, configs.SOURCES, configs.SCHEMA, configs.DESTINATIONS)
+    log.info("Running RPS Task.")
     task.run()
+    log.info("RPS Task Finished.")
 
 
 if __name__ == "__main__":

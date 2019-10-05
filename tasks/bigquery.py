@@ -260,9 +260,11 @@ def main(args: Namespace):
     if args.config:
         config_name = args.config
     cfgs = utils.config.get_configs("bigquery", config_name)
+    log.info("Running BigQuery Task.")
     # init(args, cfgs)
     daily_run_lastest(args.date, cfgs)
     # backfill("2019-09-01", "2019-10-03", cfgs)
+    log.info("BigQuery Task Finished.")
 
 
 def backfill(start, end, configs: Optional[Callable]):
@@ -275,8 +277,8 @@ def daily_run_lastest(d: datetime, configs: Optional[Callable]):
     channel_mapping_task.daily_run()
     daily_run(d, configs)
     backfill_dates = get_date_range(
-        datetime.datetime.now() - datetime.timedelta(days=8),
-        datetime.datetime.now() - datetime.timedelta(days=1),
+        datetime.datetime.utcnow() - datetime.timedelta(days=8),
+        datetime.datetime.utcnow() - datetime.timedelta(days=1),
     )
     for d in backfill_dates:
         revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, d)

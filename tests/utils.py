@@ -25,7 +25,7 @@ def inject_fixtures(namespace: Dict[str, Any], task: str, cfgs: Dict[str, Any]):
 
 def get_default_range(request: FixtureRequest) -> Tuple[str, str]:
     """Get default data range."""
-    date = datetime.datetime.now()
+    date = datetime.datetime.utcnow()
     period = 30
     markers = [x.name for x in request.node.iter_markers()]
     if "rps" in markers:
