@@ -50,4 +50,3 @@ def test_BqTableTask(client, to_delete):
     )
 
     assert table.num_rows != 0
-

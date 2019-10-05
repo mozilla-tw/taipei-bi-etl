@@ -6,9 +6,7 @@ import numpy as np
 
 from utils.config import get_configs, get_arg_parser
 
-DEFAULTS = {
-    "rm": True,
-}
+DEFAULTS = {"rm": True}
 
 
 class AdjustEtlTask(base.EtlTask):

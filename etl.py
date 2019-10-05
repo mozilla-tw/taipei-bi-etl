@@ -23,7 +23,7 @@ def main():
         if args.task == "bigquery":
             task = bigquery
         elif args.task == "rps":
-                task = rps
+            task = rps
         elif args.task == "revenue":
             task = revenue
         elif args.task == "adjust":

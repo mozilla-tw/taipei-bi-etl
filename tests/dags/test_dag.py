@@ -1,3 +1,4 @@
+"""Testing DAG."""
 import os
 import os.path
 import sys
@@ -15,4 +16,3 @@ def test_mozilla():
     from dags import mozilla
 
     unit_testing.assert_has_valid_dag(mozilla)
-
