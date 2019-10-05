@@ -107,7 +107,11 @@ class BqTableTask(BqTask):
             self.config["params"]["dest"]
         )
         job_config = bigquery.QueryJobConfig()
-        job_config.write_disposition = bigquery.WriteDisposition if self.is_write_append() else bigquery.WriteDisposition.WRITE_TRUNCATE
+        job_config.write_disposition = (
+            bigquery.WriteDisposition.WRITE_APPEND
+            if self.is_write_append()
+            else bigquery.WriteDisposition.WRITE_TRUNCATE
+        )
         job_config.destination = table_ref
         if "partition_field" in self.config:
             job_config.time_partitioning = bigquery.TimePartitioning(
