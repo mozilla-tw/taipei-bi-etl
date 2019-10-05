@@ -36,7 +36,7 @@ def test_BqTableTask(client, to_delete):
     dataset = client.create_dataset(configs.SELECT_TABLE["params"]["dataset"])
     to_delete.extend([dataset])
 
-    task = tasks.bigquery.get_task_by_config(
+    task = tasks.bigquery.get_task(
         configs.SELECT_TABLE, datetime.datetime(2005, 7, 14, 12, 30)
     )
     task.daily_run()

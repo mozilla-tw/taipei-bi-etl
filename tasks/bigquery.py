@@ -1,7 +1,11 @@
+"""BigQuery Etl Tasks."""
 import datetime
 import logging
 from argparse import Namespace
 from typing import Dict, Callable, Optional
+
+from google.cloud.exceptions import NotFound
+
 import utils.config
 from google.cloud import bigquery
 
@@ -10,13 +14,23 @@ from utils.file import read_string
 log = logging.getLogger(__name__)
 
 DEFAULTS = {}
+FILETYPES = {
+    "csv": bigquery.SourceFormat.CSV,
+    "jsonl": bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+}
 
 
 class BqTask:
+    """Base class for BigQuery ETL."""
+
     def __init__(self, config: Dict, date: datetime.datetime):
-        self.date = (date - datetime.timedelta(days=1)).strftime(
-            utils.config.DEFAULT_DATE_FORMAT
-        )
+        # default to load data 1 day behind
+        self.date = (
+            date
+            - datetime.timedelta(
+                days=1 if "days_behind" not in config else config["days_behind"]
+            )
+        ).strftime(utils.config.DEFAULT_DATE_FORMAT)
         self.config = config
         self.client = bigquery.Client(config["params"]["project"])
 
@@ -24,7 +38,25 @@ class BqTask:
         # default write append=true
         return "append" not in self.config or self.config["append"]
 
-    def create_schema(self):
+    def does_table_exist(self):
+        try:
+            dataset = self.client.dataset(self.config["params"]["dataset"])
+            table_ref = dataset.table(self.config["params"]["dest"])
+            self.client.get_table(table_ref)
+            return True
+        except NotFound:
+            return False
+
+    def does_routine_exist(self, routine_id):
+        try:
+            dataset = self.client.dataset(self.config["params"]["dataset"])
+            routine_ref = dataset.routine(routine_id)
+            self.client.get_routine(routine_ref)
+            return True
+        except NotFound:
+            return False
+
+    def create_schema(self, check_exists=False):
         udfs = []
         if "udf" in self.config:
             udfs += [
@@ -37,6 +69,8 @@ class BqTask:
                 for x in self.config["udf_js"]
             ]
         for udf, qstring in udfs:
+            if check_exists and self.does_routine_exist(udf):
+                continue
             qstring = qstring % (
                 self.config["params"]["project"],
                 self.config["params"]["dataset"],
@@ -56,7 +90,11 @@ class BqTask:
         for udf in udfs:
             self.client.delete_routine(
                 "%s.%s.%s"
-                % (self.config["params"]["project"], self.config["params"]["dataset"], udf),
+                % (
+                    self.config["params"]["project"],
+                    self.config["params"]["dataset"],
+                    udf,
+                ),
                 not_found_ok=True,
             )
         self.client.delete_table(
@@ -73,16 +111,36 @@ class BqTask:
     def daily_run(self):
         assert False, "daily_run not implemented."
 
+    def daily_cleanup(self, d):
+        if self.is_write_append() and "cleanup_query" in self.config:
+            qstring = read_string("sql/{}.sql".format(self.config["cleanup_query"]))
+            qparams = self.get_query_params(d)
+            query_job = self.client.query(qstring.format(**qparams))
+            query_job.result()
+            log.info("Done cleaning up.")
+
+    def get_query_params(self, d):
+        return {**self.config["params"], "start_date": d}
+
 
 # https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json
 class BqGcsTask(BqTask):
+    """BigQuery ETL via GCS."""
+
     def __init__(self, config: Dict, date: datetime):
         super().__init__(config, date)
 
-    def create_schema(self):
-        self.daily_run()
+    def create_schema(self, check_exists=False):
+        if check_exists and self.does_table_exist():
+            return
+        # load a file to create schema
+        self.run_query(self.date, True)
 
     def daily_run(self):
+        self.daily_cleanup(self.date)
+        self.run_query(self.date)
+
+    def run_query(self, date, autodetect=False):
         dataset_ref = self.client.dataset(self.config["params"]["dataset"])
         job_config = bigquery.LoadJobConfig()
         job_config.write_disposition = (
@@ -90,15 +148,15 @@ class BqGcsTask(BqTask):
             if self.is_write_append()
             else bigquery.WriteDisposition.WRITE_TRUNCATE
         )
-        job_config.autodetect = True
-        job_config.source_format = bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
+        # don't do autodetect after schema created, may have errors on STRING/INTEGER
+        job_config.autodetect = autodetect
+        job_config.source_format = FILETYPES[self.config["filetype"]]
         if "partition_field" in self.config:
             job_config.time_partitioning = bigquery.TimePartitioning(
                 type_=bigquery.TimePartitioningType.DAY,
                 field=self.config["partition_field"],
             )
-        # FIXME: handle date here
-        uri = "gs://%s" % self.config["params"]["src"]
+        uri = "gs://%s" % self.config["params"]["src"].format(start_date=date)
 
         load_job = self.client.load_table_from_uri(
             uri,
@@ -119,15 +177,22 @@ class BqGcsTask(BqTask):
 
 # https://cloud.google.com/bigquery/docs/tables
 # https://cloud.google.com/bigquery/docs/writing-results
-class BqTableTask(BqTask):
+class BqQueryTask(BqTask):
+    """BigQuery ETL via query result."""
+
     def __init__(self, config: Dict, date: datetime):
         super().__init__(config, date)
 
-    def create_schema(self):
+    def create_schema(self, check_exists=False):
+        super().create_schema(check_exists)
+        if check_exists and self.does_table_exist():
+            return
         # Run a empty query to create schema
+        # FIXME: use LIMIT 0
         self.run_query("1970-01-01")
 
     def daily_run(self):
+        self.daily_cleanup(self.date)
         self.run_query(self.date)
 
     def run_query(self, date):
@@ -147,41 +212,41 @@ class BqTableTask(BqTask):
                 type_=bigquery.TimePartitioningType.DAY,
                 field=self.config["partition_field"],
             )
-        qparams = {**self.config["params"], **self.config["params"], "start_date": date}
+        qparams = self.get_query_params(date)
         query = self.client.query(qstring.format(**qparams), job_config=job_config)
         query.result()
 
 
 # https://cloud.google.com/bigquery/docs/views
 class BqViewTask(BqTask):
-    def __init__(self, config: Dict, date: datetime.datetime):
-        super().__init__(config, date)
+    """BigQuery ETL via view."""
 
-    def create_schema(self):
-        super().create_schema()
+    def __init__(self, config: Dict, date: datetime.datetime):
+        super().__init__(config, date - datetime.timedelta(days=1))
+
+    def create_schema(self, check_exists=False):
+        super().create_schema(check_exists)
+        if check_exists and self.does_table_exist():
+            return
         qstring = read_string("sql/{}.sql".format(self.config["query"]))
         shared_dataset_ref = self.client.dataset(self.config["params"]["dataset"])
         view_ref = shared_dataset_ref.table(self.config["params"]["dest"])
         view = bigquery.Table(view_ref)
-        qparams = {
-            **self.config["params"],
-            **self.config["params"],
-            "start_date": self.date,
-        }
+        qparams = self.get_query_params(self.date)
         view.view_query = qstring.format(**qparams)
         view = self.client.create_table(view)  # API request
 
         log.info("Successfully created view at {}".format(view.full_table_id))
 
 
-def get_task_by_config(config: Dict, date: datetime.datetime):
+def get_task(config: Dict, date: datetime.datetime):
     assert "type" in config, "Task type is required in BigQuery config."
     if config["type"] == "gcs":
         return BqGcsTask(config, date)
     elif config["type"] == "view":
         return BqViewTask(config, date)
     elif config["type"] == "table":
-        return BqTableTask(config, date)
+        return BqQueryTask(config, date)
 
 
 def main(args: Namespace):
@@ -195,33 +260,48 @@ def main(args: Namespace):
     if args.config:
         config_name = args.config
     cfgs = utils.config.get_configs("bigquery", config_name)
-    init(args, cfgs)
-    # daily_run(args.date, cfgs)
-    backfill("2019-09-01", "2019-10-03", cfgs)
+    # init(args, cfgs)
+    daily_run_lastest(args.date, cfgs)
+    # backfill("2019-09-01", "2019-10-03", cfgs)
 
 
 def backfill(start, end, configs: Optional[Callable]):
-    for d in get_date_range(start, end):
+    for d in get_date_range_from_string(start, end):
         daily_run(d, configs)
+
+
+def daily_run_lastest(d: datetime, configs: Optional[Callable]):
+    channel_mapping_task = get_task(configs.CHANNEL_MAPPING, d)
+    channel_mapping_task.daily_run()
+    daily_run(d, configs)
+    backfill_dates = get_date_range(
+        datetime.datetime.now() - datetime.timedelta(days=8),
+        datetime.datetime.now() - datetime.timedelta(days=1),
+    )
+    for d in backfill_dates:
+        revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, d)
+        revenue_bukalapak_task.daily_run()
 
 
 def daily_run(d: datetime, configs: Optional[Callable]):
     print(d)
-    core_task = get_task_by_config(configs.MANGO_CORE, d)
+    core_task = get_task(configs.MANGO_CORE, d)
     core_task.daily_run()
-    events_task = get_task_by_config(configs.MANGO_EVENTS, d)
+    events_task = get_task(configs.MANGO_EVENTS, d)
     events_task.daily_run()
+    revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, d)
+    revenue_bukalapak_task.daily_run()
 
 
 def init(args, configs: Optional[Callable]):
-    core_task = get_task_by_config(configs.MANGO_CORE, args.date)
-    events_task = get_task_by_config(configs.MANGO_EVENTS, args.date)
-    unnested_events_task = get_task_by_config(configs.MANGO_EVENTS_UNNESTED, args.date)
-    feature_events_task = get_task_by_config(
-        configs.MANGO_EVENTS_FEATURE_MAPPING, args.date
-    )
-    channel_mapping_task = get_task_by_config(configs.CHANNEL_MAPPING, args.date)
-    user_channels_task = get_task_by_config(configs.USER_CHANNELS, args.date)
+    core_task = get_task(configs.MANGO_CORE, args.date)
+    events_task = get_task(configs.MANGO_EVENTS, args.date)
+    unnested_events_task = get_task(configs.MANGO_EVENTS_UNNESTED, args.date)
+    feature_events_task = get_task(configs.MANGO_EVENTS_FEATURE_MAPPING, args.date)
+    google_rps_task = get_task(configs.GOOOGLE_RPS, datetime.datetime(2018, 1, 1))
+    channel_mapping_task = get_task(configs.CHANNEL_MAPPING, args.date)
+    user_channels_task = get_task(configs.USER_CHANNELS, args.date)
+    revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, args.date)
     if args.dropschema:
         core_task.drop_schema()
         events_task.drop_schema()
@@ -229,18 +309,26 @@ def init(args, configs: Optional[Callable]):
         feature_events_task.drop_schema()
         channel_mapping_task.drop_schema()
         user_channels_task.drop_schema()
+        google_rps_task.drop_schema()
+        revenue_bukalapak_task.drop_schema()
     if args.createschema:
-        core_task.create_schema()
-        events_task.create_schema()
-        unnested_events_task.create_schema()
-        feature_events_task.create_schema()
-        channel_mapping_task.create_schema()
-        user_channels_task.create_schema()
+        core_task.create_schema(args.checkchema)
+        events_task.create_schema(args.checkchema)
+        unnested_events_task.create_schema(args.checkchema)
+        feature_events_task.create_schema(args.checkchema)
+        channel_mapping_task.create_schema(args.checkchema)
+        user_channels_task.create_schema(args.checkchema)
+        google_rps_task.create_schema(args.checkchema)
+        revenue_bukalapak_task.create_schema(args.checkchema)
 
 
-def get_date_range(start: str, end: str):
+def get_date_range_from_string(start: str, end: str):
     starttime = datetime.datetime.strptime(start, utils.config.DEFAULT_DATE_FORMAT)
     endtime = datetime.datetime.strptime(end, utils.config.DEFAULT_DATE_FORMAT)
+    return get_date_range(endtime, starttime)
+
+
+def get_date_range(starttime, endtime):
     return [
         starttime + datetime.timedelta(days=x)
         for x in range(0, (endtime - starttime).days)

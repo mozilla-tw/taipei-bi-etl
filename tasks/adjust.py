@@ -1,6 +1,9 @@
 """Adjust ETL task."""
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
+
+import pandas as pd
+
 from tasks import base
 import numpy as np
 
@@ -34,6 +37,10 @@ class AdjustEtlTask(base.EtlTask):
     def transform_adjust_trackers(self, adjust_trackers):
         """Transform Adjust data."""
         # trasnform here
+        adjust_trackers["execution_date"] = pd.datetime.utcnow()
+        adjust_trackers["execution_date"] = adjust_trackers["execution_date"].astype(
+            "datetime64[ns]"
+        )
         return adjust_trackers
 
 

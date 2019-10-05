@@ -2,7 +2,7 @@
 import datetime
 import importlib
 from argparse import ArgumentParser
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict
 import logging
 
 log = logging.getLogger(__name__)
@@ -45,16 +45,22 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
     """
     parser = ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--checkschema",
+        default=False if "checkschema" not in kwargs else kwargs["checkschema"],
+        action="store_true",
+        help="Check schema before creating schema.",
+    )
+    parser.add_argument(
         "--createschema",
         default=False if "createschema" not in kwargs else kwargs["createschema"],
         action="store_true",
-        help="Create schema before run tasks.",
+        help="Create schema.",
     )
     parser.add_argument(
         "--dropschema",
         default=False if "dropschema" not in kwargs else kwargs["dropschema"],
         action="store_true",
-        help="Drop schema before run tasks.",
+        help="Drop schema.",
     )
     parser.add_argument(
         "--debug",
@@ -121,6 +127,11 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
     return parser
 
 
-def merge_config(cfgs, newcfgs):
+def merge_config(cfgs: Dict, newcfgs: Dict):
+    """Merge configs.
+
+    :param cfgs: the existing configs
+    :param newcfgs: new configs to merge into the existing one
+    """
     for k, v in newcfgs.items():
         cfgs[k] = v
