@@ -45,6 +45,12 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
     """
     parser = ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--backfill",
+        default=False if "backfill" not in kwargs else kwargs["backfill"],
+        action="store_true",
+        help="Indicate the job is a backfill.",
+    )
+    parser.add_argument(
         "--checkschema",
         default=False if "checkschema" not in kwargs else kwargs["checkschema"],
         action="store_true",
@@ -82,6 +88,11 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
         "--task",
         default=None if "task" not in kwargs else kwargs["task"],
         help="The ETL task to run.",
+    )
+    parser.add_argument(
+        "--subtask",
+        default=None if "subtask" not in kwargs else kwargs["subtask"],
+        help="The ETL subtask to run.",
     )
     parser.add_argument(
         "--source",

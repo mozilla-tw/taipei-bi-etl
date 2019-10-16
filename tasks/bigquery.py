@@ -1,6 +1,7 @@
 """BigQuery Etl Tasks."""
 import datetime
 import logging
+import re
 from argparse import Namespace
 from typing import Dict, Callable, Optional
 
@@ -108,7 +109,7 @@ class BqTask:
         )
         log.info("Deleted table '{}'.".format(self.config["params"]["dest"]))
 
-    def daily_run(self):
+    def daily_run(self, backfill=False):
         assert False, "daily_run not implemented."
 
     def daily_cleanup(self, d):
@@ -136,7 +137,7 @@ class BqGcsTask(BqTask):
         # load a file to create schema
         self.run_query(self.date, True)
 
-    def daily_run(self):
+    def daily_run(self, backfill=False):
         self.daily_cleanup(self.date)
         self.run_query(self.date)
 
@@ -187,16 +188,33 @@ class BqQueryTask(BqTask):
         super().create_schema(check_exists)
         if check_exists and self.does_table_exist():
             return
-        # Run a empty query to create schema
-        # FIXME: use LIMIT 0
-        self.run_query("1970-01-01")
+        start_date = "1970-01-01"
+        if "init_query" in self.config:
+            qstring = read_string("sql/{}.sql".format(self.config["init_query"]))
+            qparams = self.get_query_params(start_date)
+            qstring = qstring.format(**qparams)
+            self.run_query(start_date, qstring)
+        else:
+            # Run a empty query to create schema
+            qstring = read_string("sql/{}.sql".format(self.config["query"]))
+            qparams = self.get_query_params(start_date)
+            qstring = qstring.format(**qparams)
+            LIMIT_REGEX = r"(.*)(LIMIT\s+[0-9]+)(.*)"
+            if re.match(LIMIT_REGEX, qstring, re.IGNORECASE):
+                re.sub(LIMIT_REGEX, r"\1 LIMIT 0 \3", qstring, flags=re.IGNORECASE)
+            else:
+                qstring += " LIMIT 0"
+            self.run_query(start_date, qstring)
 
-    def daily_run(self):
+    def daily_run(self, backfill=False):
         self.daily_cleanup(self.date)
         self.run_query(self.date)
 
-    def run_query(self, date):
-        qstring = read_string("sql/{}.sql".format(self.config["query"]))
+    def run_query(self, date, qstring=None):
+        if qstring is None:
+            qstring = read_string("sql/{}.sql".format(self.config["query"]))
+            qparams = self.get_query_params(date)
+            qstring = qstring.format(**qparams)
         table_ref = self.client.dataset(self.config["params"]["dataset"]).table(
             self.config["params"]["dest"]
         )
@@ -212,8 +230,8 @@ class BqQueryTask(BqTask):
                 type_=bigquery.TimePartitioningType.DAY,
                 field=self.config["partition_field"],
             )
-        qparams = self.get_query_params(date)
-        query = self.client.query(qstring.format(**qparams), job_config=job_config)
+
+        query = self.client.query(qstring, job_config=job_config)
         query.result()
 
 
@@ -260,11 +278,20 @@ def main(args: Namespace):
     if args.config:
         config_name = args.config
     cfgs = utils.config.get_configs("bigquery", config_name)
-    log.info("Running BigQuery Task.")
+    if args.subtask:
+        log.info("Running BigQuery Task %s." % args.subtask)
+        cfg = getattr(cfgs, args.subtask.upper())
+        task = get_task(cfg, args.date)
+        if args.dropschema:
+            task.drop_schema()
+        if args.createschema:
+            task.create_schema(args.checkschema)
+        task.daily_run(args.backfill)
+        log.info("BigQuery Task %s Finished." % args.subtask)
     # init(args, cfgs)
-    daily_run_lastest(args.date, cfgs)
-    # backfill("2019-09-01", "2019-10-03", cfgs)
-    log.info("BigQuery Task Finished.")
+    # daily_run_lastest(args.date, cfgs)
+    # backfill("2019-09-01", "2019-10-13", cfgs)
+    # backfill("2019-09-01", "2019-09-02", cfgs)
 
 
 def backfill(start, end, configs: Optional[Callable]):
@@ -287,12 +314,15 @@ def daily_run_lastest(d: datetime, configs: Optional[Callable]):
 
 def daily_run(d: datetime, configs: Optional[Callable]):
     print(d)
-    core_task = get_task(configs.MANGO_CORE, d)
-    core_task.daily_run()
-    events_task = get_task(configs.MANGO_EVENTS, d)
-    events_task.daily_run()
-    revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, d)
-    revenue_bukalapak_task.daily_run()
+    # core_task = get_task(configs.MANGO_CORE, d)
+    # core_task.daily_run()
+    # events_task = get_task(configs.MANGO_EVENTS, d)
+    # events_task.daily_run()
+    # revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, d)
+    # revenue_bukalapak_task.daily_run()
+    feature_first_occur_task = get_task(configs.FEATURE_FIRST_OCCUR, d)
+    feature_first_occur_task.create_schema()
+    feature_first_occur_task.daily_run()
 
 
 def init(args, configs: Optional[Callable]):
@@ -327,7 +357,7 @@ def init(args, configs: Optional[Callable]):
 def get_date_range_from_string(start: str, end: str):
     starttime = datetime.datetime.strptime(start, utils.config.DEFAULT_DATE_FORMAT)
     endtime = datetime.datetime.strptime(end, utils.config.DEFAULT_DATE_FORMAT)
-    return get_date_range(endtime, starttime)
+    return get_date_range(starttime, endtime)
 
 
 def get_date_range(starttime, endtime):
