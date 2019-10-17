@@ -94,6 +94,13 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
         help="The ETL data source to extract, use the name specified in settings.",
     )
     parser.add_argument(
+        "--next_execution_date",
+        default=None
+        if "next_execution_date" not in kwargs
+        else kwargs["next_execution_date"],
+        help="The next_execution_date passed from airflow operator.",
+    )
+    parser.add_argument(
         "--dest",
         default=None if "dest" not in kwargs else kwargs["dest"],
         help=(
