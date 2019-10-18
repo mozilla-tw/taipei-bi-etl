@@ -45,12 +45,6 @@ def get_arg_parser(**kwargs) -> ArgumentParser:
     """
     parser = ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--backfill",
-        default=False if "backfill" not in kwargs else kwargs["backfill"],
-        action="store_true",
-        help="Indicate the job is a backfill.",
-    )
-    parser.add_argument(
         "--checkschema",
         default=False if "checkschema" not in kwargs else kwargs["checkschema"],
         action="store_true",

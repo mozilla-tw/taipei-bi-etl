@@ -109,7 +109,7 @@ class BqTask:
         )
         log.info("Deleted table '{}'.".format(self.config["params"]["dest"]))
 
-    def daily_run(self, backfill=False):
+    def daily_run(self):
         assert False, "daily_run not implemented."
 
     def daily_cleanup(self, d):
@@ -137,7 +137,7 @@ class BqGcsTask(BqTask):
         # load a file to create schema
         self.run_query(self.date, True)
 
-    def daily_run(self, backfill=False):
+    def daily_run(self):
         self.daily_cleanup(self.date)
         self.run_query(self.date)
 
@@ -206,7 +206,7 @@ class BqQueryTask(BqTask):
                 qstring += " LIMIT 0"
             self.run_query(start_date, qstring)
 
-    def daily_run(self, backfill=False):
+    def daily_run(self):
         self.daily_cleanup(self.date)
         self.run_query(self.date)
 
@@ -286,11 +286,11 @@ def main(args: Namespace):
             task.drop_schema()
         if args.createschema:
             task.create_schema(args.checkschema)
-        task.daily_run(args.backfill)
+        task.daily_run()
         log.info("BigQuery Task %s Finished." % args.subtask)
     # init(args, cfgs)
     # daily_run_lastest(args.date, cfgs)
-    # backfill("2019-09-01", "2019-10-13", cfgs)
+    # backfill("2019-09-01", "2019-10-17", cfgs)
     # backfill("2019-09-01", "2019-09-02", cfgs)
 
 
@@ -314,15 +314,14 @@ def daily_run_lastest(d: datetime, configs: Optional[Callable]):
 
 def daily_run(d: datetime, configs: Optional[Callable]):
     print(d)
-    # core_task = get_task(configs.MANGO_CORE, d)
-    # core_task.daily_run()
-    # events_task = get_task(configs.MANGO_EVENTS, d)
-    # events_task.daily_run()
+    core_task = get_task(configs.MANGO_CORE, d)
+    core_task.daily_run()
+    events_task = get_task(configs.MANGO_EVENTS, d)
+    events_task.daily_run()
     # revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, d)
     # revenue_bukalapak_task.daily_run()
-    feature_first_occur_task = get_task(configs.FEATURE_FIRST_OCCUR, d)
-    feature_first_occur_task.create_schema()
-    feature_first_occur_task.daily_run()
+    # feature_first_occur_task = get_task(configs.FEATURE_FIRST_OCCUR, d)
+    # feature_first_occur_task.daily_run()
 
 
 def init(args, configs: Optional[Callable]):
@@ -330,10 +329,11 @@ def init(args, configs: Optional[Callable]):
     events_task = get_task(configs.MANGO_EVENTS, args.date)
     unnested_events_task = get_task(configs.MANGO_EVENTS_UNNESTED, args.date)
     feature_events_task = get_task(configs.MANGO_EVENTS_FEATURE_MAPPING, args.date)
-    google_rps_task = get_task(configs.GOOOGLE_RPS, datetime.datetime(2018, 1, 1))
+    google_rps_task = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1))
     channel_mapping_task = get_task(configs.CHANNEL_MAPPING, args.date)
     user_channels_task = get_task(configs.USER_CHANNELS, args.date)
     revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, args.date)
+    feature_first_occur_task = get_task(configs.FEATURE_FIRST_OCCUR, args.date)
     if args.dropschema:
         core_task.drop_schema()
         events_task.drop_schema()
@@ -343,15 +343,17 @@ def init(args, configs: Optional[Callable]):
         user_channels_task.drop_schema()
         google_rps_task.drop_schema()
         revenue_bukalapak_task.drop_schema()
+        feature_first_occur_task.drop_schema()
     if args.createschema:
-        core_task.create_schema(args.checkchema)
-        events_task.create_schema(args.checkchema)
-        unnested_events_task.create_schema(args.checkchema)
-        feature_events_task.create_schema(args.checkchema)
-        channel_mapping_task.create_schema(args.checkchema)
-        user_channels_task.create_schema(args.checkchema)
-        google_rps_task.create_schema(args.checkchema)
-        revenue_bukalapak_task.create_schema(args.checkchema)
+        core_task.create_schema(args.checkschema)
+        events_task.create_schema(args.checkschema)
+        unnested_events_task.create_schema(args.checkschema)
+        feature_events_task.create_schema(args.checkschema)
+        channel_mapping_task.create_schema(args.checkschema)
+        user_channels_task.create_schema(args.checkschema)
+        google_rps_task.create_schema(args.checkschema)
+        revenue_bukalapak_task.create_schema(args.checkschema)
+        feature_first_occur_task.create_schema(args.checkschema)
 
 
 def get_date_range_from_string(start: str, end: str):
