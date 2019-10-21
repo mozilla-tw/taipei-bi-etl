@@ -18,7 +18,7 @@ ON
 WHERE
   feature_type IN ('Feature',
     'Vertical')
-  AND feature_name <> 'Others'
+  AND feature_name not in ('Others','feature: others')
   AND submission_date >= DATE '{start_date}'
   AND fo.cohort_type IS NULL
 GROUP BY
