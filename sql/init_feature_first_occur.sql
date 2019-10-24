@@ -10,7 +10,7 @@ FROM
 WHERE
   feature_type IN ('Feature',
     'Vertical')
-  AND feature_name <> 'Others'
+  AND feature_name not in ('Others','feature: others')
   AND submission_date = DATE '{start_date}'
 GROUP BY
   1,
