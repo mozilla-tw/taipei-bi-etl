@@ -116,3 +116,18 @@ def test_mango_events(client, to_delete):
 
     view_query = view.view_query
     assert isinstance(view_query, str) and len(view_query) != 0
+
+    # run second time to update the bigquery view,
+    # check udf replace functionality.
+    tasks.bigquery.main(args)
+
+    view = client.get_table(
+        "%s.%s"
+        % (
+            configs.MANGO_EVENTS_UNNESTED["id"]["dataset"],
+            configs.MANGO_EVENTS_UNNESTED["params"]["dest"],
+        )
+    )
+
+    view_query = view.view_query
+    assert isinstance(view_query, str) and len(view_query) != 0
