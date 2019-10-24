@@ -1,6 +1,8 @@
-from google.cloud import bigquery
+from copy import deepcopy
 
-BQ_PROJECT = {"dataset": "test", "location": "US"}
+from configs import bigquery
+
+BQ_PROJECT = {"dataset": "test", "location": "US", "project": "rocket-dev01"}
 
 SELECT_TABLE = {
     "type": "table",
@@ -12,3 +14,26 @@ SELECT_TABLE = {
     "query": "select_table",
     "append": True,
 }
+
+MANGO_EVENTS = {**deepcopy(bigquery.MANGO_EVENTS), "id": BQ_PROJECT}
+
+MANGO_EVENTS_UNNESTED = {**deepcopy(bigquery.MANGO_EVENTS_UNNESTED), "id": BQ_PROJECT}
+
+MANGO_EVENTS_FEATURE_MAPPING = {
+    **deepcopy(bigquery.MANGO_EVENTS_FEATURE_MAPPING),
+    "id": BQ_PROJECT,
+}
+
+CHANNEL_MAPPING = {**deepcopy(bigquery.CHANNEL_MAPPING), "id": BQ_PROJECT}
+
+USER_CHANNELS = {**deepcopy(bigquery.USER_CHANNELS), "id": BQ_PROJECT}
+
+for event in [
+    MANGO_EVENTS,
+    MANGO_EVENTS_UNNESTED,
+    MANGO_EVENTS_FEATURE_MAPPING,
+    CHANNEL_MAPPING,
+    USER_CHANNELS,
+]:
+    event["params"]["dataset"] = BQ_PROJECT["dataset"]
+    event["params"]["project"] = BQ_PROJECT["project"]

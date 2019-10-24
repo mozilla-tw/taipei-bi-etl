@@ -50,3 +50,69 @@ def test_BqTableTask(client, to_delete):
     )
 
     assert table.num_rows != 0
+
+
+@pytest.mark.intgtest
+def test_mango_events(client, to_delete):
+    arg_parser = utils.config.get_arg_parser()
+
+    # testing mango_events
+    args = arg_parser.parse_args(
+        [
+            "--config",
+            "test",
+            "--task",
+            "bigquery",
+            "--subtask",
+            "mango_events",
+            "--date",
+            "2019-09-26",
+        ]
+    )
+    configs = utils.config.get_configs(args.task, args.config)
+
+    dataset = client.create_dataset(configs.MANGO_EVENTS["id"]["dataset"])
+    to_delete.extend([dataset])
+
+    tasks.bigquery.main(args)
+
+    table = client.get_table(
+        "%s.%s"
+        % (
+            configs.MANGO_EVENTS["id"]["dataset"],
+            configs.MANGO_EVENTS["params"]["dest"],
+        )
+    )
+
+    assert table.num_rows != 0
+    # a physical table is not view, should not have query string
+    assert table.view_query is None
+
+    # testing mango_events_unnested
+    args = arg_parser.parse_args(
+        [
+            "--config",
+            "test",
+            "--task",
+            "bigquery",
+            "--subtask",
+            "mango_events_unnested",
+            "--createschema",
+            "--date",
+            "2019-09-26",
+        ]
+    )
+    configs = utils.config.get_configs(args.task, args.config)
+
+    tasks.bigquery.main(args)
+
+    view = client.get_table(
+        "%s.%s"
+        % (
+            configs.MANGO_EVENTS_UNNESTED["id"]["dataset"],
+            configs.MANGO_EVENTS_UNNESTED["params"]["dest"],
+        )
+    )
+
+    view_query = view.view_query
+    assert isinstance(view_query, str) and len(view_query) != 0
