@@ -1,6 +1,6 @@
 ARG PYTHON_VERSION=3.7
 
-FROM python:3-slim
+FROM python:${PYTHON_VERSION}-slim
 COPY requirements ./requirements
 RUN pip install --no-cache-dir -r requirements/requirements.txt
 RUN pip install --no-cache-dir -r requirements/test_requirements.txt
