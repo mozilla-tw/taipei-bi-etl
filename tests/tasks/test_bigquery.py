@@ -131,3 +131,59 @@ def test_mango_events(client, to_delete):
 
     view_query = view.view_query
     assert isinstance(view_query, str) and len(view_query) != 0
+
+
+@pytest.mark.intgtest
+def test_channel_mapping_truncate(client, to_delete):
+    arg_parser = utils.config.get_arg_parser()
+
+    # testing mango_events
+    args = arg_parser.parse_args(
+        [
+            "--config",
+            "test",
+            "--task",
+            "bigquery",
+            "--subtask",
+            "channel_mapping",
+            "--createschema",
+            "--date",
+            "2019-10-03",
+        ]
+    )
+    config = utils.config.get_configs(args.task, args.config).CHANNEL_MAPPING
+    dataset_name = config["id"]["dataset"]
+    dest_name = config["params"]["dest"]
+
+    dataset = client.create_dataset(dataset_name)
+    to_delete.extend([dataset])
+
+    tasks.bigquery.main(args)
+
+    table = client.get_table("%s.%s" % (dataset_name, dest_name))
+
+    assert table.num_rows != 0
+    # a physical table is not view, should not have query string
+    assert table.view_query is None
+
+    # run one more time to test overwrite table with existing table schema
+    args = arg_parser.parse_args(
+        [
+            "--config",
+            "test",
+            "--task",
+            "bigquery",
+            "--subtask",
+            "channel_mapping",
+            "--date",
+            "2019-10-03",
+        ]
+    )
+
+    tasks.bigquery.main(args)
+
+    table = client.get_table("%s.%s" % (dataset_name, dest_name))
+
+    assert table.num_rows != 0
+    # a physical table is not view, should not have query string
+    assert table.view_query is None
