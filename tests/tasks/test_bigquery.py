@@ -69,20 +69,16 @@ def test_mango_events(client, to_delete):
             "2019-09-26",
         ]
     )
-    configs = utils.config.get_configs(args.task, args.config)
+    MANGO_EVENTS = utils.config.get_configs(args.task, args.config).MANGO_EVENTS
+    dataset_name = MANGO_EVENTS["id"]["dataset"]
+    dest_name = MANGO_EVENTS["params"]["dest"]
 
-    dataset = client.create_dataset(configs.MANGO_EVENTS["id"]["dataset"])
+    dataset = client.create_dataset(dataset_name)
     to_delete.extend([dataset])
 
     tasks.bigquery.main(args)
 
-    table = client.get_table(
-        "%s.%s"
-        % (
-            configs.MANGO_EVENTS["id"]["dataset"],
-            configs.MANGO_EVENTS["params"]["dest"],
-        )
-    )
+    table = client.get_table("%s.%s" % (dataset_name, dest_name))
 
     assert table.num_rows != 0
     # a physical table is not view, should not have query string
@@ -102,17 +98,16 @@ def test_mango_events(client, to_delete):
             "2019-09-26",
         ]
     )
-    configs = utils.config.get_configs(args.task, args.config)
+    MANGO_EVENTS_UNNESTED = utils.config.get_configs(
+        args.task, args.config
+    ).MANGO_EVENTS_UNNESTED
+
+    dataset_name = MANGO_EVENTS_UNNESTED["id"]["dataset"]
+    dest_name = MANGO_EVENTS_UNNESTED["params"]["dest"]
 
     tasks.bigquery.main(args)
 
-    view = client.get_table(
-        "%s.%s"
-        % (
-            configs.MANGO_EVENTS_UNNESTED["id"]["dataset"],
-            configs.MANGO_EVENTS_UNNESTED["params"]["dest"],
-        )
-    )
+    view = client.get_table("%s.%s" % (dataset_name, dest_name))
 
     view_query = view.view_query
     assert isinstance(view_query, str) and len(view_query) != 0
@@ -121,13 +116,7 @@ def test_mango_events(client, to_delete):
     # check udf replace functionality.
     tasks.bigquery.main(args)
 
-    view = client.get_table(
-        "%s.%s"
-        % (
-            configs.MANGO_EVENTS_UNNESTED["id"]["dataset"],
-            configs.MANGO_EVENTS_UNNESTED["params"]["dest"],
-        )
-    )
+    view = client.get_table("%s.%s" % (dataset_name, dest_name))
 
     view_query = view.view_query
     assert isinstance(view_query, str) and len(view_query) != 0
