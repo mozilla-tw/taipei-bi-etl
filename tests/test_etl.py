@@ -4,12 +4,6 @@ import etl
 import pytest
 
 
-@pytest.mark.intgtest
-def test_etl():
-    sys.argv = ["./etl.py", "--debug"]
-    etl.main()
-
-
 @pytest.mark.unittest
 def test_rps__global_package__fs():
     sys.argv = [
