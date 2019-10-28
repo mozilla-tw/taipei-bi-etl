@@ -37,7 +37,7 @@ class AdjustEtlTask(base.EtlTask):
     def transform_adjust_trackers(self, adjust_trackers):
         """Transform Adjust data."""
         # trasnform here
-        adjust_trackers["execution_date"] = pd.datetime.utcnow()
+        adjust_trackers["execution_date"] = self.current_date
         adjust_trackers["execution_date"] = adjust_trackers["execution_date"].astype(
             "datetime64[ns]"
         )
