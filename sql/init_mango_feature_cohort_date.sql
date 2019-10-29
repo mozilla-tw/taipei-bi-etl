@@ -1,5 +1,6 @@
 SELECT
-  CONCAT('feature_', LOWER(feature_type)) AS cohort_type,
+  'feature' AS measure_type,
+  feature_type AS cohort_level,
   feature_name AS cohort_name,
   os,
   country,
@@ -11,11 +12,12 @@ WHERE
   feature_type IN ('Feature',
     'Vertical')
   AND feature_name not in ('Others','feature: others')
-  AND submission_date = DATE '{start_date}'
+  AND submission_date >= DATE '2018-11-01'
 GROUP BY
   1,
   2,
   3,
   4,
-  5
-LIMIT 0
+  5,
+  6
+-- LIMIT 0

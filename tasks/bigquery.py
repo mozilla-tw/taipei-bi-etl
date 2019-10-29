@@ -11,6 +11,7 @@ import utils.config
 from google.cloud import bigquery
 
 from utils.file import read_string
+from utils.marshalling import lookback_dates
 
 log = logging.getLogger(__name__)
 
@@ -25,15 +26,30 @@ class BqTask:
     """Base class for BigQuery ETL."""
 
     def __init__(self, config: Dict, date: datetime.datetime):
-        # default to load data 1 day behind
+        # assuming the latest date passed in is 1 day behind today
         self.date = (
             date
             - datetime.timedelta(
-                days=1 if "days_behind" not in config else config["days_behind"]
+                days=0 if "days_behind" not in config else config["days_behind"]
             )
         ).strftime(utils.config.DEFAULT_DATE_FORMAT)
         self.config = config
         self.client = bigquery.Client(config["params"]["project"])
+
+    def is_latest(self):
+        lookback_period = (
+            1
+            if "days_behind" not in self.config
+            else self.config["days_behind"] + 1
+        )
+        is_latest = (
+            lookback_dates(
+                datetime.datetime.utcnow(), lookback_period
+            ).date() <= datetime.datetime.strptime(
+                self.date, utils.config.DEFAULT_DATE_FORMAT
+            ).date()
+        )
+        return is_latest
 
     def is_write_append(self):
         # default write append=true
@@ -138,8 +154,14 @@ class BqGcsTask(BqTask):
         self.run_query(self.date, True)
 
     def daily_run(self):
-        self.daily_cleanup(self.date)
-        self.run_query(self.date)
+        if not self.is_write_append() and not self.is_latest():
+            # skip write if not latest date in write truncate case
+            return
+        if self.does_table_exist():
+            self.daily_cleanup(self.date)
+            self.run_query(self.date)
+        else:
+            self.create_schema()
 
     def run_query(self, date, autodetect=False):
         dataset_ref = self.client.dataset(self.config["params"]["dataset"])
@@ -207,8 +229,14 @@ class BqQueryTask(BqTask):
             self.run_query(start_date, qstring)
 
     def daily_run(self):
-        self.daily_cleanup(self.date)
-        self.run_query(self.date)
+        if not self.is_write_append() and not self.is_latest():
+            # skip write if not latest date in write truncate case
+            return
+        if self.does_table_exist():
+            self.daily_cleanup(self.date)
+            self.run_query(self.date)
+        else:
+            self.create_schema()
 
     def run_query(self, date, qstring=None):
         if qstring is None:
@@ -256,6 +284,10 @@ class BqViewTask(BqTask):
 
         log.info("Successfully created view at {}".format(view.full_table_id))
 
+    def daily_run(self):
+        self.drop_schema()
+        self.create_schema()
+
 
 def get_task(config: Dict, date: datetime.datetime):
     assert "type" in config, "Task type is required in BigQuery config."
@@ -288,8 +320,7 @@ def main(args: Namespace):
             task.create_schema(args.checkschema)
         task.daily_run()
         log.info("BigQuery Task %s Finished." % args.subtask)
-    # init(args, cfgs)
-    # daily_run_lastest(args.date, cfgs)
+    daily_run(args.date, cfgs)
     # backfill("2019-09-01", "2019-10-17", cfgs)
     # backfill("2019-09-01", "2019-09-02", cfgs)
 
@@ -299,61 +330,26 @@ def backfill(start, end, configs: Optional[Callable]):
         daily_run(d, configs)
 
 
-def daily_run_lastest(d: datetime, configs: Optional[Callable]):
-    channel_mapping_task = get_task(configs.CHANNEL_MAPPING, d)
-    channel_mapping_task.daily_run()
-    daily_run(d, configs)
-    backfill_dates = get_date_range(
-        datetime.datetime.utcnow() - datetime.timedelta(days=8),
-        datetime.datetime.utcnow() - datetime.timedelta(days=1),
-    )
-    for d in backfill_dates:
-        revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, d)
-        revenue_bukalapak_task.daily_run()
-
-
 def daily_run(d: datetime, configs: Optional[Callable]):
     print(d)
     core_task = get_task(configs.MANGO_CORE, d)
-    core_task.daily_run()
     events_task = get_task(configs.MANGO_EVENTS, d)
+    unnested_events_task = get_task(configs.MANGO_EVENTS_UNNESTED, d)
+    feature_events_task = get_task(configs.MANGO_EVENTS_FEATURE_MAPPING, d)
+    # google_rps_task = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1))
+    channel_mapping_task = get_task(configs.MANGO_CHANNEL_MAPPING, d)
+    user_channels_task = get_task(configs.MANGO_USER_CHANNELS, d)
+    revenue_bukalapak_task = get_task(configs.MANGO_REVENUE_BUKALAPAK, d)
+    feature_first_occur_task = get_task(configs.MANGO_FEATURE_COHORT_DATE, d)
+    core_task.daily_run()
     events_task.daily_run()
-    # revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, d)
-    # revenue_bukalapak_task.daily_run()
-    # feature_first_occur_task = get_task(configs.FEATURE_FIRST_OCCUR, d)
-    # feature_first_occur_task.daily_run()
-
-
-def init(args, configs: Optional[Callable]):
-    core_task = get_task(configs.MANGO_CORE, args.date)
-    events_task = get_task(configs.MANGO_EVENTS, args.date)
-    unnested_events_task = get_task(configs.MANGO_EVENTS_UNNESTED, args.date)
-    feature_events_task = get_task(configs.MANGO_EVENTS_FEATURE_MAPPING, args.date)
-    google_rps_task = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1))
-    channel_mapping_task = get_task(configs.CHANNEL_MAPPING, args.date)
-    user_channels_task = get_task(configs.USER_CHANNELS, args.date)
-    revenue_bukalapak_task = get_task(configs.REVENUE_BUKALAPAK, args.date)
-    feature_first_occur_task = get_task(configs.FEATURE_FIRST_OCCUR, args.date)
-    if args.dropschema:
-        core_task.drop_schema()
-        events_task.drop_schema()
-        unnested_events_task.drop_schema()
-        feature_events_task.drop_schema()
-        channel_mapping_task.drop_schema()
-        user_channels_task.drop_schema()
-        google_rps_task.drop_schema()
-        revenue_bukalapak_task.drop_schema()
-        feature_first_occur_task.drop_schema()
-    if args.createschema:
-        core_task.create_schema(args.checkschema)
-        events_task.create_schema(args.checkschema)
-        unnested_events_task.create_schema(args.checkschema)
-        feature_events_task.create_schema(args.checkschema)
-        channel_mapping_task.create_schema(args.checkschema)
-        user_channels_task.create_schema(args.checkschema)
-        google_rps_task.create_schema(args.checkschema)
-        revenue_bukalapak_task.create_schema(args.checkschema)
-        feature_first_occur_task.create_schema(args.checkschema)
+    unnested_events_task.daily_run()
+    feature_events_task.daily_run()
+    # google_rps_task.daily_run()
+    channel_mapping_task.daily_run()
+    user_channels_task.daily_run()
+    revenue_bukalapak_task.daily_run()
+    feature_first_occur_task.daily_run()
 
 
 def get_date_range_from_string(start: str, end: str):
