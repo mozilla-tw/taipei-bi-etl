@@ -1,7 +1,6 @@
 """Adjust ETL task."""
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
-import pandas as pd
 from tasks import base
 import numpy as np
 from utils.config import get_configs, get_arg_parser

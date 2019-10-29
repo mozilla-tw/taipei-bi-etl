@@ -38,14 +38,11 @@ class BqTask:
 
     def is_latest(self):
         lookback_period = (
-            1
-            if "days_behind" not in self.config
-            else self.config["days_behind"] + 1
+            1 if "days_behind" not in self.config else self.config["days_behind"] + 1
         )
         is_latest = (
-            lookback_dates(
-                datetime.datetime.utcnow(), lookback_period
-            ).date() <= datetime.datetime.strptime(
+            lookback_dates(datetime.datetime.utcnow(), lookback_period).date()
+            <= datetime.datetime.strptime(
                 self.date, utils.config.DEFAULT_DATE_FORMAT
             ).date()
         )
