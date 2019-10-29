@@ -1,8 +1,32 @@
 from copy import deepcopy
 
 from configs import bigquery
+from utils.config import merge_config
 
 BQ_PROJECT = {"dataset": "test", "location": "US", "project": "rocket-dev01"}
+
+
+def set_debug_config():
+    c = {
+        key: value
+        for key, value in bigquery.__dict__.items()
+        if (not (key.startswith("__") or key.startswith("_") or key == "BQ_PROJECT"))
+        and isinstance(value, dict)
+    }
+    for k, v in c.items():
+        v_dbg = deepcopy(v)
+        merge_config(v_dbg["params"], BQ_PROJECT)
+        globals()[k] = v_dbg
+
+
+set_debug_config()
+
+# TODO: refactor the configs to more reconfigurable
+globals()["MANGO_EVENTS"]["params"]["src"] = "rocket-dev01.mango_dev.mango_events"
+# TODO: establish a bucket for testing assets
+globals()["MANGO_CHANNEL_MAPPING"]["params"][
+    "src"
+] = "moz-taipei-bi-datasets/mango/staging-adjust-adjust_trackers/2019-10-03.jsonl"
 
 SELECT_TABLE = {
     "type": "table",
@@ -14,26 +38,3 @@ SELECT_TABLE = {
     "query": "select_table",
     "append": True,
 }
-
-MANGO_EVENTS = {**deepcopy(bigquery.MANGO_EVENTS), "id": BQ_PROJECT}
-
-MANGO_EVENTS_UNNESTED = {**deepcopy(bigquery.MANGO_EVENTS_UNNESTED), "id": BQ_PROJECT}
-
-MANGO_EVENTS_FEATURE_MAPPING = {
-    **deepcopy(bigquery.MANGO_EVENTS_FEATURE_MAPPING),
-    "id": BQ_PROJECT,
-}
-
-CHANNEL_MAPPING = {**deepcopy(bigquery.CHANNEL_MAPPING), "id": BQ_PROJECT}
-
-USER_CHANNELS = {**deepcopy(bigquery.USER_CHANNELS), "id": BQ_PROJECT}
-
-for event in [
-    MANGO_EVENTS,
-    MANGO_EVENTS_UNNESTED,
-    MANGO_EVENTS_FEATURE_MAPPING,
-    CHANNEL_MAPPING,
-    USER_CHANNELS,
-]:
-    event["params"]["dataset"] = BQ_PROJECT["dataset"]
-    event["params"]["project"] = BQ_PROJECT["project"]
