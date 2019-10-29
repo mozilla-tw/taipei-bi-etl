@@ -231,9 +231,9 @@ class BqQueryTask(BqTask):
             return
         if self.does_table_exist():
             self.daily_cleanup(self.date)
-            self.run_query(self.date)
         else:
             self.create_schema()
+        self.run_query(self.date)
 
     def run_query(self, date, qstring=None):
         if qstring is None:
