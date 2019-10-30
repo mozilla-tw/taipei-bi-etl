@@ -16,6 +16,15 @@ def client():
 
 
 @pytest.fixture
+def always_latest(monkeypatch):
+    def always_true(self):
+        return True
+
+    # does it work with imported class?
+    monkeypatch.setattr(tasks.bigquery.BqTask, "is_latest", always_true)
+
+
+@pytest.fixture
 def to_delete(client):
     doomed = []
     yield doomed
@@ -123,7 +132,7 @@ def test_mango_events(client, to_delete):
 
 
 @pytest.mark.intgtest
-def test_channel_mapping_truncate(client, to_delete):
+def test_channel_mapping_truncate(client, to_delete, always_latest):
     arg_parser = utils.config.get_arg_parser()
 
     # testing mango_events
@@ -136,9 +145,7 @@ def test_channel_mapping_truncate(client, to_delete):
             "--subtask",
             "mango_channel_mapping",
             "--date",
-            # TODO: integration test should not depend on moving datetime
-            #       might need refactor code for bigquery task
-            datetime.datetime.utcnow().date().isoformat(),
+            "2019-10-26",
         ]
     )
     config = utils.config.get_configs(args.task, args.config).MANGO_CHANNEL_MAPPING
