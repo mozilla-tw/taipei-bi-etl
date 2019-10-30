@@ -317,7 +317,7 @@ def main(args: Namespace):
             task.create_schema(args.checkschema)
         task.daily_run()
         log.info("BigQuery Task %s Finished." % args.subtask)
-    daily_run(args.date, cfgs)
+    # daily_run(args.date, cfgs)
     # backfill("2019-09-01", "2019-10-17", cfgs)
     # backfill("2019-09-01", "2019-09-02", cfgs)
 
