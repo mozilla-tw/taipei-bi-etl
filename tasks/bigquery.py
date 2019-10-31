@@ -36,6 +36,18 @@ class BqTask:
         self.config = config
         self.client = bigquery.Client(config["params"]["project"])
 
+    def get_backfill_dates(self):
+        if "backfill_days" in self.config:
+            bf_dates = []
+            for bf_day in self.config["backfill_days"]:
+                bf_dates += [
+                    lookback_dates(datetime.datetime.strptime(
+                        self.date, utils.config.DEFAULT_DATE_FORMAT
+                    ), bf_day).strftime(utils.config.DEFAULT_DATE_FORMAT)
+                ]
+            return bf_dates
+        return
+
     def is_latest(self):
         lookback_period = (
             1 if "days_behind" not in self.config else self.config["days_behind"] + 1
@@ -157,6 +169,12 @@ class BqGcsTask(BqTask):
         if self.does_table_exist():
             self.daily_cleanup(self.date)
             self.run_query(self.date)
+            if self.is_latest() and self.is_write_append():
+                bf_dates = self.get_backfill_dates()
+                if bf_dates:
+                    for bf_date in bf_dates:
+                        self.daily_cleanup(bf_date)
+                        self.run_query(bf_date)
         else:
             self.create_schema()
 
@@ -231,9 +249,16 @@ class BqQueryTask(BqTask):
             return
         if self.does_table_exist():
             self.daily_cleanup(self.date)
+            self.run_query(self.date)
+            if self.is_latest() and self.is_write_append():
+                bf_dates = self.get_backfill_dates()
+                if bf_dates:
+                    for bf_date in bf_dates:
+                        self.daily_cleanup(bf_date)
+                        self.run_query(bf_date)
         else:
             self.create_schema()
-        self.run_query(self.date)
+            self.run_query(self.date)
 
     def run_query(self, date, qstring=None):
         if qstring is None:
@@ -317,9 +342,10 @@ def main(args: Namespace):
             task.create_schema(args.checkschema)
         task.daily_run()
         log.info("BigQuery Task %s Finished." % args.subtask)
-    # daily_run(args.date, cfgs)
-    # backfill("2019-09-01", "2019-10-17", cfgs)
-    # backfill("2019-09-01", "2019-09-02", cfgs)
+    else:
+        daily_run(args.date, cfgs)
+        # backfill("2019-09-01", "2019-10-17", cfgs)
+        # backfill("2019-09-01", "2019-09-02", cfgs)
 
 
 def backfill(start, end, configs: Optional[Callable]):

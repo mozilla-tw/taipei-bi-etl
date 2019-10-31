@@ -73,7 +73,6 @@ MANGO_CHANNEL_MAPPING = {
     "type": "gcs",
     "append": False,
     "filetype": "jsonl",
-    "days_behind": 0,
     "params": {
         **BQ_PROJECT,
         "src": "moz-taipei-bi-datasets/mango/staging-adjust-adjust_trackers/{start_date}.jsonl",
@@ -193,7 +192,6 @@ GOOGLE_RPS = {
     "type": "gcs",
     "append": False,
     "filetype": "csv",
-    "days_behind": 0,
     "params": {
         **BQ_PROJECT,
         "src": "moz-taipei-bi-datasets/mango/staging-rps-google_search_rps/{start_date}.csv",
@@ -205,7 +203,6 @@ MANGO_REVENUE_BUKALAPAK = {
     "type": "gcs",
     "append": True,
     "filetype": "jsonl",
-    "days_behind": 1,
     "backfill_days": [1, 2, 3, 4, 5, 6, 7],
     "params": {
         **BQ_PROJECT,
