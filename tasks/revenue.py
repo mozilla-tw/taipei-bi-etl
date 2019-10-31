@@ -213,39 +213,6 @@ class RevenueEtlTask(base.EtlTask):
             df[nacol] = df[nacol].fillna("")
         return df
 
-    # def transform_google_search(
-    #     self, google_search: DataFrame, google_search_rps: DataFrame
-    # ) -> DataFrame:
-    #     """Transform search data from telemetry for revenue reference.
-    #
-    #     Input: staging-rps-google_sesarch_rps, raw-revenue-google_search
-    #     Output: staging-revenue-google_search
-    #
-    #     :rtype: DataFrame
-    #     :param google_search: extracted source DataFrame for search volume
-    #     :param google_search_rps: extracted source DataFrame for search rps
-    #     :return: the transformed DataFrame
-    #     """
-    #     df = google_search
-    #     df["country"] = df["country_code"]
-    #     rps = google_search_rps
-    #     df = df.join(rps, rsuffix="_rps")
-    #     # transform here
-    #     td = self.get_target_dataframe()
-    #     td["os"] = df["os"]
-    #     td["country"] = df["country_code"]
-    #     # workaround for datetime64 validation since `datetime64[ns, UTC]`
-    #     # will raise "TypeError: data type not understood"
-    #     td["utc_datetime"] = df["day"].astype("datetime64[ns]")
-    #     td["tz"] = df["country"].apply(lambda x: get_country_tz_str(x))
-    #     td["payout"] = df["event_count"] * df["rps"]
-    #     td["payout"] = td["payout"].fillna(0)
-    #     td["sales_amount"] = td["sales_amount"].fillna(0)
-    #     td["source"] = td["source"].fillna("google_search")
-    #     td["currency"] = td["currency"].fillna("USD")
-    #     # print(td)
-    #     return td
-
 
 def main(args: Namespace):
     """Take args and pass them to RevenueEtlTask.

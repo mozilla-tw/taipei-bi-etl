@@ -9,8 +9,5 @@ debug-data/
 .coverage
 .DS_Store
 htmlcov
-configs/*.py
-!configs/__init__.py
-configs/debug/*.py
-!configs/debug/__init__.py
 settings.py
+entrypoint_secrets
