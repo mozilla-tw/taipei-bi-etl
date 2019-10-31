@@ -185,6 +185,7 @@ MANGO_COHORT_RETAINED_USERS = {
         "dest": "mango_cohort_retained_users",
     },
     "query": "mango_cohort_retained_users",
+    "init_query": "init_mango_cohort_retained_users",
     "cleanup_query": "cleanup_mango_cohort_retained_users",
 }
 

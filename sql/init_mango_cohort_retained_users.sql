@@ -24,7 +24,7 @@ SELECT os, country,
        COUNT(DISTINCT CASE WHEN occur_month = 3 THEN client_id ELSE NULL END) AS m3_retained_users
 
 FROM `{project}.{dataset}.{src}`
-WHERE cohort_date >= DATE '{start_date}'
+WHERE cohort_date >= DATE '2018-11-01'
   AND cohort_date < DATE_ADD(DATE '{start_date}', INTERVAL '1' DAY)
 
 GROUP BY os, country,
