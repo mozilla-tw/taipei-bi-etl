@@ -15,7 +15,7 @@ SELECT
   fm.client_id,
   MIN(fm.submission_date) AS cohort_date
 FROM
-  `{src}` AS fm
+  `{project}.{dataset}.{src}` AS fm
 LEFT JOIN
   existing_clients AS ec
 ON

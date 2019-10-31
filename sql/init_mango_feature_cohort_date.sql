@@ -7,7 +7,7 @@ SELECT
   client_id,
   MIN(submission_date) AS cohort_date
 FROM
-  `{src}`
+  `{project}.{dataset}.{src}`
 WHERE
   feature_type IN ('Feature',
     'Vertical')
