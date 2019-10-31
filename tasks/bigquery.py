@@ -41,9 +41,12 @@ class BqTask:
             bf_dates = []
             for bf_day in self.config["backfill_days"]:
                 bf_dates += [
-                    lookback_dates(datetime.datetime.strptime(
-                        self.date, utils.config.DEFAULT_DATE_FORMAT
-                    ), bf_day).strftime(utils.config.DEFAULT_DATE_FORMAT)
+                    lookback_dates(
+                        datetime.datetime.strptime(
+                            self.date, utils.config.DEFAULT_DATE_FORMAT
+                        ),
+                        bf_day,
+                    ).strftime(utils.config.DEFAULT_DATE_FORMAT)
                 ]
             return bf_dates
         return
