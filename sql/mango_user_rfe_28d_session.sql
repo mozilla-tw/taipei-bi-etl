@@ -12,10 +12,8 @@ with feature_session_event as (
          show_keyboard,
          count(1) -- dedup extra
   from `{project}.{dataset}.{src}`
-  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 30 DAY) -- 取 partition
-  and submission_date <= DATE('{start_date}')
-  and submission_timestamp >= TIMESTAMP(DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY)) -- 28d
-  and submission_timestamp < TIMESTAMP(DATE('{start_date}'))
+  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 27 DAY) -- 取 partition
+  and submission_date < DATE_ADD(DATE('{start_date}'), INTERVAL 1 DAY)
   group by
     client_id,
     submission_timestamp,
@@ -69,10 +67,8 @@ vertical_session_event as (
     feature_name,
     LEAD (DATETIME_ADD(DATETIME(submission_timestamp), INTERVAL event_timestamp MILLISECOND), 1) OVER (PARTITION BY client_id, event_value, event_vertical ORDER BY submission_timestamp) AS end_timestamp
   from  `{project}.{dataset}.{src}`
-  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 30 DAY) -- 取 partition
-  and submission_date <= DATE('{start_date}')
-  and submission_timestamp >= TIMESTAMP(DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY)) -- 28d
-  and submission_timestamp < TIMESTAMP(DATE('{start_date}'))
+  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 27 DAY) -- 取 partition
+  and submission_date < DATE_ADD(DATE('{start_date}'), INTERVAL 1 DAY)
   and event_method in ('start', 'end')
   and event_object = 'process'
   and feature_type = 'Vertical'

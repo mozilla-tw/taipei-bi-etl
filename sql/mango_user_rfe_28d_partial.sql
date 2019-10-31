@@ -11,10 +11,8 @@ feature as (
     *,
     DATE('{start_date}') as execution_date -- 今天跑昨天以前的資料
   from `{project}.{dataset}.{src2}`
-  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 30 DAY) -- 取 partition
-  and submission_date <= DATE('{start_date}')
-  and submission_timestamp >= TIMESTAMP(DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY)) -- 28d
-  and submission_timestamp < TIMESTAMP(DATE('{start_date}'))
+  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 27 DAY) -- 取 partition
+  and submission_date < DATE_ADD(DATE('{start_date}'), INTERVAL 1 DAY)
   and feature_name not in ('Others','feature: others')
 ),
 
