@@ -162,3 +162,43 @@ def test_channel_mapping_truncate(client, to_delete, always_latest):
     assert table.num_rows != 0
     # a physical table is not view, should not have query string
     assert table.view_query is None
+
+
+@pytest.mark.todo
+def test_channel_mapping_schema_change(client, to_delete, always_latest):
+    arg_parser = utils.config.get_arg_parser()
+
+    # Test schema change.
+    # regression test.
+    dates = ["2019-10-03", "2019-10-26"]
+    for idx, date in enumerate(dates):
+        args = arg_parser.parse_args(
+            [
+                "--config",
+                "test",
+                "--task",
+                "bigquery",
+                "--subtask",
+                "mango_channel_mapping",
+                "--date",
+                date,
+            ]
+        )
+
+        config = utils.config.get_configs(args.task, args.config).MANGO_CHANNEL_MAPPING
+
+        if idx == 0:
+            # For the first case, create the dataset before any operation.
+            dataset_name = config["params"]["dataset"]
+            dest_name = config["params"]["dest"]
+
+            dataset = client.create_dataset(dataset_name)
+            to_delete.extend([dataset])
+
+        tasks.bigquery.main(args)
+
+        table = client.get_table("%s.%s" % (dataset_name, dest_name))
+
+        assert table.num_rows != 0
+        # a physical table is not view, should not have query string
+        assert table.view_query is None
