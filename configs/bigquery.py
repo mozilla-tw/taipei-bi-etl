@@ -53,7 +53,6 @@ MANGO_EVENTS_UNNESTED = {
         "src": "mango_events",
         "dest": "mango_events_unnested",
     },
-    "udf_js": ["json_extract_events"],
     "query": "mango_events_unnested",
 }
 
@@ -210,4 +209,18 @@ MANGO_REVENUE_BUKALAPAK = {
         "dest": "mango_revenue",
     },
     "cleanup_query": "cleanup_revenue_bukalapak",
+}
+
+MANGO_FEATURE_ROI = {
+    "type": "table",
+    "partition_field": "execution_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "src": "mango_user_rfe_28d",
+        "src2": "mango_cohort_retained_users",
+        "src3": "mango_user_count",
+        "dest": "mango_feature_roi",
+    },
+    "query": "mango_feature_roi",
 }

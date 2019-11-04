@@ -348,7 +348,6 @@ def main(args: Namespace):
     else:
         daily_run(args.date, cfgs)
         # backfill("2019-09-01", "2019-10-17", cfgs)
-        # backfill("2019-09-01", "2019-09-02", cfgs)
 
 
 def backfill(start, end, configs: Optional[Callable]):
@@ -373,6 +372,7 @@ def daily_run(d: datetime, configs: Optional[Callable]):
     user_feature_occurrence = get_task(configs.MANGO_USER_FEATURE_OCCURRENCE, d)
     cohort_user_occurrence = get_task(configs.MANGO_COHORT_USER_OCCURRENCE, d)
     cohort_retained_users = get_task(configs.MANGO_COHORT_RETAINED_USERS, d)
+    feature_roi = get_task(configs.MANGO_FEATURE_ROI, d)
     revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d)
     # google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1))
     core.daily_run()
@@ -390,6 +390,7 @@ def daily_run(d: datetime, configs: Optional[Callable]):
     user_feature_occurrence.daily_run()
     cohort_user_occurrence.daily_run()
     cohort_retained_users.daily_run()
+    feature_roi.daily_run()
     revenue_bukalapak.daily_run()
     # google_rps.daily_run()
 
