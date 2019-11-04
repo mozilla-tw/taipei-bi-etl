@@ -1,9 +1,9 @@
 
 BQ_PROJECT = {
-    "project": "rocket-dev01",
-    "dataset": "mango_prod",
+    "project": "taipei-bi",
+    "dataset": "mango_staging",
+    # "dataset": "mango_prod",
     "location": "US",
-    # "dataset": "mango_dev",
 }
 
 MANGO_CORE = {
