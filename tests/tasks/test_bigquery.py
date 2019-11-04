@@ -50,7 +50,7 @@ def test_BqTableTask(client, to_delete):
     dataset = client.create_dataset(dataset_name)
     to_delete.extend([dataset])
 
-    log.info(
+    log.debug(
         "Create table %s.%s by selecting rows from public table."
         % (dataset_name, dest_name)
     )
