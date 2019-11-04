@@ -1,4 +1,3 @@
-from google.cloud import bigquery
 
 BQ_PROJECT = {
     "project": "rocket-dev01",

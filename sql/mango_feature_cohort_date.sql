@@ -1,7 +1,7 @@
 WITH
-  existing_clients AS (
+  existing AS (
   SELECT
-    DISTINCT client_id
+    os, country, measure_type, cohort_level, cohort_name, client_id
   FROM
     `{project}.{dataset}.{dest}`
 )
@@ -17,9 +17,15 @@ SELECT
 FROM
   `{project}.{dataset}.{src}` AS fm
 LEFT JOIN
-  existing_clients AS ec
+  existing AS ec
 ON
   fm.client_id=ec.client_id
+  AND fm.feature_type=ec.cohort_level
+  AND 'feature'=ec.measure_type
+  AND fm.feature_type=ec.cohort_level
+  AND fm.feature_name=ec.cohort_name
+  AND fm.os=ec.os
+  AND fm.country=ec.country
 WHERE
   feature_type IN ('Feature',
     'Vertical')
