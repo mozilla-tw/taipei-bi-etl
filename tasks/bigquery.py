@@ -26,7 +26,7 @@ class BqTask:
     """Base class for BigQuery ETL."""
 
     def __init__(self, config: Dict, date: datetime.datetime):
-        # assuming the latest date passed in is 1 day behind today
+        # assuming the latest date passed in is 0 day behind today
         self.date = (
             date
             - datetime.timedelta(
@@ -52,6 +52,7 @@ class BqTask:
         return
 
     def is_latest(self):
+        #assuming the latest date passed is one day behind
         lookback_period = (
             1 if "days_behind" not in self.config else self.config["days_behind"] + 1
         )
@@ -293,7 +294,7 @@ class BqViewTask(BqTask):
     """BigQuery ETL via view."""
 
     def __init__(self, config: Dict, date: datetime.datetime):
-        super().__init__(config, date - datetime.timedelta(days=1))
+        super().__init__(config, date)
 
     def create_schema(self, check_exists=False):
         super().create_schema(check_exists)
