@@ -52,7 +52,7 @@ class BqTask:
         return
 
     def is_latest(self):
-        #assuming the latest date passed is one day behind
+        # assuming the latest date passed is one day behind
         lookback_period = (
             1 if "days_behind" not in self.config else self.config["days_behind"] + 1
         )
