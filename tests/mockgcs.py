@@ -24,20 +24,27 @@ class MockHTTPIterator:
 class MockStorageClient:
     """MockStorageClient."""
 
+    _bucket = {}
+
     def __init__(self):
         """Init."""
-        self._bucket = {}
+        pass
 
     def get_bucket(self, name: str):
         """Get Bucket."""
-        return self._bucket[name]
+        return MockStorageClient._bucket[name]
+
+    def bucket(self, name: str):
+        """Get Bucket."""
+        return MockStorageClient._bucket[name]
 
     def create_bucket(self, name: str):
         """Create bucket."""
-        if name in self._bucket:
+        if name in MockStorageClient._bucket:
             raise ValueError
-        self._bucket[name] = MockBucket(name)
-        return self._bucket[name]
+        log.debug("Create bucket %s" % name)
+        MockStorageClient._bucket[name] = MockBucket(name)
+        return MockStorageClient._bucket[name]
 
     def list_blobs(self, bucket: str):
         """List blobs."""

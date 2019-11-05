@@ -1,32 +1,61 @@
-from copy import deepcopy
-
-from configs import bigquery
-from utils.config import merge_config
+from google.cloud import bigquery
 
 BQ_PROJECT = {"dataset": "test", "location": "US", "project": "rocket-dev01"}
 
 
-def set_debug_config():
-    c = {
-        key: value
-        for key, value in bigquery.__dict__.items()
-        if (not (key.startswith("__") or key.startswith("_") or key == "BQ_PROJECT"))
-        and isinstance(value, dict)
-    }
-    for k, v in c.items():
-        v_dbg = deepcopy(v)
-        merge_config(v_dbg["params"], BQ_PROJECT)
-        globals()[k] = v_dbg
+MANGO_EVENTS = {
+    "type": "table",
+    "partition_field": "submission_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "src": "rocket-dev01.unittest_assets.mango_events",
+        "dest": "mango_events",
+    },
+    "query": "mango_events",
+    "cleanup_query": "cleanup_mango_events",
+}
 
+MANGO_EVENTS_UNNESTED = {
+    "type": "view",
+    "params": {**BQ_PROJECT, "src": "mango_events", "dest": "mango_events_unnested"},
+    "udf_js": ["json_extract_events"],
+    "query": "mango_events_unnested",
+}
 
-set_debug_config()
+MANGO_EVENTS_FEATURE_MAPPING = {
+    "type": "view",
+    "params": {
+        **BQ_PROJECT,
+        "src": "mango_events_unnested",
+        "dest": "mango_events_feature_mapping",
+    },
+    "udf_js": ["feature_mapping"],
+    "query": "mango_events_feature_mapping",
+}
 
-# TODO: refactor the configs to more reconfigurable
-globals()["MANGO_EVENTS"]["params"]["src"] = "rocket-dev01.mango_dev.mango_events"
-# TODO: establish a bucket for testing assets
-globals()["MANGO_CHANNEL_MAPPING"]["params"][
-    "src"
-] = "moz-taipei-bi-datasets/mango/staging-adjust-adjust_trackers/2019-10-03.jsonl"
+MANGO_CHANNEL_MAPPING = {
+    "type": "gcs",
+    "append": False,
+    "filetype": "jsonl",
+    "days_behind": 0,
+    "params": {
+        **BQ_PROJECT,
+        "src": "unittest-assets-rocket-dev01/mango/staging-adjust-adjust_trackers/{start_date}.jsonl",
+        "dest": "channel_mapping",
+    },
+}
+
+MANGO_USER_CHANNELS = {
+    "type": "view",
+    "params": {
+        **BQ_PROJECT,
+        "src": "mango_events",
+        "src2": "channel_mapping",
+        "dest": "user_channels",
+    },
+    "query": "user_channels",
+}
 
 SELECT_TABLE = {
     "type": "table",

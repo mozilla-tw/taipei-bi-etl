@@ -1,0 +1,234 @@
+{
+    "result_parameters": {
+        "kpis": [
+            "Monthly Active Users"
+        ],
+        "start_date": "2019-01-01",
+        "end_date": "2019-09-26",
+        "sandbox": false,
+        "grouping": [
+            "networks",
+            "campaigns",
+            "adgroups",
+            "creatives"
+        ],
+        "attribution_type": "click",
+        "reattributed": "all",
+        "utc_offset": "00:00",
+        "attribution_source": "dynamic"
+    },
+    "result_set": {
+        "token": "xxxxxxxxxxxx",
+        "name": "Firefox Lite",
+        "currency": "USD",
+        "networks": [
+            {
+                "token": "aaaaaa",
+                "name": "Product Marketing (Owned media)",
+                "campaigns": [
+                    {
+                        "token": "bbbbbb",
+                        "name": "social",
+                        "adgroups": [
+                            {
+                                "token": "a85be7",
+                                "name": "facebook",
+                                "creatives": [
+                                    {
+                                        "token": "050c2b",
+                                        "name": "beta_video_id_id",
+                                        "kpi_values": [
+                                            0.01
+                                        ]
+                                    },
+                                    {
+                                        "token": "138613",
+                                        "name": "try_beta_id_id",
+                                        "kpi_values": [
+                                            0.02
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "token": "78d495",
+                "name": "Facebook Installs",
+                "campaigns": [
+                    {
+                        "token": "e17006",
+                        "name": "Expired Attributions",
+                        "adgroups": [
+                            {
+                                "token": "0",
+                                "name": "unknown",
+                                "creatives": [
+                                    {
+                                        "token": "0",
+                                        "name": "unknown",
+                                        "kpi_values": [
+                                            0.01
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "token": "decedb",
+                "name": "Organic",
+                "campaigns": [
+                    {
+                        "token": "0",
+                        "name": "unknown",
+                        "adgroups": [
+                            {
+                                "token": "0",
+                                "name": "unknown",
+                                "creatives": [
+                                    {
+                                        "token": "0",
+                                        "name": "unknown",
+                                        "kpi_values": [
+                                            900.6
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "token": "58c986",
+                "name": "Google Universal App Campaigns",
+                "campaigns": [
+                    {
+                        "token": "b9eb80",
+                        "name": "Search",
+                        "adgroups": [
+                            {
+                                "token": "cda691",
+                                "name": "123456798",
+                                "creatives": [
+                                    {
+                                        "token": "0",
+                                        "name": "unknown",
+                                        "kpi_values": [
+                                            0.01
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "token": "c0f75b",
+                "name": "Google Organic Search",
+                "campaigns": [
+                    {
+                        "token": "33c60e",
+                        "name": "firefox fast and private",
+                        "adgroups": [
+                            {
+                                "token": "0",
+                                "name": "unknown",
+                                "creatives": [
+                                    {
+                                        "token": "0",
+                                        "name": "unknown",
+                                        "kpi_values": [
+                                            0.01
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "token": "027711",
+                "name": "Adwords UAC Installs",
+                "campaigns": [
+                    {
+                        "token": "7a88cf",
+                        "name": "6b6ff221",
+                        "adgroups": [
+                            {
+                                "token": "0",
+                                "name": "unknown",
+                                "creatives": [
+                                    {
+                                        "token": "0",
+                                        "name": "unknown",
+                                        "kpi_values": [
+                                            0.01
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "token": "792216",
+                "name": "Twitter social campaign",
+                "campaigns": [
+                    {
+                        "token": "2df26a",
+                        "name": "Twitter_20190504",
+                        "adgroups": [
+                            {
+                                "token": "0",
+                                "name": "unknown",
+                                "creatives": [
+                                    {
+                                        "token": "0",
+                                        "name": "unknown",
+                                        "kpi_values": [
+                                            0.01
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "token": "2f609f",
+                "name": "Twitter Installs",
+                "campaigns": [
+                    {
+                        "token": "aac26b",
+                        "name": "Expired Attributions",
+                        "adgroups": [
+                            {
+                                "token": "0",
+                                "name": "unknown",
+                                "creatives": [
+                                    {
+                                        "token": "0",
+                                        "name": "unknown",
+                                        "kpi_values": [
+                                            0.01
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

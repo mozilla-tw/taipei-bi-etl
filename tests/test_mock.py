@@ -90,6 +90,10 @@ def test_mock_gcs(mock_gcs, mock_readwrite):
         log.debug(blob.name)
         blob.upload_from_filename(f)
 
+    # re-create the client to simulate another client initialization
+    gcs = storage.Client()
+    bucket = gcs.bucket(bucket_name)
+
     # download first file and validate the content
     blob = bucket.blob(file_list[0])
     blob.download_to_filename(tempfile)
