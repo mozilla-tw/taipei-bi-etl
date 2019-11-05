@@ -70,6 +70,7 @@ MANGO_EVENTS_FEATURE_MAPPING = {
 MANGO_CHANNEL_MAPPING = {
     "type": "gcs",
     "append": False,
+    "latest_only": True,
     "filetype": "jsonl",
     "params": {
         **BQ_PROJECT,
