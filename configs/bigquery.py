@@ -96,9 +96,9 @@ MANGO_USER_RFE_PARTIAL = {
         **BQ_PROJECT,
         "src": "mango_core_normalized",
         "src2": "mango_events_feature_mapping",
-        "dest": "mango_user_rfe_28d_partial",
+        "dest": "mango_user_rfe_daily_partial",
     },
-    "query": "mango_user_rfe_28d_partial",
+    "query": "mango_user_rfe_daily_partial",
 }
 
 MANGO_USER_RFE_SESSION = {
@@ -106,9 +106,9 @@ MANGO_USER_RFE_SESSION = {
     "params": {
         **BQ_PROJECT,
         "src": "mango_events_feature_mapping",
-        "dest": "mango_user_rfe_28d_session",
+        "dest": "mango_user_rfe_daily_session",
     },
-    "query": "mango_user_rfe_28d_session",
+    "query": "mango_user_rfe_daily_session",
 }
 
 MANGO_USER_RFE = {
@@ -117,8 +117,9 @@ MANGO_USER_RFE = {
     "append": True,
     "params": {
         **BQ_PROJECT,
-        "src": "mango_user_rfe_28d_partial",
-        "src2": "mango_user_rfe_28d_session",
+        "src": "mango_core_normalized",
+        "src2": "mango_user_rfe_daily_partial",
+        "src3": "mango_user_rfe_daily_session",
         "dest": "mango_user_rfe_28d",
     },
     "query": "mango_user_rfe_28d",
@@ -194,7 +195,7 @@ GOOGLE_RPS = {
     "filetype": "csv",
     "params": {
         **BQ_PROJECT,
-        "src": "moz-taipei-bi-datasets/mango/staging-rps-google_search_rps/{start_date}.csv",
+        "src": "moz-taipei-bi-datasets/mango/staging-rps-google_search_rps/2018-01-01.csv",
         "dest": "google_rps",
     },
 }

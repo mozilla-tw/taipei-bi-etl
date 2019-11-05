@@ -26,6 +26,7 @@ class BqTask:
     """Base class for BigQuery ETL."""
 
     def __init__(self, config: Dict, date: datetime.datetime):
+        self.config = config
         # assuming the latest date passed in is 0 day behind today
         self.date = (
             date
@@ -33,7 +34,7 @@ class BqTask:
                 days=0 if "days_behind" not in config else config["days_behind"]
             )
         ).strftime(utils.config.DEFAULT_DATE_FORMAT)
-        self.config = config
+        self.date = self.get_latest_date_by_config(self.date)
         self.client = bigquery.Client(config["params"]["project"])
 
     def get_backfill_dates(self):
@@ -51,13 +52,26 @@ class BqTask:
             return bf_dates
         return
 
-    def is_latest(self):
+    def get_latest_date_by_config(self, default_date):
+        if (
+            "latest_only" in self.config
+            and self.config["latest_only"]
+            and not self.is_write_append()
+            and not self.is_latest()
+        ):
+            return self.get_latest_date()
+        return default_date
+
+    def get_latest_date(self):
         # assuming the latest date passed is one day behind
         lookback_period = (
             1 if "days_behind" not in self.config else self.config["days_behind"] + 1
         )
+        return lookback_dates(datetime.datetime.utcnow(), lookback_period).date()
+
+    def is_latest(self):
         is_latest = (
-            lookback_dates(datetime.datetime.utcnow(), lookback_period).date()
+            self.get_latest_date()
             <= datetime.datetime.strptime(
                 self.date, utils.config.DEFAULT_DATE_FORMAT
             ).date()
@@ -167,14 +181,6 @@ class BqGcsTask(BqTask):
         self.run_query(self.date, True)
 
     def daily_run(self):
-        if (
-            "latest_only" in self.config
-            and self.config["latest_only"]
-            and not self.is_write_append()
-            and not self.is_latest()
-        ):
-            # skip write if not latest date in write truncate case
-            return
         if self.does_table_exist():
             self.daily_cleanup(self.date)
             self.run_query(self.date)
@@ -253,14 +259,6 @@ class BqQueryTask(BqTask):
             self.run_query(start_date, qstring)
 
     def daily_run(self):
-        if (
-            "latest_only" in self.config
-            and self.config["latest_only"]
-            and not self.is_write_append()
-            and not self.is_latest()
-        ):
-            # skip write if not latest date in write truncate case
-            return
         if self.does_table_exist():
             self.daily_cleanup(self.date)
             self.run_query(self.date)
@@ -385,7 +383,7 @@ def daily_run(d: datetime, configs: Optional[Callable]):
     cohort_retained_users = get_task(configs.MANGO_COHORT_RETAINED_USERS, d)
     feature_roi = get_task(configs.MANGO_FEATURE_ROI, d)
     revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d)
-    # google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1))
+    google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1))
     core.daily_run()
     core_normalized.daily_run()
     events.daily_run()
@@ -403,7 +401,7 @@ def daily_run(d: datetime, configs: Optional[Callable]):
     cohort_retained_users.daily_run()
     feature_roi.daily_run()
     revenue_bukalapak.daily_run()
-    # google_rps.daily_run()
+    google_rps.daily_run()
 
 
 def get_date_range_from_string(start: str, end: str):

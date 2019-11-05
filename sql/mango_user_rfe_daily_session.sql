@@ -1,5 +1,7 @@
 with feature_session_event as (
   select client_id,
+         country,
+         submission_date,
          submission_timestamp,
          event_timestamp,
          event_vertical,
@@ -12,10 +14,11 @@ with feature_session_event as (
          show_keyboard,
          count(1) -- dedup extra
   from `{project}.{dataset}.{src}`
-  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 27 DAY) -- 取 partition
-  and submission_date < DATE_ADD(DATE('{start_date}'), INTERVAL 1 DAY)
+  --where submission_date = DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)  --param
   group by
     client_id,
+    country,
+    submission_date,
     submission_timestamp,
     event_timestamp,
     event_vertical,
@@ -31,6 +34,8 @@ with feature_session_event as (
 feature_session as (
   select
     client_id,
+    country,
+    submission_date,
     event_vertical,
     feature_type,
     feature_name,
@@ -38,14 +43,15 @@ feature_session as (
     sum(url_counts) as url_counts,
     sum(app_link_install) as app_link_install,
     sum(app_link_open) as app_link_open,
-    sum(show_keyboard) as show_keyboard,
-    DATE('{start_date}') as execution_date -- 今天跑昨天以前的資料
+    sum(show_keyboard) as show_keyboard
   from feature_session_event
   where feature_type = 'Feature'
   and feature_name like 'feature: %'
   and (feature_name like '%content_tab%' or feature_name like '%tab_swipe%')
   group by
     client_id,
+    country,
+    submission_date,
     event_vertical,
     feature_type,
     feature_name
@@ -54,6 +60,8 @@ feature_session as (
 vertical_session_event as (
   select
     client_id,
+    country,
+    submission_date,
     submission_timestamp,
     event_timestamp,
     DATETIME_ADD(DATETIME(submission_timestamp), INTERVAL event_timestamp MILLISECOND) as start_timestamp,
@@ -67,16 +75,17 @@ vertical_session_event as (
     feature_name,
     LEAD (DATETIME_ADD(DATETIME(submission_timestamp), INTERVAL event_timestamp MILLISECOND), 1) OVER (PARTITION BY client_id, event_value, event_vertical ORDER BY submission_timestamp) AS end_timestamp
   from  `{project}.{dataset}.{src}`
-  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 27 DAY) -- 取 partition
-  and submission_date < DATE_ADD(DATE('{start_date}'), INTERVAL 1 DAY)
-  and event_method in ('start', 'end')
+  where event_method in ('start', 'end')
   and event_object = 'process'
   and feature_type = 'Vertical'
+  --and submission_date = DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)  --param
 ),
 
 vertical_session_time as (
   select
     client_id,
+    country,
+    submission_date,
     event_vertical,
     feature_type,
     feature_name,
@@ -88,6 +97,8 @@ vertical_session_time as (
   where event_method = 'start'
   group by
     client_id,
+    country,
+    submission_date,
     event_vertical,
     feature_type,
     feature_name
@@ -96,6 +107,8 @@ vertical_session_time as (
 vertical_session_others as (
   select
     client_id,
+    country,
+    submission_date,
     event_vertical,
     sum(url_counts) as url_counts,
     sum(app_link_install) as app_link_install,
@@ -104,12 +117,16 @@ vertical_session_others as (
   from feature_session
   group by
     client_id,
+    country,
+    submission_date,
     event_vertical
 ),
 
 vertical_session as (
   select
     t.client_id,
+    t.country,
+    t.submission_date,
     t.event_vertical,
     t.feature_type,
     t.feature_name,
@@ -117,16 +134,20 @@ vertical_session as (
     url_counts,
     app_link_install,
     app_link_open,
-    show_keyboard,
-    DATE('{start_date}') as execution_date
+    show_keyboard
   from vertical_session_time as t
   left join vertical_session_others as o
-  on t.client_id = o.client_id and t.event_vertical = o.event_vertical
+  on t.client_id = o.client_id
+  and t.country = o.country
+  and t.submission_date = o.submission_date
+  and t.event_vertical = o.event_vertical
 ),
 
 app_session as (
   select
     client_id,
+    country,
+    submission_date,
     'all' as event_vertical,
     'App' as feature_type,
     'App' as feature_name,
@@ -134,13 +155,14 @@ app_session as (
     sum(url_counts) as url_counts,
     sum(app_link_install) as app_link_install,
     sum(app_link_open) as app_link_open,
-    sum(show_keyboard) as show_keyboard,
-    execution_date
+    sum(show_keyboard) as show_keyboard
   from vertical_session
   group by
     client_id,
-    execution_date
+    country,
+    submission_date
 )
+
 
 select *
 from feature_session
@@ -154,3 +176,5 @@ union all
 
 select *
 from app_session
+
+
