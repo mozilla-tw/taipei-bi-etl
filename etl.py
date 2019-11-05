@@ -34,7 +34,7 @@ def main():
         arg_parser = utils.config.get_arg_parser(**task.DEFAULTS)
         task.main(arg_parser.parse_args())
     else:  # Run all tasks in sequence
-        rps.main(utils.config.get_arg_parser(**rps.DEFAULTS).parse_args())
+        # rps.main(utils.config.get_arg_parser(**rps.DEFAULTS).parse_args())
         revenue.main(utils.config.get_arg_parser(**revenue.DEFAULTS).parse_args())
         adjust.main(utils.config.get_arg_parser(**adjust.DEFAULTS).parse_args())
         bigquery.main(utils.config.get_arg_parser(**bigquery.DEFAULTS).parse_args())

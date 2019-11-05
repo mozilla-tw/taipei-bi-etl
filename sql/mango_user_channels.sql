@@ -34,7 +34,7 @@ WITH
   FROM
     user_token
   JOIN
-    `rocket-dev01.mango_dev.channel_mapping` AS channels
+    `{project}.{dataset}.{src2}` AS channels
   ON
     user_token.settings_value=channels.network_token
   UNION ALL
