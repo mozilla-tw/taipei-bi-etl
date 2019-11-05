@@ -167,13 +167,13 @@ class BqGcsTask(BqTask):
         self.run_query(self.date, True)
 
     def daily_run(self):
-        if not self.is_write_append() and not self.is_latest():
-            # skip write if not latest date in write truncate case
-            return
+        # if not self.is_write_append() and not self.is_latest():
+        # skip write if not latest date in write truncate case
+        # return
         if self.does_table_exist():
             self.daily_cleanup(self.date)
             self.run_query(self.date)
-            if self.is_latest() and self.is_write_append():
+            if self.is_write_append():  # and self.is_latest():
                 bf_dates = self.get_backfill_dates()
                 if bf_dates:
                     for bf_date in bf_dates:
@@ -248,13 +248,13 @@ class BqQueryTask(BqTask):
             self.run_query(start_date, qstring)
 
     def daily_run(self):
-        if not self.is_write_append() and not self.is_latest():
-            # skip write if not latest date in write truncate case
-            return
+        # if not self.is_write_append() and not self.is_latest():
+        # skip write if not latest date in write truncate case
+        # return
         if self.does_table_exist():
             self.daily_cleanup(self.date)
             self.run_query(self.date)
-            if self.is_latest() and self.is_write_append():
+            if self.is_write_append():  # and self.is_latest():
                 bf_dates = self.get_backfill_dates()
                 if bf_dates:
                     for bf_date in bf_dates:
