@@ -4,12 +4,12 @@ import numpy as np
 SOURCES = {
     "adjust_trackers": {
         "type": "api",
-        "url": "https://api.adjust.com/kpis/v1/abc.json&user_token={api_key}",
+        "url": "https://api.adjust.com/kpis/v1/abc.json&user_token={api_key}&end_date={end_date}",
         "request_interval": 1,
         "api_key": "xyz",
         "json_path_nested": ["result_set.networks", "campaigns", "adgroups", "creatives"],
         "fields": ["name", "token"],
-        "cache_file": True,
+        "cache_file": False,
         "date_format": "%Y-%m-%d",
         "file_format": "json",
         "load": True
