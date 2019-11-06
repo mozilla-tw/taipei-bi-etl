@@ -25,7 +25,9 @@ FILETYPES = {
 class BqTask:
     """Base class for BigQuery ETL."""
 
-    def __init__(self, config: Dict, date: datetime.datetime, next_date: datetime = None):
+    def __init__(
+        self, config: Dict, date: datetime.datetime, next_date: datetime = None
+    ):
         self.config = config
         self.next_date = next_date
         # assuming the latest date passed in is 0 day behind today
@@ -305,7 +307,9 @@ class BqQueryTask(BqTask):
 class BqViewTask(BqTask):
     """BigQuery ETL via view."""
 
-    def __init__(self, config: Dict, date: datetime.datetime, next_date: datetime = None):
+    def __init__(
+        self, config: Dict, date: datetime.datetime, next_date: datetime = None
+    ):
         super().__init__(config, date, next_date)
 
     def create_schema(self, check_exists=False):
@@ -387,8 +391,12 @@ def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = No
     user_rfe_session = get_task(configs.MANGO_USER_RFE_SESSION, d, next_date)
     user_rfe = get_task(configs.MANGO_USER_RFE, d, next_date)
     user_occurrence = get_task(configs.MANGO_USER_OCCURRENCE, d, next_date)
-    user_feature_occurrence = get_task(configs.MANGO_USER_FEATURE_OCCURRENCE, d, next_date)
-    cohort_user_occurrence = get_task(configs.MANGO_COHORT_USER_OCCURRENCE, d, next_date)
+    user_feature_occurrence = get_task(
+        configs.MANGO_USER_FEATURE_OCCURRENCE, d, next_date
+    )
+    cohort_user_occurrence = get_task(
+        configs.MANGO_COHORT_USER_OCCURRENCE, d, next_date
+    )
     cohort_retained_users = get_task(configs.MANGO_COHORT_RETAINED_USERS, d, next_date)
     feature_roi = get_task(configs.MANGO_FEATURE_ROI, d, next_date)
     revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d, next_date)
