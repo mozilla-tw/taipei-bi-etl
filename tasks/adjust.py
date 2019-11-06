@@ -1,4 +1,5 @@
 """Adjust ETL task."""
+import datetime
 from argparse import Namespace
 from typing import Dict, Any, List, Tuple
 from tasks import base
@@ -6,9 +7,11 @@ import numpy as np
 from utils.config import get_configs, get_arg_parser
 import logging
 
+from utils.marshalling import lookback_dates
+
 log = logging.getLogger(__name__)
 
-DEFAULTS = {"rm": True}
+DEFAULTS = {"date": lookback_dates(datetime.datetime.utcnow(), 1)}
 
 
 class AdjustEtlTask(base.EtlTask):
