@@ -82,8 +82,8 @@ rr as (
   FROM
     `{project}.{dataset}.{src2}`
   where measure_type = 'feature'
-  and cohort_date >= DATE_SUB(DATE '{start_date}', INTERVAL 27 DAY)
-  and cohort_date < DATE_ADD(DATE '{start_date}', INTERVAL 1 DAY)
+  and cohort_date > DATE_SUB(DATE '{start_date}', INTERVAL 28 DAY)
+  and cohort_date <= DATE '{start_date}'
   group by
     os,
     country,

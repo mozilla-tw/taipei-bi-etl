@@ -25,7 +25,7 @@ SELECT os, country,
 
 FROM `{project}.{dataset}.{src}`
 WHERE cohort_date >= DATE '2018-11-01'
-  AND cohort_date < DATE_ADD(DATE '{start_date}', INTERVAL '1' DAY)
+  AND cohort_date <= DATE '{start_date}'
 
 GROUP BY os, country,
        measure_type, cohort_level, cohort_name, 

@@ -6,8 +6,8 @@ active_days as (
   from `{project}.{dataset}.{src}`
   --where submission_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY) -- 取 partition
   --and submission_date <= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY) 
-  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 27 DAY) -- 取 partition
-  and submission_date < DATE_ADD(DATE('{start_date}'), INTERVAL 1 DAY)
+  where submission_date > DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY) -- 取 partition
+  and submission_date <= DATE('{start_date}')
   
   group by client_id
 ),
@@ -33,8 +33,8 @@ rfe_partial as (
   from `{project}.{dataset}.{src2}`
   --where submission_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY) --param
   --and submission_date <= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY) --param
-  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 27 DAY) -- 取 partition
-  and submission_date < DATE_ADD(DATE('{start_date}'), INTERVAL 1 DAY)
+  where submission_date > DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY) -- 取 partition
+  and submission_date <= DATE('{start_date}')
   group by 
     client_id,
     os, 
@@ -65,8 +65,8 @@ rfe_session as (
   from `{project}.{dataset}.{src3}`
   --where submission_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY) -- 取 partition
   --and submission_date <= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY) 
-  where submission_date >= DATE_SUB(DATE('{start_date}'), INTERVAL 27 DAY) -- 取 partition
-  and submission_date < DATE_ADD(DATE('{start_date}'), INTERVAL 1 DAY)
+  where submission_date > DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY) -- 取 partition
+  and submission_date <= DATE('{start_date}')
   group by 
     client_id,
     country,
