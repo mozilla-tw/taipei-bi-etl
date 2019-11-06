@@ -16,6 +16,7 @@ WITH
     country,
     client_id,
     cohort_date,
+    submission_date AS occur_date,
     DATE_DIFF(submission_date, cohort_date, DAY) AS occur_day
   FROM
     cohort
