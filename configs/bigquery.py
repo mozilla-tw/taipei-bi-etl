@@ -74,7 +74,7 @@ MANGO_CHANNEL_MAPPING = {
     "filetype": "jsonl",
     "params": {
         **BQ_PROJECT,
-        "src": "moz-taipei-bi-datasets/mango/staging-adjust-adjust_trackers/{start_date}.jsonl",
+        "src": "moz-taipei-bi/mango/staging-adjust-adjust_trackers/{start_date}.jsonl",
         "dest": "mango_channel_mapping",
     },
 }
@@ -195,7 +195,7 @@ GOOGLE_RPS = {
     "filetype": "csv",
     "params": {
         **BQ_PROJECT,
-        "src": "moz-taipei-bi-datasets/mango/staging-rps-google_search_rps/2018-01-01.csv",
+        "src": "moz-taipei-bi/mango/staging-rps-google_search_rps/2018-01-01.csv",
         "dest": "google_rps",
     },
 }
@@ -207,7 +207,7 @@ MANGO_REVENUE_BUKALAPAK = {
     "backfill_days": [1, 2, 3, 4, 5, 6, 7],
     "params": {
         **BQ_PROJECT,
-        "src": "moz-taipei-bi-datasets/mango/staging-revenue-bukalapak/{start_date}.jsonl",
+        "src": "moz-taipei-bi/mango/staging-revenue-bukalapak/{start_date}.jsonl",
         "dest": "mango_revenue",
     },
     "cleanup_query": "cleanup_revenue_bukalapak",

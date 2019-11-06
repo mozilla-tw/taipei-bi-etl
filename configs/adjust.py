@@ -31,8 +31,8 @@ SCHEMA = [
 
 DESTINATIONS = {
     "gcs": {
-        "bucket": "moz-fx-data-derived-datasets-analysis",
-        "prefix": "taipei-bi/",
+        "bucket": "moz-taipei-bi",
+        "prefix": "mango/",
     },
     "fs": {
         "prefix": "./data/",
