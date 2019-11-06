@@ -202,3 +202,25 @@ def test_channel_mapping_schema_change(client, to_delete, always_latest):
         assert table.num_rows != 0
         # a physical table is not view, should not have query string
         assert table.view_query is None
+
+
+@pytest.mark.unittest
+def test_next_execution_date(client, to_delete):
+    arg_parser = utils.config.get_arg_parser()
+
+    args = arg_parser.parse_args(  # noqa: F841
+        [
+            "--config",
+            "test",
+            "--task",
+            "bigquery",
+            "--subtask",
+            "mango_channel_mapping",
+            "--date",
+            "2019-11-03",
+            "--next_execution_date",
+            "2019-11-04 00:00:00+00:00",
+        ]
+    )
+
+    # TODO: test parameter parsing for next_execution_date
