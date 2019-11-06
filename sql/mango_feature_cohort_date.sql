@@ -30,7 +30,8 @@ WHERE
   feature_type IN ('Feature',
     'Vertical')
   AND feature_name not in ('Others','feature: others')
-  AND submission_date = DATE '{start_date}'
+  AND submission_date >= DATE '2018-11-01'
+--   AND submission_date = DATE '{start_date}'
   AND ec.client_id IS NULL
 GROUP BY
   1,
