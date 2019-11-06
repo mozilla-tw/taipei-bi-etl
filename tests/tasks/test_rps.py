@@ -14,7 +14,8 @@ inject_fixtures(
     task,
     {
         "prd": utils.config.get_configs(task, ""),
-        "dbg": utils.config.get_configs(task, ""),
+        "stg": utils.config.get_configs(task, "staging"),
+        "dbg": utils.config.get_configs(task, "debug"),
     },
 )
 

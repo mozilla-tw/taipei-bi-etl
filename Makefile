@@ -43,10 +43,10 @@ clean-pyc:
 	find . -name '*~' -exec rm -f {} +
 
 lint:
-	pytest -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not mocktest and not envtest and not unittest and not intgtest"
+	pytest -v --black --docstyle --flake8 --mypy-ignore-missing-imports -n 4 -m "not mocktest and not envtest and not unittest and not intgtest and not todo"
 
 test:
-	py.test --doctest-modules
+	py.test --doctest-modules -m "not todo"
 
 test-doctest:
 	pytest --doctest-modules -m "not mocktest and not envtest and not unittest and not intgtest"
