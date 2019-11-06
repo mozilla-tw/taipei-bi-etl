@@ -1,8 +1,7 @@
 
 BQ_PROJECT = {
     "project": "taipei-bi",
-    "dataset": "mango_staging",
-    # "dataset": "mango_prod",
+    "dataset": "mango_prod",
     "location": "US",
 }
 
