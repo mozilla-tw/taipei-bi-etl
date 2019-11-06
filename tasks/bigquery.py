@@ -25,8 +25,9 @@ FILETYPES = {
 class BqTask:
     """Base class for BigQuery ETL."""
 
-    def __init__(self, config: Dict, date: datetime.datetime):
+    def __init__(self, config: Dict, date: datetime.datetime, next_date: datetime = None):
         self.config = config
+        self.next_date = next_date
         # assuming the latest date passed in is 0 day behind today
         self.date = (
             date
@@ -70,12 +71,15 @@ class BqTask:
         return lookback_dates(datetime.datetime.utcnow(), lookback_period).date()
 
     def is_latest(self):
-        is_latest = (
-            self.get_latest_date()
-            <= datetime.datetime.strptime(
-                self.date, utils.config.DEFAULT_DATE_FORMAT
-            ).date()
-        )
+        if self.next_date:
+            is_latest = self.next_date > datetime.datetime.utcnow()
+        else:
+            is_latest = (
+                self.get_latest_date()
+                <= datetime.datetime.strptime(
+                    self.date, utils.config.DEFAULT_DATE_FORMAT
+                ).date()
+            )
         return is_latest
 
     def is_write_append(self):
@@ -171,8 +175,8 @@ class BqTask:
 class BqGcsTask(BqTask):
     """BigQuery ETL via GCS."""
 
-    def __init__(self, config: Dict, date: datetime):
-        super().__init__(config, date)
+    def __init__(self, config: Dict, date: datetime, next_date: datetime = None):
+        super().__init__(config, date, next_date)
 
     def create_schema(self, check_exists=False):
         if check_exists and self.does_table_exist():
@@ -233,8 +237,8 @@ class BqGcsTask(BqTask):
 class BqQueryTask(BqTask):
     """BigQuery ETL via query result."""
 
-    def __init__(self, config: Dict, date: datetime):
-        super().__init__(config, date)
+    def __init__(self, config: Dict, date: datetime, next_date: datetime = None):
+        super().__init__(config, date, next_date)
 
     def create_schema(self, check_exists=False):
         super().create_schema(check_exists)
@@ -301,8 +305,8 @@ class BqQueryTask(BqTask):
 class BqViewTask(BqTask):
     """BigQuery ETL via view."""
 
-    def __init__(self, config: Dict, date: datetime.datetime):
-        super().__init__(config, date)
+    def __init__(self, config: Dict, date: datetime.datetime, next_date: datetime = None):
+        super().__init__(config, date, next_date)
 
     def create_schema(self, check_exists=False):
         super().create_schema(check_exists)
@@ -323,14 +327,14 @@ class BqViewTask(BqTask):
         self.create_schema()
 
 
-def get_task(config: Dict, date: datetime.datetime):
+def get_task(config: Dict, date: datetime.datetime, next_date: datetime = None):
     assert "type" in config, "Task type is required in BigQuery config."
     if config["type"] == "gcs":
-        return BqGcsTask(config, date)
+        return BqGcsTask(config, date, next_date)
     elif config["type"] == "view":
-        return BqViewTask(config, date)
+        return BqViewTask(config, date, next_date)
     elif config["type"] == "table":
-        return BqQueryTask(config, date)
+        return BqQueryTask(config, date, next_date)
 
 
 def main(args: Namespace):
@@ -343,11 +347,16 @@ def main(args: Namespace):
         config_name = "debug"
     if args.config:
         config_name = args.config
+    next_date = None
+    if args.next_execution_date:
+        next_date = datetime.datetime.strptime(
+            args.next_execution_date, utils.config.DEFAULT_FULL_DATETIME_FORMAT
+        )
     cfgs = utils.config.get_configs("bigquery", config_name)
     if args.subtask:
         log.info("Running BigQuery Task %s." % args.subtask)
         cfg = getattr(cfgs, args.subtask.upper())
-        task = get_task(cfg, args.date)
+        task = get_task(cfg, args.date, next_date)
         if args.dropschema:
             task.drop_schema()
         if args.createschema:
@@ -355,7 +364,7 @@ def main(args: Namespace):
         task.daily_run()
         log.info("BigQuery Task %s Finished." % args.subtask)
     else:
-        daily_run(args.date, cfgs)
+        daily_run(args.date, cfgs, next_date)
         # backfill("2019-09-01", "2019-10-17", cfgs)
 
 
@@ -364,26 +373,26 @@ def backfill(start, end, configs: Optional[Callable]):
         daily_run(d, configs)
 
 
-def daily_run(d: datetime, configs: Optional[Callable]):
+def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = None):
     print(d)
-    core = get_task(configs.MANGO_CORE, d)
-    core_normalized = get_task(configs.MANGO_CORE_NORMALIZED, d)
-    events = get_task(configs.MANGO_EVENTS, d)
-    unnested_events = get_task(configs.MANGO_EVENTS_UNNESTED, d)
-    feature_events = get_task(configs.MANGO_EVENTS_FEATURE_MAPPING, d)
-    channel_mapping = get_task(configs.MANGO_CHANNEL_MAPPING, d)
-    user_channels = get_task(configs.MANGO_USER_CHANNELS, d)
-    feature_cohort_date = get_task(configs.MANGO_FEATURE_COHORT_DATE, d)
-    user_rfe_partial = get_task(configs.MANGO_USER_RFE_PARTIAL, d)
-    user_rfe_session = get_task(configs.MANGO_USER_RFE_SESSION, d)
-    user_rfe = get_task(configs.MANGO_USER_RFE, d)
-    user_occurrence = get_task(configs.MANGO_USER_OCCURRENCE, d)
-    user_feature_occurrence = get_task(configs.MANGO_USER_FEATURE_OCCURRENCE, d)
-    cohort_user_occurrence = get_task(configs.MANGO_COHORT_USER_OCCURRENCE, d)
-    cohort_retained_users = get_task(configs.MANGO_COHORT_RETAINED_USERS, d)
-    feature_roi = get_task(configs.MANGO_FEATURE_ROI, d)
-    revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d)
-    google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1))
+    core = get_task(configs.MANGO_CORE, d, next_date)
+    core_normalized = get_task(configs.MANGO_CORE_NORMALIZED, d, next_date)
+    events = get_task(configs.MANGO_EVENTS, d, next_date)
+    unnested_events = get_task(configs.MANGO_EVENTS_UNNESTED, d, next_date)
+    feature_events = get_task(configs.MANGO_EVENTS_FEATURE_MAPPING, d, next_date)
+    channel_mapping = get_task(configs.MANGO_CHANNEL_MAPPING, d, next_date)
+    user_channels = get_task(configs.MANGO_USER_CHANNELS, d, next_date)
+    feature_cohort_date = get_task(configs.MANGO_FEATURE_COHORT_DATE, d, next_date)
+    user_rfe_partial = get_task(configs.MANGO_USER_RFE_PARTIAL, d, next_date)
+    user_rfe_session = get_task(configs.MANGO_USER_RFE_SESSION, d, next_date)
+    user_rfe = get_task(configs.MANGO_USER_RFE, d, next_date)
+    user_occurrence = get_task(configs.MANGO_USER_OCCURRENCE, d, next_date)
+    user_feature_occurrence = get_task(configs.MANGO_USER_FEATURE_OCCURRENCE, d, next_date)
+    cohort_user_occurrence = get_task(configs.MANGO_COHORT_USER_OCCURRENCE, d, next_date)
+    cohort_retained_users = get_task(configs.MANGO_COHORT_RETAINED_USERS, d, next_date)
+    feature_roi = get_task(configs.MANGO_FEATURE_ROI, d, next_date)
+    revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d, next_date)
+    google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1), next_date)
     core.daily_run()
     core_normalized.daily_run()
     events.daily_run()
