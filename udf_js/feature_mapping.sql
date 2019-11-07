@@ -1,11 +1,28 @@
 CREATE OR REPLACE FUNCTION `%s.%s`.udf_js_feature_mapping (
-event_method STRING, event_object STRING, event_value STRING, extra_key STRING, extra_value STRING, settings_key STRING, settings_value STRING
+    event_method STRING,
+    event_object STRING,
+    event_value STRING,
+    extra_key STRING,
+    extra_value STRING,
+    event_vertical STRING,
+    settings_search_engine STRING
 )
-RETURNS STRUCT<feature ARRAY<STRING>, vertical STRING, app STRING>
+
+RETURNS STRUCT<
+  feature ARRAY<STRING>,
+  vertical STRING,
+  app STRING
+>
+
 LANGUAGE js
 AS """
 
-  var partner_list = ['bukalapak', 'flipkart', 'jd.id', 'gamezop', 'google'];
+  var partner_list = ['bukalapak', 'flipkart',
+                      'liputan6', 'gameloft',
+                      'atmegame', 'gamezop', 'frvr',
+                      'booking.com',
+                      'dailyhunt',
+                      'google'];
 
 
     // vertical = Browser
@@ -16,7 +33,8 @@ AS """
         var app = '';
 
         if (event_method == 'add' &&
-            event_object == 'tab'
+            event_object == 'tab' &&
+            ['toolbar','tab_tray'].includes(event_value)
         ) {
           feature.push('feature: add_tab');
         }
@@ -36,7 +54,7 @@ AS """
 
         if (['remove', 'swipe'].includes(event_method) &&
             event_object == 'tab' &&
-            ['tab_tray', 'tab_swipe'].includes(event_value)
+            event_value == 'tab_tray'
         ) {
           feature.push('feature: remove_tab');
         }
@@ -232,49 +250,6 @@ AS """
           feature.push('feature: screenshot');
         }
 
-        if (// enter & leave
-            (
-              ['click', 'start', 'end', 'clear'].includes(event_method) &&
-              (
-                event_value.includes('tab_swipe') ||
-                event_object == 'tab_swipe'
-              ) &&
-              extra_key == 'vertical' &&
-              extra_value == 'shopping'
-            ) ||
-
-            // visit tab swipe setting
-            (
-              event_method == 'change' &&
-              event_object == 'setting' &&
-              event_value == 'tab_swipe'
-            )
-        ) {
-          feature.push('feature: tab_swipe');
-        }
-
-        if (event_method == 'end' &&
-            event_object == 'tab_swipe' &&
-            extra_key == 'feed'
-        ) {
-          feature.push('feed: '.concat(extra_value));
-        }
-
-        if (event_method == 'end' &&
-            event_object == 'tab_swipe' &&
-            extra_key == 'source'
-        ) {
-          feature.push('source: '.concat(extra_value));
-        }
-
-        if (event_method == 'end' &&
-            event_object == 'tab_swipe' &&
-            extra_key == 'source' &&
-            partner_list.includes(extra_value)
-        ) {
-          feature.push('partner: true');
-        }
-
         if (event_object == 'browser_contextmenu' ||
               (
                 event_method == 'long_press' &&
@@ -308,11 +283,7 @@ AS """
 
         if (['type_query', 'select_query'].includes(event_method) &&
             event_object == 'search_bar' &&
-            settings_key == 'pref_search_engine' &&
-            (
-              settings_value == 'google' ||
-              settings_value == '' // null as default
-            )
+			['google',''].includes('settings_search_engine') // null as default
         ) {
           feature.push('source: google');
           feature.push('partner: true');
@@ -417,6 +388,11 @@ AS """
           feature.push('tags: launch_app_from_shortcut');
         }
 
+        if (event_vertical == 'all'
+        ) {
+          feature.push('tags: browser_vertical');
+        }
+
         if (feature.length > 0
         ) {
           vertical = 'Browser';
@@ -433,6 +409,7 @@ AS """
         var vertical = '';
         var app = '';
 
+        // lifefeed
         if (event_value == 'lifefeed_ec'
         ) {
           feature.push('feature: lifefeed');
@@ -509,6 +486,118 @@ AS """
           feature.push('partner: true');
         }
 
+        // tab_swipe
+        if (// enter & leave
+            (
+              ['click', 'start', 'end', 'clear'].includes(event_method) &&
+              (
+                event_value.includes('tab_swipe') ||
+                event_object == 'tab_swipe'
+              ) &&
+              event_vertical == 'shopping'
+            ) ||
+
+            // visit tab swipe setting
+            (
+              event_method == 'change' &&
+              event_object == 'setting' &&
+              event_value == 'tab_swipe'
+            )
+        ) {
+          feature.push('feature: tab_swipe');
+        }
+
+        if (event_method == 'end' &&
+            event_object == 'tab_swipe' &&
+            extra_key == 'feed'
+        ) {
+          feature.push('feed: '.concat(extra_value));
+        }
+
+        if (event_method == 'end' &&
+            event_object == 'tab_swipe' &&
+            extra_key == 'source'
+        ) {
+          feature.push('source: '.concat(extra_value));
+        }
+
+        if (event_method == 'end' &&
+            event_object == 'tab_swipe' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('partner: true');
+        }
+
+        if (event_method == 'change' &&
+            event_object == 'setting' &&
+            event_value == 'tab_swipe'
+        ) {
+          feature.push('tags: change_tab_swipe_settings');
+        }
+
+        // content_hub
+        if (event_object == 'content_hub' &&
+            event_vertical == 'shopping'
+        ) {
+          feature.push('feature: visit_shopping_content_hub');
+        }
+
+        // content_tab
+        if (event_object == 'content_tab' &&
+            event_vertical == 'shopping'
+        ) {
+          feature.push('feature: visit_shopping_content_tab');
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'shopping' &&
+            extra_key == 'feed'
+        ) {
+          feature.push('feed: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'shopping' &&
+            extra_key == 'source'
+        ) {
+          feature.push('source: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'shopping' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('partner: true');
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'shopping' &&
+            extra_key == 'category'
+        ) {
+          feature.push('category: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'shopping' &&
+            extra_key == 'subcategory_id'
+        ) {
+          feature.push('subcategory_id: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'shopping' &&
+            extra_key == 'component_id'
+        ) {
+          feature.push('component_id: '.concat(extra_value));
+        }
+
+        if (event_vertical == 'shopping'
+        ) {
+          feature.push('tags: shopping_vertical');
+        }
+
         if (feature.length > 0
         ) {
           vertical = 'Shopping';
@@ -563,6 +652,68 @@ AS """
           feature.push('partner: true');
         }
 
+        // content_hub
+        if (event_object == 'content_hub' &&
+            event_vertical == 'lifestyle'
+        ) {
+          feature.push('feature: visit_lifestyle_content_hub');
+        }
+
+        // content_tab
+        if (event_object == 'content_tab' &&
+            event_vertical == 'lifestyle'
+        ) {
+          feature.push('feature: visit_lifestyle_content_tab');
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'lifestyle' &&
+            extra_key == 'feed'
+        ) {
+          feature.push('feed: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'lifestyle' &&
+            extra_key == 'source'
+        ) {
+          feature.push('source: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'lifestyle' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('partner: true');
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'lifestyle' &&
+            extra_key == 'category'
+        ) {
+          feature.push('category: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'lifestyle' &&
+            extra_key == 'subcategory_id'
+        ) {
+          feature.push('subcategory_id: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'lifestyle' &&
+            extra_key == 'component_id'
+        ) {
+          feature.push('component_id: '.concat(extra_value));
+        }
+
+        if (event_vertical == 'lifestyle'
+        ) {
+          feature.push('tags: lifestyle_vertical');
+        }
+
         if (feature.length > 0
         ) {
           vertical = 'Lifestyle';
@@ -577,6 +728,74 @@ AS """
         var feature = [];
         var vertical = '';
         var app = '';
+
+        // content_hub
+        if (event_object == 'content_hub' &&
+            event_vertical == 'game'
+        ) {
+          feature.push('feature: visit_game_content_hub');
+        }
+
+        // content_tab
+        if (event_object == 'content_tab' &&
+            event_vertical == 'game'
+        ) {
+          feature.push('feature: visit_game_content_tab');
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'game' &&
+            extra_key == 'feed'
+        ) {
+          feature.push('feed: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'game' &&
+            extra_key == 'source'
+        ) {
+          feature.push('source: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'game' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('partner: true');
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'game' &&
+            extra_key == 'category'
+        ) {
+          feature.push('category: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'game' &&
+            extra_key == 'subcategory_id'
+        ) {
+          feature.push('subcategory_id: '.concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'game' &&
+            extra_key == 'component_id'
+        ) {
+          feature.push('component_id: '.concat(extra_value));
+        }
+
+        if (event_vertical == 'game'
+        ) {
+          feature.push('tags: game_vertical');
+        }
+
+        if (feature.length > 0
+        ) {
+          vertical = 'Game';
+          app = 'App';
+        }
         return [feature, vertical, app];
     }
 
@@ -586,6 +805,17 @@ AS """
         var feature = [];
         var vertical = '';
         var app = '';
+
+        if (event_vertical == 'travel'
+        ) {
+          feature.push('tags: travel_vertical');
+        }
+
+        if (feature.length > 0
+        ) {
+          vertical = 'Travel';
+          app = 'App';
+        }
         return [feature, vertical, app];
     }
 
@@ -603,7 +833,7 @@ AS """
       var travel = do_travel();
       var others = do_others();
 
-      var checker_do_next = function(x){ return (x[0].length == 0) && (x[1] == '') && (x[2] == '') };
+      var checker_do_next = function(x){ return (x[0].length == 0) && (x[1] == ') && (x[2] == ') };
       var result = [];
 
       if(!checker_do_next(browser)) {

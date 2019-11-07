@@ -161,3 +161,4 @@ select
   'App' as feature_type,
   map.app as feature_name
 from mapping
+
