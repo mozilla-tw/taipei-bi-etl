@@ -74,7 +74,7 @@ class BqTask:
 
     def is_latest(self):
         if self.next_date:
-            is_latest = self.next_date > datetime.datetime.utcnow()
+            is_latest = self.next_date.timestamp() > datetime.datetime.utcnow().timestamp()
         else:
             is_latest = (
                 self.get_latest_date()
