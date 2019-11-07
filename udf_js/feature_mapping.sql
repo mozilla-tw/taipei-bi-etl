@@ -17,6 +17,7 @@ RETURNS STRUCT<
 LANGUAGE js
 AS """
 
+
   var partner_list = ['bukalapak', 'flipkart',
                       'liputan6', 'gameloft',
                       'atmegame', 'gamezop', 'frvr',
@@ -283,7 +284,7 @@ AS """
 
         if (['type_query', 'select_query'].includes(event_method) &&
             event_object == 'search_bar' &&
-			['google',''].includes('settings_search_engine') // null as default
+			['google',''].includes(settings_search_engine) // null as default
         ) {
           feature.push('source: google');
           feature.push('partner: true');
@@ -833,7 +834,7 @@ AS """
       var travel = do_travel();
       var others = do_others();
 
-      var checker_do_next = function(x){ return (x[0].length == 0) && (x[1] == ') && (x[2] == ') };
+      var checker_do_next = function(x){ return (x[0].length == 0) && (x[1] == '') && (x[2] == '') };
       var result = [];
 
       if(!checker_do_next(browser)) {
@@ -857,4 +858,5 @@ AS """
     }
 
     return run_mapping();
+
 """;
