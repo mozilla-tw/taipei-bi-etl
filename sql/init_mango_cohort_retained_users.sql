@@ -1,6 +1,7 @@
 SELECT os, country,
        measure_type, cohort_level, cohort_name, 
        cohort_date,
+       DATE '{start_date}' AS execution_date,
 
        COUNT(DISTINCT CASE WHEN occur_day = 0 THEN client_id ELSE NULL END) AS daily_cohort_size,
        COUNT(DISTINCT CASE WHEN occur_day = 1 THEN client_id ELSE NULL END) AS d1_retained_users,

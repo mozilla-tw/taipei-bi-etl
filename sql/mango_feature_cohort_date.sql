@@ -13,7 +13,8 @@ SELECT
   fm.os,
   fm.country,
   fm.client_id,
-  MIN(fm.submission_date) AS cohort_date
+  MIN(fm.submission_date) AS cohort_date,
+  DATE '{start_date}' AS execution_date
 FROM
   `{project}.{dataset}.{src}` AS fm
 LEFT JOIN

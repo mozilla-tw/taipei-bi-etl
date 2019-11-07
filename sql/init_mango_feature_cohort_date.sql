@@ -5,7 +5,8 @@ SELECT
   os,
   country,
   client_id,
-  MIN(submission_date) AS cohort_date
+  MIN(submission_date) AS cohort_date,
+  DATE '{start_date}' AS execution_date
 FROM
   `{project}.{dataset}.{src}`
 WHERE
