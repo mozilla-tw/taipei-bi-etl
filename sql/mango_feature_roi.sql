@@ -79,11 +79,51 @@ rr as (
     sum(m1_retained_users)/sum(monthly_cohort_size) AS m1_retention,
     sum(m2_retained_users)/sum(monthly_cohort_size) AS m2_retention,
     sum(m3_retained_users)/sum(monthly_cohort_size) AS m3_retention
+
   FROM
     `{project}.{dataset}.{src2}`
   where measure_type = 'feature'
   and cohort_date > DATE_SUB(DATE '{start_date}', INTERVAL 28 DAY)
   and cohort_date <= DATE '{start_date}'
+
+  group by
+    os,
+    country,
+    cohort_level,
+    cohort_name
+),
+
+au as (
+  select
+    os,
+    country,
+    cohort_level,
+    cohort_name,
+    avg(dau) as dau,
+    avg(wau) as wau,
+    avg(mau) as mau
+  from `{project}.{dataset}.{src3}`
+  where submission_date > DATE_SUB(DATE '{start_date}', INTERVAL 28 DAY)
+  and submission_date <= DATE '{start_date}'
+  group by
+    os,
+    country,
+    cohort_level,
+    cohort_name
+),
+
+new_au as (
+  select
+    os,
+    country,
+    cohort_level,
+    cohort_name,
+    avg(dau) as dau,
+    avg(wau) as wau,
+    avg(mau) as mau
+  from `{project}.{dataset}.{src4}`
+  where occur_date > DATE_SUB(DATE '{start_date}', INTERVAL 28 DAY)
+  and occur_date <= DATE '{start_date}'
   group by
     os,
     country,
@@ -96,6 +136,14 @@ select
     rfe.country,
     rfe.feature_type as cohort_level,
     rfe.feature_name as cohort_name,
+
+    --active_users: during 28d FF Lite 多少不重複使用者, int, 單位=人
+    au.dau as aDAU,
+    au.wau as aWAU,
+    au.mau as aMAU,
+    new_au.dau as new_aDAU,
+    new_au.wau as new_aWAU,
+    new_au.mau as new_aMAU,
 
     --active_days: during 28d FF Lite 出現幾天, int, 單位=days
     active_days_25p,
@@ -141,10 +189,24 @@ select
     show_keyboard_25p,
     show_keyboard_50p,
     show_keyboard_75p,
-    execution_date
+    rfe.execution_date
 
-from rfe left join rr
+from rfe
+left join rr
 on rfe.os = rr.os
 and rfe.country = rr.country
 and rfe.feature_type = rr.cohort_level
 and rfe.feature_name = rr.cohort_name
+
+left join au
+on rfe.os = au.os
+and rfe.country = au.country
+and rfe.feature_type = au.cohort_level
+and rfe.feature_name = au.cohort_name
+
+left join new_au
+on rfe.os = new_au.os
+and rfe.country = new_au.country
+and rfe.feature_type = new_au.cohort_level
+and rfe.feature_name = new_au.cohort_name
+

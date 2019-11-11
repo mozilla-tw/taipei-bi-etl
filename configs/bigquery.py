@@ -188,6 +188,46 @@ MANGO_COHORT_RETAINED_USERS = {
     "cleanup_query": "cleanup_mango_cohort_retained_users",
 }
 
+
+MANGO_FEATURE_ACTIVE_NEW_USER_COUNT = {
+    "type": "table",
+    "partition_field": "occur_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "src": "mango_cohort_user_occurrence",
+        "dest": "mango_feature_active_new_user_count",
+    },
+    "query": "mango_feature_active_new_user_count",
+}
+
+MANGO_FEATURE_ACTIVE_USER_COUNT = {
+    "type": "table",
+    "partition_field": "submission_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "src": "mango_user_rfe_daily_partial",
+        "dest": "mango_feature_active_user_count",
+    },
+    "query": "mango_feature_active_user_count",
+}
+
+MANGO_FEATURE_ROI = {
+    "type": "table",
+    "partition_field": "execution_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "src": "mango_user_rfe_28d",
+        "src2": "mango_cohort_retained_users",
+        "src3": "mango_feature_active_user_count",
+        "src4": "mango_feature_active_new_user_count",
+        "dest": "mango_feature_roi",
+    },
+    "query": "mango_feature_roi",
+}
+
 GOOGLE_RPS = {
     "type": "gcs",
     "append": False,
@@ -210,18 +250,4 @@ MANGO_REVENUE_BUKALAPAK = {
         "dest": "mango_revenue",
     },
     "cleanup_query": "cleanup_revenue_bukalapak",
-}
-
-MANGO_FEATURE_ROI = {
-    "type": "table",
-    "partition_field": "execution_date",
-    "append": True,
-    "params": {
-        **BQ_PROJECT,
-        "src": "mango_user_rfe_28d",
-        "src2": "mango_cohort_retained_users",
-        "src3": "mango_user_count",
-        "dest": "mango_feature_roi",
-    },
-    "query": "mango_feature_roi",
 }

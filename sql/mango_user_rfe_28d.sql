@@ -8,66 +8,66 @@ active_days as (
   --and submission_date <= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY) 
   where submission_date > DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY) -- 取 partition
   and submission_date <= DATE('{start_date}')
-  
+
   group by client_id
 ),
 
 rfe_partial as (
-  select 
-  
+  select
+
     -- ********** user header
-    client_id, 
-    os, 
+    client_id,
+    os,
     country,
-    
+
     profile_date,
     DATE_DIFF(DATE('{start_date}'), profile_date, DAY) as age, --submission_date - profile_date, int, 單位=days  --param
-    feature_type, 
+    feature_type,
     feature_name,
-    
+
     --********** user rfe metrics
     DATE_DIFF(DATE('{start_date}'), max(submission_date), DAY) as recency, --execution date - last seen, data type=int, 單位=days  --param
     count(distinct submission_date) as frequency_days, --during 28d 功能使用 n days, data type=int, 單位=days
     sum(value_event_count) as value_event_count --during 28d 功能使用 n times, data type=int, 單位=int
-    
+
   from `{project}.{dataset}.{src2}`
   --where submission_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY) --param
   --and submission_date <= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY) --param
   where submission_date > DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY) -- 取 partition
   and submission_date <= DATE('{start_date}')
-  group by 
+  group by
     client_id,
-    os, 
+    os,
     country,
     profile_date,
-    feature_type, 
+    feature_type,
     feature_name
 ),
 
 rfe_session as (
-  select     
-  
+  select
+
     -- ********** user header
     client_id,
     country,
-    
+
     event_vertical,
     feature_type,
     feature_name,
-    
+
     --********** user engagement metrics
     sum(session_time) as session_time,
     sum(url_counts) as url_counts,
     sum(app_link_install) as app_link_install,
     sum(app_link_open) as app_link_open,
     sum(show_keyboard) as show_keyboard
-    
+
   from `{project}.{dataset}.{src3}`
   --where submission_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY) -- 取 partition
   --and submission_date <= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY) 
   where submission_date > DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY) -- 取 partition
   and submission_date <= DATE('{start_date}')
-  group by 
+  group by
     client_id,
     country,
     event_vertical,
@@ -76,10 +76,11 @@ rfe_session as (
 )
 
 
-select 
+select
 
   -- ********** user header
-  p.client_id, 
+  p.client_id,
+  uc.network_name,
   p.os,
   p.country,
   p.profile_date,
@@ -100,12 +101,16 @@ select
 
   -- ********** execution date
   DATE('{start_date}') as execution_date -- 今天跑昨天以前的資料
-  
+
 from rfe_partial as p
+
 left join active_days
-  on p.client_id = active_days.client_id 
+  on p.client_id = active_days.client_id
+
 left join rfe_session as s
-  on p.client_id = s.client_id 
-  and p.feature_type = s.feature_type 
+  on p.client_id = s.client_id
+  and p.feature_type = s.feature_type
   and p.feature_name = s.feature_name
 
+left join `rocket-dev01.mango_dev3.mango_user_channels` AS uc
+on p.client_id = uc.client_id

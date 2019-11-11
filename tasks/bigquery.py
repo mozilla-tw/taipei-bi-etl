@@ -9,7 +9,6 @@ from google.cloud.exceptions import NotFound
 
 import utils.config
 from google.cloud import bigquery
-
 from utils.file import read_string
 from utils.marshalling import lookback_dates
 
@@ -398,9 +397,11 @@ def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = No
         configs.MANGO_COHORT_USER_OCCURRENCE, d, next_date
     )
     cohort_retained_users = get_task(configs.MANGO_COHORT_RETAINED_USERS, d, next_date)
+    user_count = get_task(configs.MANGO_FEATURE_ACTIVE_USER_COUNT, d, next_date)
+    new_user_count = get_task(configs.MANGO_FEATURE_ACTIVE_NEW_USER_COUNT, d, next_date)
     feature_roi = get_task(configs.MANGO_FEATURE_ROI, d, next_date)
-    revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d, next_date)
-    google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1), next_date)
+    # revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d, next_date)
+    # google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1), next_date)
     core.daily_run()
     core_normalized.daily_run()
     events.daily_run()
@@ -416,9 +417,11 @@ def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = No
     user_feature_occurrence.daily_run()
     cohort_user_occurrence.daily_run()
     cohort_retained_users.daily_run()
+    user_count.daily_run()
+    new_user_count.daily_run()
     feature_roi.daily_run()
-    revenue_bukalapak.daily_run()
-    google_rps.daily_run()
+    # revenue_bukalapak.daily_run()
+    # google_rps.daily_run()
 
 
 def get_date_range_from_string(start: str, end: str):
