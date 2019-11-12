@@ -32,6 +32,8 @@ WHERE
     'Vertical')
   AND feature_name not in ('Others','feature: others')
   AND submission_date >= DATE '2018-11-01'
+  AND fm.country IS NOT NULL
+  AND fm.os IS NOT NULL
   AND ec.client_id IS NULL
 GROUP BY
   1,
