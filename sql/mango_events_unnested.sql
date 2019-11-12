@@ -3,6 +3,7 @@ WITH
   SELECT
     * EXCEPT(additional_properties,
     events,
+    settings,
     f0_,
     f1_,
     f2_,
@@ -14,7 +15,8 @@ WITH
   LOWER(CASE WHEN f2_ IS NULL THEN "" ELSE f2_ END) AS event_method,
   LOWER(CASE WHEN f3_ IS NULL THEN "" ELSE f3_ END) AS event_object,
   LOWER(CASE WHEN f4_ IS NULL THEN "" ELSE f4_ END) AS event_value,
-  f5_ AS event_extra
+  `{project}.{dataset}`.udf_js_cleanup_extra(metadata.uri.app_build_id, f5_) AS event_extra,
+  `{project}.{dataset}`.udf_js_cleanup_settings(metadata.uri.app_build_id, settings) AS settings
   FROM
     `{project}.{dataset}.{src}`,
     UNNEST(events)

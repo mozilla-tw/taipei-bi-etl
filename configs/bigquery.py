@@ -52,6 +52,7 @@ MANGO_EVENTS_UNNESTED = {
         "src": "mango_events",
         "dest": "mango_events_unnested",
     },
+    "udf_js": ["cleanup_extra", "cleanup_settings"],
     "query": "mango_events_unnested",
 }
 
