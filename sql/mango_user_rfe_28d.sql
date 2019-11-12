@@ -112,5 +112,5 @@ left join rfe_session as s
   and p.feature_type = s.feature_type
   and p.feature_name = s.feature_name
 
-left join `rocket-dev01.mango_dev3.mango_user_channels` AS uc
+left join `{project}.{dataset}.{src4}` AS uc
 on p.client_id = uc.client_id

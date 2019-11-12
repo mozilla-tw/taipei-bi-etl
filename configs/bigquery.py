@@ -119,6 +119,7 @@ MANGO_USER_RFE = {
         "src": "mango_core_normalized",
         "src2": "mango_user_rfe_daily_partial",
         "src3": "mango_user_rfe_daily_session",
+        "src4": "mango_user_channels",
         "dest": "mango_user_rfe_28d",
     },
     "query": "mango_user_rfe_28d",
