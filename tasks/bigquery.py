@@ -275,6 +275,7 @@ class BqQueryTask(BqTask):
 
     def daily_run(self):
         if self.does_table_exist():
+            super().create_schema(False)
             self.daily_cleanup(self.date)
             self.run_query(self.date)
             if self.is_write_append():  # and self.is_latest():
