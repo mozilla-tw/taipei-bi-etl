@@ -197,6 +197,7 @@ MANGO_FEATURE_ACTIVE_NEW_USER_COUNT = {
     "append": True,
     "params": {
         **BQ_PROJECT,
+        "execution_date_field": "occur_date",
         "src": "mango_cohort_user_occurrence",
         "dest": "mango_feature_active_new_user_count",
     },
@@ -209,6 +210,7 @@ MANGO_FEATURE_ACTIVE_USER_COUNT = {
     "append": True,
     "params": {
         **BQ_PROJECT,
+        "execution_date_field": "submission_date",
         "src": "mango_user_rfe_daily_partial",
         "dest": "mango_feature_active_user_count",
     },
@@ -221,6 +223,7 @@ MANGO_FEATURE_ROI = {
     "append": True,
     "params": {
         **BQ_PROJECT,
+        "execution_date_field": "execution_date",
         "src": "mango_user_rfe_28d",
         "src2": "mango_cohort_retained_users",
         "src3": "mango_feature_active_user_count",

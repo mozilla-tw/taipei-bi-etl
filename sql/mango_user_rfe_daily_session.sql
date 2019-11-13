@@ -73,8 +73,10 @@ vertical_session_event as (
     event_vertical,
     feature_type,
     feature_name,
-    LEAD (DATETIME_ADD(DATETIME(submission_timestamp), INTERVAL event_timestamp MILLISECOND), 1) OVER (PARTITION BY client_id, event_value, event_vertical ORDER BY submission_timestamp) AS end_timestamp
-  from  `{project}.{dataset}.{src}`
+    LEAD (DATETIME_ADD(DATETIME(submission_timestamp), INTERVAL event_timestamp MILLISECOND), 1)
+          OVER (PARTITION BY client_id, event_value, event_vertical, country
+          ORDER BY DATETIME_ADD(DATETIME(submission_timestamp), interval event_timestamp MILLISECOND)) AS end_timestamp
+from  `{project}.{dataset}.{src}`
   where event_method in ('start', 'end')
   and event_object = 'process'
   and feature_type = 'Vertical'

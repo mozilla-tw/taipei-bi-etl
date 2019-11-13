@@ -163,12 +163,20 @@ class BqTask:
         assert False, "daily_run not implemented."
 
     def daily_cleanup(self, d):
-        if self.is_write_append() and "cleanup_query" in self.config:
-            qstring = read_string("sql/{}.sql".format(self.config["cleanup_query"]))
-            qparams = self.get_query_params(d)
-            query_job = self.client.query(qstring.format(**qparams))
-            query_job.result()
-            log.info("Done cleaning up.")
+        if self.is_write_append():
+            if "cleanup_query" in self.config:
+                qstring = read_string("sql/{}.sql".format(self.config["cleanup_query"]))
+                qparams = self.get_query_params(d)
+                query_job = self.client.query(qstring.format(**qparams))
+                query_job.result()
+                log.info("Done custom cleaning up.")
+            elif "execution_date_field" in self.config["params"]:
+                qstring = read_string("sql/cleanup_generic.sql")
+                qparams = self.get_query_params(d)
+                query_job = self.client.query(qstring.format(**qparams))
+                query_job.result()
+                log.info("Done generic cleaning up.")
+
 
     def get_query_params(self, d):
         return {**self.config["params"], "start_date": d}
