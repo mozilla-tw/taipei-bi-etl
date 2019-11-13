@@ -15,6 +15,8 @@ AS """
         v = "0";
       }
       else if (k == "url_counts") {
+        // Handle url_count issue: https://github.com/mozilla-tw/mango/issues/818
+        // Need to stop patching data on latest builds once fixed
         v = (parseInt(v) + 1).toString();
       }
       result.push({"key": k, "value": v});
