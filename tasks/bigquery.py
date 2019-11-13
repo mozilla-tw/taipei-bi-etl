@@ -331,12 +331,15 @@ class BqViewTask(BqTask):
         view = bigquery.Table(view_ref)
         qparams = self.get_query_params(self.date)
         view.view_query = qstring.format(**qparams)
-        view = self.client.create_table(view)  # API request
+        if self.does_table_exist():
+            view = self.client.update_table(view, ["view_query"])  # API request
+        else:
+            view = self.client.create_table(view)  # API request
 
         log.info("Successfully created view at {}".format(view.full_table_id))
 
     def daily_run(self):
-        self.drop_schema()
+        # self.drop_schema()
         self.create_schema()
 
 
