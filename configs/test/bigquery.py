@@ -19,7 +19,7 @@ MANGO_EVENTS = {
 MANGO_EVENTS_UNNESTED = {
     "type": "view",
     "params": {**BQ_PROJECT, "src": "mango_events", "dest": "mango_events_unnested"},
-    "udf_js": ["json_extract_events"],
+    "udf_js": ["cleanup_extra", "cleanup_settings"],
     "query": "mango_events_unnested",
 }
 
