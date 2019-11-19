@@ -177,7 +177,6 @@ class BqTask:
                 query_job.result()
                 log.info("Done generic cleaning up.")
 
-
     def get_query_params(self, d):
         return {**self.config["params"], "start_date": d}
 
