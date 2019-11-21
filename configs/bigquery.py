@@ -81,14 +81,17 @@ MANGO_CHANNEL_MAPPING = {
 }
 
 MANGO_USER_CHANNELS = {
-    "type": "view",
+    "type": "table",
+    "partition_field": "execution_date",
     "params": {
         **BQ_PROJECT,
         "src": "mango_events",
         "src2": "mango_channel_mapping",
         "dest": "mango_user_channels",
     },
+    "init_query": "init_mango_user_channels",
     "query": "mango_user_channels",
+    "cleanup_query": "cleanup_mango_user_channels",
 }
 
 MANGO_USER_RFE_PARTIAL = {

@@ -8,7 +8,8 @@ WITH
   FROM
     `{project}.{dataset}.{src}`
   WHERE
-    submission_date = DATE '{start_date}'
+    submission_date >= DATE '2018-11-01'
+    AND submission_date <= DATE '{start_date}'
   GROUP BY 1
   ),
   user_channels AS (
