@@ -301,6 +301,13 @@ class BqQueryTask(BqTask):
             if self.is_write_append()
             else bigquery.WriteDisposition.WRITE_TRUNCATE
         )
+        if (
+            "allow_field_addition" in self.config
+            and self.config["allow_field_addition"]
+        ):
+            job_config.schema_update_options = [
+                bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION
+            ]
         job_config.destination = table_ref
         if "partition_field" in self.config:
             job_config.time_partitioning = bigquery.TimePartitioning(

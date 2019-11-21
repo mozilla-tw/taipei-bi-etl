@@ -103,10 +103,14 @@ MANGO_USER_RFE_PARTIAL = {
 }
 
 MANGO_USER_RFE_SESSION = {
-    "type": "view",
+    "type": "table",
+    "partition_field": "submission_date",
+    "append": True,
     "params": {
         **BQ_PROJECT,
+        "execution_date_field": "submission_date",
         "src": "mango_events_feature_mapping",
+        "src2": "mango_core",
         "dest": "mango_user_rfe_daily_session",
     },
     "query": "mango_user_rfe_daily_session",
@@ -114,11 +118,13 @@ MANGO_USER_RFE_SESSION = {
 
 MANGO_USER_RFE = {
     "type": "table",
+    "allow_field_addition": True,
     "partition_field": "execution_date",
     "append": True,
     "params": {
         **BQ_PROJECT,
-        "src": "mango_core_normalized",
+        # "src": "mango_core_normalized",
+        "src": "mango_events",
         "src2": "mango_user_rfe_daily_partial",
         "src3": "mango_user_rfe_daily_session",
         "src4": "mango_user_channels",
@@ -194,6 +200,7 @@ MANGO_COHORT_RETAINED_USERS = {
 
 MANGO_FEATURE_ACTIVE_NEW_USER_COUNT = {
     "type": "table",
+    "allow_field_addition": True,
     "partition_field": "occur_date",
     "append": True,
     "params": {
@@ -207,6 +214,7 @@ MANGO_FEATURE_ACTIVE_NEW_USER_COUNT = {
 
 MANGO_FEATURE_ACTIVE_USER_COUNT = {
     "type": "table",
+    "allow_field_addition": True,
     "partition_field": "submission_date",
     "append": True,
     "params": {
@@ -220,6 +228,7 @@ MANGO_FEATURE_ACTIVE_USER_COUNT = {
 
 MANGO_FEATURE_ROI = {
     "type": "table",
+    "allow_field_addition": True,
     "partition_field": "execution_date",
     "append": True,
     "params": {

@@ -8,7 +8,6 @@ active_days as (
   --and submission_date <= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY) 
   where submission_date > DATE_SUB(DATE('{start_date}'), INTERVAL 28 DAY) -- 取 partition
   and submission_date <= DATE('{start_date}')
-
   group by client_id
 ),
 
@@ -90,7 +89,8 @@ select
   p.feature_name,
 
   -- ********** user rfe metrics
-  recency, --execution date - last seen, data type=int, 單位=days
+  CASE WHEN p.age >=7 THEN recency ELSE NULL END AS recency, --execution date - last seen, data type=int, 單位=days
+  CASE WHEN p.age >=7 THEN frequency_days/active_days.active_days ELSE NULL END as stickiness, --frequency_days/active_days, data type=float, 單位=功能使用日 per App使用日
   frequency_days, --during 28d 功能使用 n days, data type=int, 單位=days
   value_event_count/frequency_days as value_event_count, --sum(value_event_count) / frequency, data type=float, 單位=次 per 使用日,
   session_time/frequency_days as session_time, --sum(session time) / frequency, data type=float, 單位=ms per 使用日
@@ -111,6 +111,7 @@ left join rfe_session as s
   on p.client_id = s.client_id
   and p.feature_type = s.feature_type
   and p.feature_name = s.feature_name
+  and p.country = s.country
 
 left join `{project}.{dataset}.{src4}` AS uc
 on p.client_id = uc.client_id

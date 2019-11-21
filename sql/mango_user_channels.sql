@@ -2,27 +2,17 @@ WITH
   tracker_settings AS (
   SELECT
     client_id,
-    settings.value AS settings_value,
-    RANK() OVER(PARTITION BY client_id ORDER BY submission_timestamp DESC) AS rank
+    MAX((SELECT value FROM UNNEST(settings) WHERE key = 'pref_key_s_tracker_token')) AS tracker_token,
+    MAX((SELECT value FROM UNNEST(settings) WHERE key = 'install_referrer')) AS install_referrer
   FROM
     `{project}.{dataset}.{src}`
-  LEFT JOIN
-    UNNEST(settings) AS settings
-  WHERE
-    settings.key='pref_key_s_tracker_token'
-    OR settings.key IS NULL ),
-  user_token AS (
-  SELECT
-    client_id,
-    settings_value
-  FROM
-    tracker_settings
-  WHERE
-    rank=1 ),
+  GROUP BY 1
+  ),
   user_channels AS (
   SELECT
     client_id,
-    settings_value,
+    tracker_token,
+    install_referrer,
     channels.network_name,
     channels.network_token,
     channels.campaign_name,
@@ -32,15 +22,16 @@ WITH
     channels.creative_name,
     channels.creative_token
   FROM
-    user_token
+    tracker_settings
   JOIN
     `{project}.{dataset}.{src2}` AS channels
   ON
-    user_token.settings_value=channels.network_token
+    tracker_settings.tracker_token=channels.network_token
   UNION ALL
   SELECT
     client_id,
-    settings_value,
+    tracker_token,
+    install_referrer,
     channels.network_name,
     channels.network_token,
     channels.campaign_name,
@@ -50,15 +41,16 @@ WITH
     channels.creative_name,
     channels.creative_token
   FROM
-    user_token
+    tracker_settings
   JOIN
     `{project}.{dataset}.{src2}` AS channels
   ON
-    user_token.settings_value=channels.campaign_token
+    tracker_settings.tracker_token=channels.campaign_token
   UNION ALL
   SELECT
     client_id,
-    settings_value,
+    tracker_token,
+    install_referrer,
     channels.network_name,
     channels.network_token,
     channels.campaign_name,
@@ -68,15 +60,16 @@ WITH
     channels.creative_name,
     channels.creative_token
   FROM
-    user_token
+    tracker_settings
   JOIN
     `{project}.{dataset}.{src2}` AS channels
   ON
-    user_token.settings_value=channels.adgroup_token
+    tracker_settings.tracker_token=channels.adgroup_token
   UNION ALL
   SELECT
     client_id,
-    settings_value,
+    tracker_token,
+    install_referrer,
     channels.network_name,
     channels.network_token,
     channels.campaign_name,
@@ -86,14 +79,33 @@ WITH
     channels.creative_name,
     channels.creative_token
   FROM
-    user_token
+    tracker_settings
   JOIN
     `{project}.{dataset}.{src2}` AS channels
   ON
-    user_token.settings_value=channels.creative_token )
+    tracker_settings.tracker_token=channels.creative_token
+  UNION ALL
+  SELECT
+    client_id,
+    tracker_token,
+    install_referrer,
+    NULL AS network_name,
+    NULL AS network_token,
+    NULL AS campaign_name,
+    NULL AS campaign_token,
+    NULL AS adgroup_name,
+    NULL AS adgroup_token,
+    NULL AS creative_name,
+    NULL AS creative_token
+  FROM
+    tracker_settings
+  WHERE
+    tracker_token IS NULL
+)
 SELECT
   user_channels.client_id,
-  user_channels.settings_value,
+  user_channels.tracker_token,
+  user_channels.install_referrer,
   IFNULL(user_channels.network_name,
     'unknown') AS network_name,
   IFNULL(user_channels.network_token,

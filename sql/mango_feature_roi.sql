@@ -12,9 +12,14 @@ rfe as (
     PERCENTILE_CONT(active_days, 0.75) OVER(partition by os, country, feature_type, feature_name) AS active_days_75p,
 
     --recency: execution date - last seen, data type=int, 單位=days
-    PERCENTILE_CONT(recency, 0.25) OVER(partition by os, country, feature_type, feature_name) AS recency_25p,
-    PERCENTILE_CONT(recency, 0.5) OVER(partition by os, country, feature_type, feature_name) AS recency_50p,
-    PERCENTILE_CONT(recency, 0.75) OVER(partition by os, country, feature_type, feature_name) AS recency_75p,
+    PERCENTILE_CONT(recency, 0.25 IGNORE NULLS) OVER(partition by os, country, feature_type, feature_name) AS recency_25p,
+    PERCENTILE_CONT(recency, 0.5 IGNORE NULLS) OVER(partition by os, country, feature_type, feature_name) AS recency_50p,
+    PERCENTILE_CONT(recency, 0.75 IGNORE NULLS) OVER(partition by os, country, feature_type, feature_name) AS recency_75p,
+
+    --stickiness: frequency_days/active_days, data type=float, 單位=功能使用日 per App使用日
+    PERCENTILE_CONT(stickiness, 0.25 IGNORE NULLS) OVER(partition by os, country, feature_type, feature_name) AS stickiness_25p,
+    PERCENTILE_CONT(stickiness, 0.5 IGNORE NULLS) OVER(partition by os, country, feature_type, feature_name) AS stickiness_50p,
+    PERCENTILE_CONT(stickiness, 0.75 IGNORE NULLS) OVER(partition by os, country, feature_type, feature_name) AS stickiness_75p,
 
     --frequency_days: during 28d 功能使用 n days, data type=int, 單位=days
     PERCENTILE_CONT(frequency_days, 0.25) OVER(partition by os, country, feature_type, feature_name) AS frequency_days_25p,

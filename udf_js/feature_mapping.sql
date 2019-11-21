@@ -17,8 +17,7 @@ RETURNS STRUCT<
 LANGUAGE js
 AS """
 
-
-  var partner_list = ['bukalapak', 'flipkart',
+var partner_list = ['bukalapak', 'flipkart',
                       'liputan6', 'gameloft',
                       'atmegame', 'gamezop', 'frvr',
                       'booking.com',
@@ -544,6 +543,22 @@ AS """
           feature.push('feature: visit_shopping_content_hub');
         }
 
+        // category
+        if (event_method == 'open' &&
+            event_object == 'category' &&
+            event_vertical == 'shopping'
+        ) {
+          feature.push('feature: open_category_shopping');
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'category' &&
+            event_vertical == 'shopping' &&
+            extra_key == 'category'
+        ) {
+          feature.push('tags: open_category_shopping_'.concat(extra_value));
+        }
+
         // content_tab
         if (event_object == 'content_tab' &&
             event_vertical == 'shopping'
@@ -660,6 +675,22 @@ AS """
           feature.push('feature: visit_lifestyle_content_hub');
         }
 
+        // category
+        if (event_method == 'open' &&
+            event_object == 'category' &&
+            event_vertical == 'lifestyle'
+        ) {
+          feature.push('feature: open_category_lifestyle');
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'category' &&
+            event_vertical == 'lifestyle' &&
+            extra_key == 'category'
+        ) {
+          feature.push('tags: open_category_lifestyle_'.concat(extra_value));
+        }
+
         // content_tab
         if (event_object == 'content_tab' &&
             event_vertical == 'lifestyle'
@@ -735,6 +766,22 @@ AS """
             event_vertical == 'game'
         ) {
           feature.push('feature: visit_game_content_hub');
+        }
+
+        // category
+        if (event_method == 'open' &&
+            event_object == 'category' &&
+            event_vertical == 'game'
+        ) {
+          feature.push('feature: open_category_game');
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'category' &&
+            event_vertical == 'game' &&
+            extra_key == 'category'
+        ) {
+          feature.push('tags: open_category_game_'.concat(extra_value));
         }
 
         // content_tab

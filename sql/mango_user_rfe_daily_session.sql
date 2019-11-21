@@ -14,7 +14,7 @@ with feature_session_event as (
          show_keyboard,
          count(1) -- dedup extra
   from `{project}.{dataset}.{src}`
-  --where submission_date = DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)  --param
+  where submission_date = DATE '{start_date}'
   group by
     client_id,
     country,
@@ -80,6 +80,7 @@ from  `{project}.{dataset}.{src}`
   where event_method in ('start', 'end')
   and event_object = 'process'
   and feature_type = 'Vertical'
+  and submission_date = DATE '{start_date}'
   --and submission_date = DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)  --param
 ),
 
@@ -105,6 +106,25 @@ vertical_session_time as (
     feature_type,
     feature_name
 ),
+
+browser_search AS (
+  SELECT
+    client_id,
+    metadata.geo_country AS country,
+    submission_date,
+    'all' AS event_vertical,
+    SUM(t.value) AS search_counts
+  FROM
+    `{project}.{dataset}.{src2}`
+  CROSS JOIN
+    UNNEST(searches) AS t
+  WHERE t.value < 10000
+  and submission_date = DATE '{start_date}'
+  GROUP BY
+    1,
+    2,
+    3,
+    4),
 
 vertical_session_others as (
   select
@@ -133,7 +153,7 @@ vertical_session as (
     t.feature_type,
     t.feature_name,
     session_time,
-    url_counts,
+    CASE WHEN t.feature_type = 'Vertical' AND t.event_vertical = 'all' THEN search_counts ELSE url_counts END AS url_counts,
     app_link_install,
     app_link_open,
     show_keyboard
@@ -143,6 +163,11 @@ vertical_session as (
   and t.country = o.country
   and t.submission_date = o.submission_date
   and t.event_vertical = o.event_vertical
+  left join browser_search as b
+  on t.client_id = b.client_id
+  and t.country = b.country
+  and t.submission_date = b.submission_date
+  and t.event_vertical = b.event_vertical
 ),
 
 app_session as (

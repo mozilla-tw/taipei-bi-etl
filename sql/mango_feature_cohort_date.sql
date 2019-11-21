@@ -31,7 +31,7 @@ WHERE
   feature_type IN ('Feature',
     'Vertical')
   AND feature_name not in ('Others','feature: others')
-  AND submission_date >= DATE '2018-11-01'
+  AND fm.submission_date = DATE '{start_date}'
   AND fm.country IS NOT NULL
   AND fm.os IS NOT NULL
   AND ec.client_id IS NULL
