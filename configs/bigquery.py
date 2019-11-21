@@ -174,8 +174,8 @@ MANGO_COHORT_USER_OCCURRENCE = {
     "type": "view",
     "params": {
         **BQ_PROJECT,
-        "src": "mango_user_channels",
-        "src2": "mango_user_occurrence",
+        "src": "mango_user_occurrence",
+        "src2": "mango_user_channels",
         "src3": "mango_user_feature_occurrence",
         "dest": "mango_cohort_user_occurrence",
     },
