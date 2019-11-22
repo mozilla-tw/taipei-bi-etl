@@ -1,4 +1,4 @@
-SELECT uo.os, uo.country, 'channel' AS measure_type, 'Network' AS cohort_level, uc.network_name AS cohort_name, uc.client_id, uo.cohort_date, uo.occur_date, uo.occur_day, uo.occur_week, uo.occur_month FROM `{project}.{dataset}.{src}` AS uc LEFT JOIN `{project}.{dataset}.{src2}` AS uo ON uc.client_id=uo.client_id WHERE cohort_date IS NOT NULL
+SELECT uo.os, uo.country, 'channel' AS measure_type, 'Network' AS cohort_level, uc.network_name AS cohort_name, uc.client_id, uo.cohort_date, uo.occur_date, uo.occur_day, uo.occur_week, uo.occur_month FROM `{project}.{dataset}.{src}` AS uo LEFT JOIN `{project}.{dataset}.{src2}` AS uc ON uc.client_id=uo.client_id WHERE cohort_date IS NOT NULL
 UNION ALL
 SELECT uo.os, uo.country, 'feature' AS measure_type, 'App' AS cohort_level, 'App' AS cohort_name, uo.client_id, uo.cohort_date, uo.occur_date, uo.occur_day, uo.occur_week, uo.occur_month FROM `{project}.{dataset}.{src}` AS uo WHERE cohort_date IS NOT NULL
 UNION ALL

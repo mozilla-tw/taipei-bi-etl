@@ -21,6 +21,22 @@ SOURCES = {
         "country_code": "ID",   # for detecting timezone,
         "date_fields": ["Stat.date", "Stat.datetime", "Stat.session_datetime"],
     },
+    "flipkart": {
+        "type": "api",
+        "url": "https://affiliate-api.flipkart.net/affiliate/report/orders/detail/json?startDate={start_date}&endDate={end_date}&offset={offset}",
+        "api_key": os.environ.get('FLIPKART_API_KEY'),
+        "load": True,
+        "request_interval": 1,
+        "cache_file": True,
+        "force_load_cache": False,
+        "date_format": "%Y-%m-%d",
+        "file_format": "json",
+        "json_path": "response.data.data",
+        "json_path_page_count": "response.data.pageCount",
+        "page_size": 100,
+        "country_code": "ID",  # for detecting timezone,
+        "date_fields": ["Stat.date", "Stat.datetime", "Stat.session_datetime"],
+    },
 }
 SCHEMA = [
     ("source", np.dtype(object).type),
