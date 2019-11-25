@@ -151,7 +151,7 @@ MANGO_FEATURE_COHORT_DATE = {
     "cleanup_query": "cleanup_mango_feature_cohort_date",
 }
 
-# Deprecated
+# to be deprecated
 MANGO_USER_OCCURRENCE = {
     "type": "view",
     "params": {
@@ -201,7 +201,7 @@ MANGO_COHORT_RETAINED_USERS = {
     "cleanup_query": "cleanup_mango_cohort_retained_users",
 }
 
-# Deprecated
+# to be deprecated
 MANGO_FEATURE_ACTIVE_NEW_USER_COUNT = {
     "type": "table",
     "allow_field_addition": True,
@@ -216,7 +216,7 @@ MANGO_FEATURE_ACTIVE_NEW_USER_COUNT = {
     "query": "mango_feature_active_new_user_count",
 }
 
-# Deprecated
+# to be deprecated
 MANGO_FEATURE_ACTIVE_USER_COUNT = {
     "type": "table",
     "allow_field_addition": True,

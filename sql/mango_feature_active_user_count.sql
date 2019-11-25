@@ -1,3 +1,4 @@
+-- to be deprecated
 with
 dau as (
   SELECT

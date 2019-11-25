@@ -1,3 +1,5 @@
+-- to be deprecated
+
 WITH
   cohort AS (
   SELECT

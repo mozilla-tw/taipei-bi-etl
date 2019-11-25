@@ -1,3 +1,4 @@
+-- to be deprecated
 with
 feature_age as (
   SELECT
