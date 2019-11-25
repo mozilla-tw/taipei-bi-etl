@@ -1,10 +1,13 @@
 with
-core as (
+cohort as (
   select distinct
     client_id,
-    normalized_country as country,
-    DATE_FROM_UNIX_DATE(normalized_profile_date) as profile_date
+    country,
+    cohort_date AS profile_date
   from `{project}.{dataset}.{src}`
+  WHERE
+    measure_type='feature'
+    AND cohort_level='App'
 ),
 
 rfe_partial as (
@@ -45,6 +48,6 @@ select
     value_event_count -- 功能使用 n times, data type=int, 單位=int
 
 from rfe_partial
-left join core on rfe_partial.client_id = core.client_id
-and rfe_partial.country = core.country
+left join cohort on rfe_partial.client_id = cohort.client_id
+and rfe_partial.country = cohort.country
 

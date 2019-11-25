@@ -98,7 +98,7 @@ MANGO_USER_RFE_PARTIAL = {
     "type": "view",
     "params": {
         **BQ_PROJECT,
-        "src": "mango_core_normalized",
+        "src": "mango_feature_cohort_date",
         "src2": "mango_events_feature_mapping",
         "dest": "mango_user_rfe_daily_partial",
     },
@@ -151,6 +151,7 @@ MANGO_FEATURE_COHORT_DATE = {
     "cleanup_query": "cleanup_mango_feature_cohort_date",
 }
 
+# Deprecated
 MANGO_USER_OCCURRENCE = {
     "type": "view",
     "params": {
@@ -200,7 +201,7 @@ MANGO_COHORT_RETAINED_USERS = {
     "cleanup_query": "cleanup_mango_cohort_retained_users",
 }
 
-
+# Deprecated
 MANGO_FEATURE_ACTIVE_NEW_USER_COUNT = {
     "type": "table",
     "allow_field_addition": True,
@@ -215,6 +216,7 @@ MANGO_FEATURE_ACTIVE_NEW_USER_COUNT = {
     "query": "mango_feature_active_new_user_count",
 }
 
+# Deprecated
 MANGO_FEATURE_ACTIVE_USER_COUNT = {
     "type": "table",
     "allow_field_addition": True,
@@ -229,6 +231,20 @@ MANGO_FEATURE_ACTIVE_USER_COUNT = {
     "query": "mango_feature_active_user_count",
 }
 
+MANGO_ACTIVE_USER_COUNT = {
+    "type": "table",
+    "allow_field_addition": True,
+    "partition_field": "occur_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "execution_date_field": "occur_date",
+        "src": "mango_cohort_user_occurrence",
+        "dest": "mango_active_user_count",
+    },
+    "query": "mango_active_user_count",
+}
+
 MANGO_FEATURE_ROI = {
     "type": "table",
     "allow_field_addition": True,
@@ -239,8 +255,8 @@ MANGO_FEATURE_ROI = {
         "execution_date_field": "execution_date",
         "src": "mango_user_rfe_28d",
         "src2": "mango_cohort_retained_users",
-        "src3": "mango_feature_active_user_count",
-        "src4": "mango_feature_active_new_user_count",
+        "src3": "mango_active_user_count",
+        # "src4": "mango_active_new_user_count",
         "dest": "mango_feature_roi",
     },
     "query": "mango_feature_roi",

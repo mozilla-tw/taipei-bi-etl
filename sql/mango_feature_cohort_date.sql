@@ -28,9 +28,7 @@ ON
   AND fm.os=ec.os
   AND fm.country=ec.country
 WHERE
-  feature_type IN ('Feature',
-    'Vertical')
-  AND feature_name not in ('Others','feature: others')
+  feature_name not in ('Others','feature: others')
   AND fm.submission_date = DATE '{start_date}'
   AND fm.country IS NOT NULL
   AND fm.os IS NOT NULL
