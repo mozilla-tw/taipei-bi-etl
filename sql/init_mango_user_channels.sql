@@ -110,8 +110,8 @@ WITH
     tracker_settings AS settings
   WHERE
     tracker_token IS NULL
-)
-SELECT
+),
+rs AS (SELECT
   user_channels.client_id,
   user_channels.tracker_token,
   user_channels.install_referrer,
@@ -131,6 +131,8 @@ SELECT
     'unknown') AS creative_name,
   IFNULL(user_channels.creative_token,
     '0') AS creative_token,
+  RANK() OVER (PARTITION BY client_id ORDER BY creative_token ASC) AS r,  -- dedup creative level
   execution_date
 FROM
-  user_channels
+  user_channels)
+SELECT * FROM rs WHERE r=1
