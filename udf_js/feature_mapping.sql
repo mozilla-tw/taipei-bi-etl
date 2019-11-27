@@ -495,13 +495,6 @@ var partner_list = ['bukalapak', 'flipkart',
                 event_object == 'tab_swipe'
               ) &&
               event_vertical == 'shopping'
-            ) ||
-
-            // visit tab swipe setting
-            (
-              event_method == 'change' &&
-              event_object == 'setting' &&
-              event_value == 'tab_swipe'
             )
         ) {
           feature.push('feature: tab_swipe');
