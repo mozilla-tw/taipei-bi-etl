@@ -302,6 +302,7 @@ class BqQueryTask(BqTask):
                         self.run_query(bf_date)
         else:
             self.create_schema()
+            self.daily_cleanup(self.date)
             self.run_query(self.date)
 
     def run_query(self, date, qstring=None):
