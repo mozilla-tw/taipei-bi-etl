@@ -188,6 +188,7 @@ MANGO_COHORT_USER_OCCURRENCE = {
 
 MANGO_COHORT_RETAINED_USERS = {
     "type": "table",
+    "allow_field_addition": True,
     "partition_field": "cohort_date",
     # "backfill_days": [1, 7, 14, 21, 28, 35, 56, 63, 84, 91, 112],
     "append": True,

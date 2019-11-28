@@ -46,8 +46,14 @@ feature_session as (
     sum(show_keyboard) as show_keyboard
   from feature_session_event
   where feature_type = 'Feature'
-  and feature_name like 'feature: %'
-  and (feature_name like '%content_tab%' or feature_name like '%tab_swipe%')
+  and (
+    feature_name like 'feature:%content_tab%'
+    or feature_name like 'feature:%tab_swipe%'
+    or feature_name like '%category%'
+    or feature_name like '%subcategory%'
+    or feature_name like 'feed%'
+    or feature_name like '%component_id%'
+  )
   group by
     client_id,
     country,

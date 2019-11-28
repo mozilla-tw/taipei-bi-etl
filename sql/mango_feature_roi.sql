@@ -69,6 +69,7 @@ rr as (
     cohort_name,
 
     sum(d1_retained_users)/sum(daily_cohort_size) AS d1_retention,
+    sum(d3_retained_users)/sum(daily_cohort_size) AS d3_retention,
     sum(d7_retained_users)/sum(daily_cohort_size) AS d7_retention,
     sum(d14_retained_users)/sum(daily_cohort_size) AS d14_retention,
     sum(d28_retained_users)/sum(daily_cohort_size) AS d28_retention,
@@ -134,6 +135,23 @@ select
     au.new_dau as new_aDAU,
     au.new_wau as new_aWAU,
     au.new_mau as new_aMAU,
+
+    --retention: retained users/cohort size, data type=float, 單位=留存率
+    rr.d1_retention,
+    rr.d3_retention,
+    rr.d7_retention,
+    rr.d14_retention,
+    rr.d28_retention,
+    rr.d56_retention,
+    rr.d84_retention,
+    rr.w1_retention,
+    rr.w2_retention,
+    rr.w4_retention,
+    rr.w8_retention,
+    rr.w12_retention,
+    rr.m1_retention,
+    rr.m2_retention,
+    rr.m3_retention,
 
     --active_days: during 28d FF Lite 出現幾天, int, 單位=days
     active_days_25p,
