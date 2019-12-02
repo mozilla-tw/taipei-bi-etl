@@ -134,4 +134,4 @@ rs AS (SELECT
   execution_date
 FROM
   user_channels)
-SELECT * FROM rs WHERE r=1
+SELECT * EXCEPT (r) FROM rs WHERE r=1

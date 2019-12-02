@@ -31,6 +31,7 @@ set_debug_config()
 globals()["MANGO_CHANNEL_MAPPING"]["params"]["src"] = "moz-taipei-bi-datasets/mango/staging-adjust-adjust_trackers/{start_date}.jsonl"
 globals()["GOOGLE_RPS"]["params"]["src"] = "moz-taipei-bi-datasets/mango/staging-rps-google_search_rps/2018-01-01.csv"
 globals()["MANGO_REVENUE_BUKALAPAK"]["params"]["src"] = "moz-taipei-bi-datasets/mango/staging-revenue-bukalapak/{start_date}.jsonl"
+globals()["MANGO_USER_CHANNELS"]["create_view_alt"] = True
 globals()["MANGO_FEATURE_ROI"]["create_view_alt"] = True
 globals()["MANGO_USER_RFE"]["create_view_alt"] = True
 globals()["MANGO_USER_RFE_SESSION"]["create_view_alt"] = True
