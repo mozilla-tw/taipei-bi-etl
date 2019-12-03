@@ -713,7 +713,10 @@ class EtlTask:
                     # Fix date format for BigQuery (only support dash notation)
                     for rs in self.raw_schema:
                         if rs[1] == np.datetime64:
-                            ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
+                            if 'datetime' in rs[0]:
+                                ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
+                            else:
+                                ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATE_FORMAT)
                     self.convert_file(ddf, config, source, stage, d)
                 log.info(
                     "%s-%s-%s/%s x %d files loaded to file system."

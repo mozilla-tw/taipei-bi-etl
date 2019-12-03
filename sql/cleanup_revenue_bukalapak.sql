@@ -1,2 +1,2 @@
 DELETE `{project}.{dataset}.{dest}` WHERE source='bukalapak'
-  AND DATE(utc_datetime) = DATE '{start_date}'
+  AND utc_date = DATE '{start_date}'

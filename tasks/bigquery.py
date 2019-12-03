@@ -429,6 +429,7 @@ def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = No
     cohort_retained_users = get_task(configs.MANGO_COHORT_RETAINED_USERS, d, next_date)
     user_count = get_task(configs.MANGO_ACTIVE_USER_COUNT, d, next_date)
     feature_roi = get_task(configs.MANGO_FEATURE_ROI, d, next_date)
+    revenue_google = get_task(configs.MANGO_REVENUE_GOOGLE, d, next_date)
     # revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d, next_date)
     # google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1), next_date)
     core.daily_run()
@@ -448,6 +449,7 @@ def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = No
     cohort_retained_users.daily_run()
     user_count.daily_run()
     feature_roi.daily_run()
+    revenue_google.daily_run()
     # revenue_bukalapak.daily_run()
     # google_rps.daily_run()
 

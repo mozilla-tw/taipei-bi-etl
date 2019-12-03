@@ -189,6 +189,7 @@ class RevenueEtlTask(base.EtlTask):
 
         else:
             df = do_updates_inserts()
+            df['Stat.date'] = df['Stat.datetime']
             df.columns = revenue_df.columns
             df = revenue_df.append(df, ignore_index=True).drop_duplicates()
             log.info("load new batch")
@@ -197,6 +198,7 @@ class RevenueEtlTask(base.EtlTask):
 
         # reformat data types
         df["utc_datetime"] = df["utc_datetime"].astype("datetime64[ns]")
+        df["utc_date"] = df["utc_date"].astype("datetime64[ns]")
         df["tz"] = df["country"].apply(lambda x: get_country_tz_str(x))
         df["sales_amount"] = df["sales_amount"].astype("float")
         df["payout"] = df["payout"].astype("float")

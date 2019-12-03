@@ -274,6 +274,22 @@ GOOGLE_RPS = {
     },
 }
 
+MANGO_REVENUE_GOOGLE = {
+    "type": "table",
+    "allow_field_addition": True,
+    "partition_field": "utc_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "execution_date_field": "utc_date",
+        "src": "mango_core_normalized",
+        "src2": "google_rps",
+        "dest": "mango_revenue",
+    },
+    "query": "mango_revenue_google",
+    "cleanup_query": "cleanup_revenue_google",
+}
+
 MANGO_REVENUE_BUKALAPAK = {
     "type": "gcs",
     "append": True,
