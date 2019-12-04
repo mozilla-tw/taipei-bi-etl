@@ -113,7 +113,7 @@ MANGO_USER_RFE_SESSION = {
         **BQ_PROJECT,
         "execution_date_field": "submission_date",
         "src": "mango_events_feature_mapping",
-        "src2": "mango_core",
+        "src2": "mango_core_normalized",
         "dest": "mango_user_rfe_daily_session",
     },
     "query": "mango_user_rfe_daily_session",
@@ -178,7 +178,7 @@ MANGO_COHORT_USER_OCCURRENCE = {
     "type": "view",
     "params": {
         **BQ_PROJECT,
-        "src": "mango_user_occurrence",
+        "src": "mango_user_occurrence",     # deprecated
         "src2": "mango_user_channels",
         "src3": "mango_user_feature_occurrence",
         "dest": "mango_cohort_user_occurrence",
@@ -257,7 +257,6 @@ MANGO_FEATURE_ROI = {
         "src": "mango_user_rfe_28d",
         "src2": "mango_cohort_retained_users",
         "src3": "mango_active_user_count",
-        # "src4": "mango_active_new_user_count",
         "dest": "mango_feature_roi",
     },
     "query": "mango_feature_roi",
