@@ -2,6 +2,7 @@
 import numpy as np
 import os
 
+# FIXME: change output file name as 'latest' instead of 'date'
 SOURCES = {
     "adjust_trackers": {
         "type": "api",
