@@ -8,6 +8,7 @@ BQ_PROJECT = {
 MANGO_CORE = {
     "type": "table",
     "partition_field": "submission_date",
+    "allow_field_addition": True,
     "append": True,
     "params": {
         **BQ_PROJECT,
@@ -34,6 +35,7 @@ MANGO_CORE_NORMALIZED = {
 MANGO_EVENTS = {
     "type": "table",
     "partition_field": "submission_date",
+    "allow_field_addition": True,
     "append": True,
     "params": {
         **BQ_PROJECT,
