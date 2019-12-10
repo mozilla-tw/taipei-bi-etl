@@ -5,6 +5,7 @@ SELECT os, country,
 
        COUNT(DISTINCT CASE WHEN occur_day = 0 THEN client_id ELSE NULL END) AS daily_cohort_size,
        COUNT(DISTINCT CASE WHEN occur_day = 1 THEN client_id ELSE NULL END) AS d1_retained_users,
+       COUNT(DISTINCT CASE WHEN occur_day = 3 THEN client_id ELSE NULL END) AS d3_retained_users,
        COUNT(DISTINCT CASE WHEN occur_day = 7 THEN client_id ELSE NULL END) AS d7_retained_users,
        COUNT(DISTINCT CASE WHEN occur_day = 14 THEN client_id ELSE NULL END) AS d14_retained_users,
        COUNT(DISTINCT CASE WHEN occur_day = 28 THEN client_id ELSE NULL END) AS d28_retained_users,
@@ -29,7 +30,7 @@ WHERE cohort_date <= DATE '{start_date}'
 AND cohort_date >= DATE_SUB(DATE '{start_date}', INTERVAL 112 DAY)
 AND occur_date <= DATE '{start_date}'
 AND occur_date >= DATE_SUB(DATE '{start_date}', INTERVAL 112 DAY)
-
+AND occur_day BETWEEN 0 AND 112
 GROUP BY os, country,
        measure_type, cohort_level, cohort_name, 
        cohort_date

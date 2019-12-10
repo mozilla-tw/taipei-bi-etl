@@ -89,10 +89,12 @@ class BqTask:
         # default write append=true
         return "append" not in self.config or self.config["append"]
 
-    def does_table_exist(self):
+    def does_table_exist(self, postfix=None):
         try:
             dataset = self.client.dataset(self.config["params"]["dataset"])
-            table_ref = dataset.table(self.config["params"]["dest"])
+            table_ref = dataset.table(
+                self.config["params"]["dest"] + (postfix if postfix else "")
+            )
             self.client.get_table(table_ref)
             return True
         except NotFound:
@@ -131,6 +133,21 @@ class BqTask:
             # Wait for the query to complete.
             query_job.result()  # Waits for the job to complete.
             log.info("Created routine {}".format(query_job.ddl_target_routine))
+
+    def create_view(self, postfix=None):
+        qstring = read_string("sql/{}.sql".format(self.config["query"]))
+        shared_dataset_ref = self.client.dataset(self.config["params"]["dataset"])
+        view_ref = shared_dataset_ref.table(
+            self.config["params"]["dest"] + (postfix if postfix else "")
+        )
+        view = bigquery.Table(view_ref)
+        qparams = self.get_query_params(self.date)
+        view.view_query = qstring.format(**qparams)
+        if self.does_table_exist(postfix):
+            view = self.client.update_table(view, ["view_query"])  # API request
+        else:
+            view = self.client.create_table(view)  # API request
+        log.info("Successfully created view at {}".format(view.full_table_id))
 
     def drop_schema(self):
         udfs = []
@@ -285,6 +302,7 @@ class BqQueryTask(BqTask):
                         self.run_query(bf_date)
         else:
             self.create_schema()
+            self.daily_cleanup(self.date)
             self.run_query(self.date)
 
     def run_query(self, date, qstring=None):
@@ -318,6 +336,9 @@ class BqQueryTask(BqTask):
         query = self.client.query(qstring, job_config=job_config)
         query.result()
 
+        if "create_view_alt" in self.config and self.config["create_view_alt"]:
+            self.create_view("_view")
+
 
 # https://cloud.google.com/bigquery/docs/views
 class BqViewTask(BqTask):
@@ -332,18 +353,7 @@ class BqViewTask(BqTask):
         super().create_schema(check_exists)
         if check_exists and self.does_table_exist():
             return
-        qstring = read_string("sql/{}.sql".format(self.config["query"]))
-        shared_dataset_ref = self.client.dataset(self.config["params"]["dataset"])
-        view_ref = shared_dataset_ref.table(self.config["params"]["dest"])
-        view = bigquery.Table(view_ref)
-        qparams = self.get_query_params(self.date)
-        view.view_query = qstring.format(**qparams)
-        if self.does_table_exist():
-            view = self.client.update_table(view, ["view_query"])  # API request
-        else:
-            view = self.client.create_table(view)  # API request
-
-        log.info("Successfully created view at {}".format(view.full_table_id))
+        self.create_view()
 
     def daily_run(self):
         # self.drop_schema()
@@ -409,7 +419,7 @@ def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = No
     user_rfe_partial = get_task(configs.MANGO_USER_RFE_PARTIAL, d, next_date)
     user_rfe_session = get_task(configs.MANGO_USER_RFE_SESSION, d, next_date)
     user_rfe = get_task(configs.MANGO_USER_RFE, d, next_date)
-    user_occurrence = get_task(configs.MANGO_USER_OCCURRENCE, d, next_date)
+    # user_occurrence = get_task(configs.MANGO_USER_OCCURRENCE, d, next_date)
     user_feature_occurrence = get_task(
         configs.MANGO_USER_FEATURE_OCCURRENCE, d, next_date
     )
@@ -417,9 +427,9 @@ def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = No
         configs.MANGO_COHORT_USER_OCCURRENCE, d, next_date
     )
     cohort_retained_users = get_task(configs.MANGO_COHORT_RETAINED_USERS, d, next_date)
-    user_count = get_task(configs.MANGO_FEATURE_ACTIVE_USER_COUNT, d, next_date)
-    new_user_count = get_task(configs.MANGO_FEATURE_ACTIVE_NEW_USER_COUNT, d, next_date)
+    user_count = get_task(configs.MANGO_ACTIVE_USER_COUNT, d, next_date)
     feature_roi = get_task(configs.MANGO_FEATURE_ROI, d, next_date)
+    revenue_google = get_task(configs.MANGO_REVENUE_GOOGLE, d, next_date)
     # revenue_bukalapak = get_task(configs.MANGO_REVENUE_BUKALAPAK, d, next_date)
     # google_rps = get_task(configs.GOOGLE_RPS, datetime.datetime(2018, 1, 1), next_date)
     core.daily_run()
@@ -433,13 +443,13 @@ def daily_run(d: datetime, configs: Optional[Callable], next_date: datetime = No
     user_rfe_partial.daily_run()
     user_rfe_session.daily_run()
     user_rfe.daily_run()
-    user_occurrence.daily_run()
+    # user_occurrence.daily_run()
     user_feature_occurrence.daily_run()
     cohort_user_occurrence.daily_run()
     cohort_retained_users.daily_run()
     user_count.daily_run()
-    new_user_count.daily_run()
     feature_roi.daily_run()
+    revenue_google.daily_run()
     # revenue_bukalapak.daily_run()
     # google_rps.daily_run()
 

@@ -21,9 +21,8 @@ WITH
     AND fm.feature_name=fo.cohort_name
   WHERE
     fm.country IS NOT NULL
-    AND feature_type IN ('Feature',
-      'Vertical')
-    AND feature_name not in ('Others' ,'feature: others')),
+    AND feature_name not in ('Others','feature: others')
+  ),
   occur AS (
   SELECT
     measure_type,
@@ -48,9 +47,10 @@ WITH
     6,
     7,
     8
-  HAVING
-    occur_day < 112
-    AND occur_day >= 0 ),
+--   HAVING
+--     occur_day < 112
+--     AND occur_day >= 0
+  ),
   occur_day_week_month AS (
   SELECT
     *,

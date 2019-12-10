@@ -204,8 +204,8 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('source: '.concat(extra_value));
-          feature.push('partner: true');
+          feature.push('visit_topsite_source: '.concat(extra_value));
+          feature.push('visit_topsite_partner: true');
         }
 
         if (event_method == 'remove' &&
@@ -285,8 +285,9 @@ var partner_list = ['bukalapak', 'flipkart',
             event_object == 'search_bar' &&
 			['google',''].includes(settings_search_engine) // null as default
         ) {
-          feature.push('source: google');
-          feature.push('partner: true');
+          feature.push('search_source: google');
+          feature.push('search_feed: google');
+          feature.push('search_partner: true');
         }
 
         if (['type_query', 'select_query'].includes(event_method) &&
@@ -306,8 +307,8 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'engine' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('source: '.concat(extra_value));
-          feature.push('partner: true');
+          feature.push('quicksearch_source: '.concat(extra_value));
+          feature.push('quicksearch_partner: true');
         }
 
         if (event_method == 'open' &&
@@ -429,8 +430,8 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source'
         ) {
           feature.push('component_type_id: 9'); // icon_card
-          feature.push('feed: '.concat(extra_value));
-          feature.push('source: '.concat(extra_value));
+          feature.push('lifefeed_ec_feed: '.concat(extra_value));
+          feature.push('lifefeed_ec_source: '.concat(extra_value));
         }
 
         if (event_method == 'click' &&
@@ -438,7 +439,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('partner: true');
+          feature.push('lifefeed_ec_partner: true');
         }
 
         if (event_value == 'lifefeed_promo'
@@ -467,8 +468,8 @@ var partner_list = ['bukalapak', 'flipkart',
             event_value == 'lifefeed_promo' &&
             extra_key == 'source'
         ) {
-          feature.push('feed: '.concat(extra_value));
-          feature.push('source: '.concat(extra_value));
+          feature.push('lifefeed_promo_feed: '.concat(extra_value));
+          feature.push('lifefeed_promo_source: '.concat(extra_value));
         }
 
         if (event_method == 'click' &&
@@ -483,7 +484,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('partner: true');
+          feature.push('lifefeed_promo_partner: true');
         }
 
         // tab_swipe
@@ -495,13 +496,6 @@ var partner_list = ['bukalapak', 'flipkart',
                 event_object == 'tab_swipe'
               ) &&
               event_vertical == 'shopping'
-            ) ||
-
-            // visit tab swipe setting
-            (
-              event_method == 'change' &&
-              event_object == 'setting' &&
-              event_value == 'tab_swipe'
             )
         ) {
           feature.push('feature: tab_swipe');
@@ -511,14 +505,14 @@ var partner_list = ['bukalapak', 'flipkart',
             event_object == 'tab_swipe' &&
             extra_key == 'feed'
         ) {
-          feature.push('feed: '.concat(extra_value));
+          feature.push('tab_swipe_feed: '.concat(extra_value));
         }
 
         if (event_method == 'end' &&
             event_object == 'tab_swipe' &&
             extra_key == 'source'
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('tab_swipe_source: '.concat(extra_value));
         }
 
         if (event_method == 'end' &&
@@ -526,7 +520,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('partner: true');
+          feature.push('tab_swipe_partner: true');
         }
 
         if (event_method == 'change' &&
@@ -570,14 +564,14 @@ var partner_list = ['bukalapak', 'flipkart',
             event_vertical == 'shopping' &&
             extra_key == 'feed'
         ) {
-          feature.push('feed: '.concat(extra_value));
+          feature.push('visit_shopping_content_tab_feed: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'shopping' &&
             extra_key == 'source'
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('visit_shopping_content_tab_source: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
@@ -585,28 +579,28 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('partner: true');
+          feature.push('visit_shopping_content_tab_partner: true');
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'shopping' &&
             extra_key == 'category'
         ) {
-          feature.push('category: '.concat(extra_value));
+          feature.push('shopping_content_tab_category: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'shopping' &&
             extra_key == 'subcategory_id'
         ) {
-          feature.push('subcategory_id: '.concat(extra_value));
+          feature.push('shopping_content_tab_subcategory_id: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'shopping' &&
             extra_key == 'component_id'
         ) {
-          feature.push('component_id: '.concat(extra_value));
+          feature.push('shopping_content_tab_component_id: '.concat(extra_value));
         }
 
         if (event_vertical == 'shopping'
@@ -629,6 +623,7 @@ var partner_list = ['bukalapak', 'flipkart',
         var vertical = '';
         var app = '';
 
+        //lifefeed
         if (event_value == 'lifefeed_news'
         ) {
           feature.push('feature: lifefeed_news');
@@ -647,7 +642,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'feed'
         ) {
           feature.push('component_type_id: 7'); // list
-          feature.push('feed: '.concat(extra_value));
+          feature.push('lifefeed_news_feed: '.concat(extra_value));
         }
 
         if (event_method == 'click' &&
@@ -656,7 +651,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source'
         ) {
           feature.push('component_type_id: 7'); // list
-          feature.push('source: '.concat(extra_value));
+          feature.push('lifefeed_news_source: '.concat(extra_value));
         }
 
         if (event_method == 'click' &&
@@ -665,7 +660,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'feed' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('partner: true');
+          feature.push('lifefeed_news_partner: true');
         }
 
         // content_hub
@@ -702,14 +697,14 @@ var partner_list = ['bukalapak', 'flipkart',
             event_vertical == 'lifestyle' &&
             extra_key == 'feed'
         ) {
-          feature.push('feed: '.concat(extra_value));
+          feature.push('visit_lifestyle_content_tab_feed: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'lifestyle' &&
             extra_key == 'source'
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('visit_lifestyle_content_tab_source: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
@@ -717,28 +712,28 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('partner: true');
+          feature.push('visit_lifestyle_content_tab_partner: true');
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'lifestyle' &&
             extra_key == 'category'
         ) {
-          feature.push('category: '.concat(extra_value));
+          feature.push('lifestyle_content_tab_category: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'lifestyle' &&
             extra_key == 'subcategory_id'
         ) {
-          feature.push('subcategory_id: '.concat(extra_value));
+          feature.push('lifestyle_content_tab_subcategory_id: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'lifestyle' &&
             extra_key == 'component_id'
         ) {
-          feature.push('component_id: '.concat(extra_value));
+          feature.push('lifestyle_content_tab_component_id: '.concat(extra_value));
         }
 
         if (event_vertical == 'lifestyle'
@@ -795,14 +790,14 @@ var partner_list = ['bukalapak', 'flipkart',
             event_vertical == 'game' &&
             extra_key == 'feed'
         ) {
-          feature.push('feed: '.concat(extra_value));
+          feature.push('visit_game_content_tab_feed: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'game' &&
             extra_key == 'source'
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('visit_game_content_tab_source: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
@@ -810,28 +805,28 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('partner: true');
+          feature.push('visit_game_content_tab_partner: true');
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'game' &&
             extra_key == 'category'
         ) {
-          feature.push('category: '.concat(extra_value));
+          feature.push('game_content_tab_category: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'game' &&
             extra_key == 'subcategory_id'
         ) {
-          feature.push('subcategory_id: '.concat(extra_value));
+          feature.push('game_content_tab_subcategory_id: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'game' &&
             extra_key == 'component_id'
         ) {
-          feature.push('component_id: '.concat(extra_value));
+          feature.push('game_content_tab_component_id: '.concat(extra_value));
         }
 
         if (event_vertical == 'game'

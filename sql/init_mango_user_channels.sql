@@ -8,7 +8,8 @@ WITH
   FROM
     `{project}.{dataset}.{src}`
   WHERE
-    submission_date = DATE '{start_date}'
+    submission_date >= DATE '2018-11-01'
+    AND submission_date <= DATE '{start_date}'
   GROUP BY 1
   ),
   user_channels AS (
@@ -134,4 +135,4 @@ rs AS (SELECT
   execution_date
 FROM
   user_channels)
-SELECT * EXCEPT (r) FROM rs WHERE r=1
+SELECT * FROM rs WHERE r=1

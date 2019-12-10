@@ -69,6 +69,7 @@ rr as (
     cohort_name,
 
     sum(d1_retained_users)/sum(daily_cohort_size) AS d1_retention,
+    sum(d3_retained_users)/sum(daily_cohort_size) AS d3_retention,
     sum(d7_retained_users)/sum(daily_cohort_size) AS d7_retention,
     sum(d14_retained_users)/sum(daily_cohort_size) AS d14_retention,
     sum(d28_retained_users)/sum(daily_cohort_size) AS d28_retention,
@@ -104,31 +105,16 @@ au as (
     country,
     cohort_level,
     cohort_name,
+    avg(new_dau) as new_dau,
     avg(dau) as dau,
+    avg(new_wau) as new_wau,
     avg(wau) as wau,
+    avg(new_mau) as new_mau,
     avg(mau) as mau
   from `{project}.{dataset}.{src3}`
-  where submission_date > DATE_SUB(DATE '{start_date}', INTERVAL 28 DAY)
-  and submission_date <= DATE '{start_date}'
-  group by
-    os,
-    country,
-    cohort_level,
-    cohort_name
-),
-
-new_au as (
-  select
-    os,
-    country,
-    cohort_level,
-    cohort_name,
-    avg(dau) as dau,
-    avg(wau) as wau,
-    avg(mau) as mau
-  from `{project}.{dataset}.{src4}`
   where occur_date > DATE_SUB(DATE '{start_date}', INTERVAL 28 DAY)
   and occur_date <= DATE '{start_date}'
+  and measure_type = 'feature'
   group by
     os,
     country,
@@ -146,9 +132,26 @@ select
     au.dau as aDAU,
     au.wau as aWAU,
     au.mau as aMAU,
-    new_au.dau as new_aDAU,
-    new_au.wau as new_aWAU,
-    new_au.mau as new_aMAU,
+    au.new_dau as new_aDAU,
+    au.new_wau as new_aWAU,
+    au.new_mau as new_aMAU,
+
+    --retention: retained users/cohort size, data type=float, 單位=留存率
+    rr.d1_retention,
+    rr.d3_retention,
+    rr.d7_retention,
+    rr.d14_retention,
+    rr.d28_retention,
+    rr.d56_retention,
+    rr.d84_retention,
+    rr.w1_retention,
+    rr.w2_retention,
+    rr.w4_retention,
+    rr.w8_retention,
+    rr.w12_retention,
+    rr.m1_retention,
+    rr.m2_retention,
+    rr.m3_retention,
 
     --active_days: during 28d FF Lite 出現幾天, int, 單位=days
     active_days_25p,
@@ -159,6 +162,11 @@ select
     recency_25p,
     recency_50p,
     recency_75p,
+
+    --recency: execution date - last seen, data type=int, 單位=days
+    stickiness_25p,
+    stickiness_50p,
+    stickiness_75p,
 
     --frequency_days: during 28d 功能使用 n days, data type=int, 單位=days
     frequency_days_25p,
@@ -208,10 +216,3 @@ on rfe.os = au.os
 and rfe.country = au.country
 and rfe.feature_type = au.cohort_level
 and rfe.feature_name = au.cohort_name
-
-left join new_au
-on rfe.os = new_au.os
-and rfe.country = new_au.country
-and rfe.feature_type = new_au.cohort_level
-and rfe.feature_name = new_au.cohort_name
-
