@@ -204,7 +204,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('visit_topsite_source: '.concat(extra_value));
           feature.push('visit_topsite_partner: true');
         }
 
@@ -285,8 +285,8 @@ var partner_list = ['bukalapak', 'flipkart',
             event_object == 'search_bar' &&
 			['google',''].includes(settings_search_engine) // null as default
         ) {
-          feature.push('source: google');
-          feature.push('feed: google');
+          feature.push('search_source: google');
+          feature.push('search_feed: google');
           feature.push('search_partner: true');
         }
 
@@ -307,7 +307,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'engine' &&
             partner_list.includes(extra_value)
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('quicksearch_source: '.concat(extra_value));
           feature.push('quicksearch_partner: true');
         }
 
@@ -430,8 +430,8 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source'
         ) {
           feature.push('component_type_id: 9'); // icon_card
-          feature.push('feed: '.concat(extra_value));
-          feature.push('source: '.concat(extra_value));
+          feature.push('lifefeed_ec_feed: '.concat(extra_value));
+          feature.push('lifefeed_ec_source: '.concat(extra_value));
         }
 
         if (event_method == 'click' &&
@@ -468,8 +468,8 @@ var partner_list = ['bukalapak', 'flipkart',
             event_value == 'lifefeed_promo' &&
             extra_key == 'source'
         ) {
-          feature.push('feed: '.concat(extra_value));
-          feature.push('source: '.concat(extra_value));
+          feature.push('lifefeed_promo_feed: '.concat(extra_value));
+          feature.push('lifefeed_promo_source: '.concat(extra_value));
         }
 
         if (event_method == 'click' &&
@@ -505,14 +505,14 @@ var partner_list = ['bukalapak', 'flipkart',
             event_object == 'tab_swipe' &&
             extra_key == 'feed'
         ) {
-          feature.push('feed: '.concat(extra_value));
+          feature.push('tab_swipe_feed: '.concat(extra_value));
         }
 
         if (event_method == 'end' &&
             event_object == 'tab_swipe' &&
             extra_key == 'source'
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('tab_swipe_source: '.concat(extra_value));
         }
 
         if (event_method == 'end' &&
@@ -564,14 +564,14 @@ var partner_list = ['bukalapak', 'flipkart',
             event_vertical == 'shopping' &&
             extra_key == 'feed'
         ) {
-          feature.push('feed: '.concat(extra_value));
+          feature.push('visit_shopping_content_tab_feed: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'shopping' &&
             extra_key == 'source'
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('visit_shopping_content_tab_source: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
@@ -642,7 +642,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'feed'
         ) {
           feature.push('component_type_id: 7'); // list
-          feature.push('feed: '.concat(extra_value));
+          feature.push('lifefeed_news_feed: '.concat(extra_value));
         }
 
         if (event_method == 'click' &&
@@ -651,7 +651,7 @@ var partner_list = ['bukalapak', 'flipkart',
             extra_key == 'source'
         ) {
           feature.push('component_type_id: 7'); // list
-          feature.push('source: '.concat(extra_value));
+          feature.push('lifefeed_news_source: '.concat(extra_value));
         }
 
         if (event_method == 'click' &&
@@ -697,14 +697,14 @@ var partner_list = ['bukalapak', 'flipkart',
             event_vertical == 'lifestyle' &&
             extra_key == 'feed'
         ) {
-          feature.push('feed: '.concat(extra_value));
+          feature.push('visit_lifestyle_content_tab_feed: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'lifestyle' &&
             extra_key == 'source'
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('visit_lifestyle_content_tab_source: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
@@ -790,14 +790,14 @@ var partner_list = ['bukalapak', 'flipkart',
             event_vertical == 'game' &&
             extra_key == 'feed'
         ) {
-          feature.push('feed: '.concat(extra_value));
+          feature.push('visit_game_content_tab_feed: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
             event_vertical == 'game' &&
             extra_key == 'source'
         ) {
-          feature.push('source: '.concat(extra_value));
+          feature.push('visit_game_content_tab_source: '.concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
