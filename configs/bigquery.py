@@ -16,7 +16,7 @@ MANGO_CORE = {
         "src": "moz-fx-data-shared-prod.telemetry.telemetry_core_parquet",
         "dest": "mango_core",
     },
-    "udf": ["map_channels", "map_markets", "match_target_markets"],
+    "udf": ["map_channels", "map_markets", "map_verticals", "match_target_countries", "match_verticals", "order_channels", "order_markets", "order_target_countries", "order_verticals"],
     "query": "mango_core",
     "init_query": "init_mango_core",
     "cleanup_query": "cleanup_mango_core",
