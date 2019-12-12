@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION `%s.%s`.order_verticals(feature STRING) AS (
+CREATE OR REPLACE FUNCTION `%s.%s`.udf_order_verticals(feature STRING) AS (
     CASE
         WHEN feature = 'vertical: browser' THEN 1
         WHEN feature = 'vertical: shopping' THEN 2
