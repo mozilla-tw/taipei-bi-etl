@@ -1,5 +1,6 @@
 CREATE OR REPLACE FUNCTION `%s.%s`.udf_order_target_countries(country STRING) AS (
     CASE
+        WHEN country ='Overall' THEN '00'
         WHEN country ='IN' THEN '01'
         WHEN country ='ID' THEN '02'
         WHEN country ='TW' THEN '03'
@@ -14,6 +15,8 @@ CREATE OR REPLACE FUNCTION `%s.%s`.udf_order_target_countries(country STRING) AS
         WHEN country ='KH' THEN '12'
         WHEN country ='LA' THEN '13'
         WHEN country ='BN' THEN '14'
+        WHEN country ='CN' THEN '15'
+        WHEN country ='Others' THEN '999'
         WHEN country = '' OR country IS NULL THEN '~'
         ELSE country
     END
