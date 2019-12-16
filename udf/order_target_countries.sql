@@ -14,6 +14,7 @@ CREATE OR REPLACE FUNCTION `%s.%s`.udf_order_target_countries(country STRING) AS
         WHEN country ='KH' THEN '12'
         WHEN country ='LA' THEN '13'
         WHEN country ='BN' THEN '14'
+        WHEN country = '' OR country IS NULL THEN '~'
         ELSE country
     END
 );
