@@ -264,6 +264,22 @@ MANGO_FEATURE_ROI = {
     "query": "mango_feature_roi",
 }
 
+MANGO_CHANNEL_ROI = {
+    "type": "table",
+    "allow_field_addition": True,
+    "partition_field": "execution_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "execution_date_field": "execution_date",
+        "src": "mango_user_rfe_28d",
+        "src2": "mango_cohort_retained_users",
+        "src3": "mango_active_user_count",
+        "dest": "mango_channel_roi",
+    },
+    "query": "mango_channel_roi",
+}
+
 GOOGLE_RPS = {
     "type": "gcs",
     "append": False,
