@@ -6,6 +6,8 @@ import time
 from argparse import Namespace
 import os
 import os.path
+from shutil import copyfile
+
 import requests
 import datetime
 from pandas import DataFrame
@@ -180,6 +182,13 @@ class EtlTask:
                 filename=self.get_filename(source, config, stage, dest, page, date),
             )
 
+    def get_dest_ext(self, destinations):
+        dest_config = destinations["fs"]
+        ftype = (
+            "jsonl" if "file_format" not in dest_config else dest_config["file_format"]
+        )
+        return ftype
+
     def get_filename(
         self,
         source: str,
@@ -225,6 +234,18 @@ class EtlTask:
             return "{date}.{ext}".format(
                 date=date.strftime(DEFAULT_DATE_FORMAT), ext=ftype
             )
+
+    def get_latest_filepath(
+        self, source: str, config: Dict[str, Any], stage: str, dest: str
+    ) -> str:
+        filename = "latest.{ext}".format(ext=self.get_dest_ext(self.destinations))
+        return get_path_format().format(
+            stage=stage,
+            task=self.task,
+            source=source,
+            prefix=self.destinations[dest]["prefix"],
+            filename=filename,
+        )
 
     def get_or_create_filepath(
         self,
@@ -713,8 +734,10 @@ class EtlTask:
                     # Fix date format for BigQuery (only support dash notation)
                     for rs in self.raw_schema:
                         if rs[1] == np.datetime64:
-                            if 'datetime' in rs[0]:
-                                ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATETIME_FORMAT)
+                            if "datetime" in rs[0]:
+                                ddf[rs[0]] = ddf[rs[0]].dt.strftime(
+                                    DEFAULT_DATETIME_FORMAT
+                                )
                             else:
                                 ddf[rs[0]] = ddf[rs[0]].dt.strftime(DEFAULT_DATE_FORMAT)
                     self.convert_file(ddf, config, source, stage, d)
@@ -728,6 +751,9 @@ class EtlTask:
                     "%s-%s-%s/%s x 1 files loaded to file system."
                     % (stage, self.task, source, self.current_date.date())
                 )
+            # write latest file
+            if "write_latest" in config and config["write_latest"]:
+                self.convert_latest_file(config, source, stage)
 
     def convert_file(
         self,
@@ -751,6 +777,48 @@ class EtlTask:
         fpath = self.get_or_create_filepath(source, config, stage, "fs", None, date)
         output = convert_format(self.destinations["fs"]["file_format"], df)
         write_string(fpath, output)
+
+    def convert_latest_file(
+        self,
+        config: Dict[str, Any],
+        source: str,
+        stage: str,
+        date: datetime.datetime = None,
+    ):
+        """Convert DataFrame into destination files.
+
+        The logic is based on task config (see `configs/*.py`).
+
+        :param config: the corresponding source config
+        :param source: the name of the data source
+        :param stage: the stage of the data
+        :param date: the date of the data
+        """
+        # find the latest file
+        files = glob.glob(
+            get_path_format(True).format(
+                prefix=self.destinations["fs"]["prefix"],
+                stage=stage,
+                task=self.task,
+                source=source,
+            )
+        )
+        latest_ds = None
+        latest_file = None
+        for file in files:
+            fn = get_path_prefix(os.path.basename(file))[0:-1]
+            try:
+                ds = datetime.datetime.strptime(fn, DEFAULT_DATE_FORMAT)
+            except ValueError:
+                # could be "latest"
+                continue
+            if latest_ds is None or ds > latest_ds:
+                latest_ds = ds
+                latest_file = file
+
+        # copy to latest filepath
+        latest_dest_file = self.get_latest_filepath(source, config, stage, "fs")
+        copyfile(latest_file, latest_dest_file)
 
     def load_to_gcs(self, source: str, config: Dict[str, Any], stage: str = "raw"):
         """Load data into Google Cloud Storage based on destination settings.
@@ -792,6 +860,16 @@ class EtlTask:
                 blob.upload_from_filename(
                     self.get_filepath(source, config, stage, "fs")
                 )
+            # upload latest file
+            if "write_latest" in config and config["write_latest"]:
+                log.info("Load latest file to GCS.")
+                blob = bucket.blob(
+                    self.get_latest_filepath(source, config, stage, "gcs")
+                )
+                blob.upload_from_filename(
+                    self.get_latest_filepath(source, config, stage, "fs")
+                )
+
         log.info(
             "%s-%s-%s/%s x %d files loaded to GCS."
             % (stage, self.task, source, self.current_date.date(), fl)

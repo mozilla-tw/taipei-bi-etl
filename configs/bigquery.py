@@ -77,7 +77,7 @@ MANGO_CHANNEL_MAPPING = {
     "filetype": "jsonl",
     "params": {
         **BQ_PROJECT,
-        "src": "moz-taipei-bi/mango/staging-adjust-adjust_trackers/{start_date}.jsonl",
+        "src": "moz-taipei-bi/mango/staging-adjust-adjust_trackers/latest.jsonl",
         "dest": "mango_channel_mapping",
     },
 }
