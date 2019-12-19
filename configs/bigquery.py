@@ -312,7 +312,7 @@ MANGO_REVENUE_BUKALAPAK = {
     "append": True,
     "filetype": "jsonl",
     "backfill_days": [1, 2, 3, 4, 5, 6, 7],
-    "skip_not_found": True,
+    # "skip_not_found": True,
     "params": {
         **BQ_PROJECT,
         "src": "moz-taipei-bi/mango/staging-revenue-bukalapak/{start_date}.jsonl",
