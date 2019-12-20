@@ -33,6 +33,7 @@ globals()["GOOGLE_RPS"]["params"]["src"] = "moz-taipei-bi-datasets/mango/staging
 globals()["MANGO_REVENUE_BUKALAPAK"]["params"]["src"] = "moz-taipei-bi-datasets/mango/staging-revenue-bukalapak/{start_date}.jsonl"
 globals()["MANGO_USER_CHANNELS"]["create_view_alt"] = True
 globals()["MANGO_FEATURE_ROI"]["create_view_alt"] = True
+globals()["MANGO_CHANNEL_ROI"]["create_view_alt"] = True
 globals()["MANGO_USER_RFE"]["create_view_alt"] = True
 globals()["MANGO_USER_RFE_SESSION"]["create_view_alt"] = True
 globals()["MANGO_ACTIVE_USER_COUNT"]["create_view_alt"] = True
