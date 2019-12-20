@@ -59,7 +59,6 @@ rfe as (
 
   FROM `{project}.{dataset}.{src}`
   WHERE execution_date = DATE '{start_date}'
-  AND network_name <> 'unknown'
 ),
 
 rr as (
