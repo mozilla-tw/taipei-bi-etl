@@ -189,7 +189,7 @@ class RevenueEtlTask(base.EtlTask):
 
         else:
             df = do_updates_inserts()
-            df['Stat.date'] = df['Stat.datetime']
+            df["Stat.date"] = df["Stat.datetime"]
             df.columns = revenue_df.columns
             df = revenue_df.append(df, ignore_index=True).drop_duplicates()
             log.info("load new batch")

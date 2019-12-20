@@ -51,7 +51,7 @@ feature_name like 'feature: visit_%_content_tab'
   or feature_name like 'feature: tab_swipe'
   or feature_name like '%_content_tab_category: %'
   or feature_name like '%_content_tab_subcategory_id: %'
-  or feature_name like 'feed: %'
+  or feature_name like '%_feed: %'
   or feature_name like '%_content_tab_component_id: %'
     )
   group by

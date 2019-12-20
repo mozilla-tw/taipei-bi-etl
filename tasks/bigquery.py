@@ -250,7 +250,14 @@ class BqGcsTask(BqTask):
         )
         log.info("Starting job {}".format(load_job.job_id))
 
-        load_job.result()  # Waits for table load to complete.
+        try:
+            load_job.result()  # Waits for table load to complete.
+        except NotFound as nfe:
+            if "skip_not_found" in self.config:
+                pass
+            else:
+                raise nfe
+
         log.info("Job finished.")
 
         destination_table = self.client.get_table(

@@ -260,7 +260,8 @@ var partner_list = ['bukalapak', 'flipkart',
         }
 
         if ((['show', 'cancel', 'clear'].includes(event_method) &&
-             event_object == 'search_bar'
+             event_object == 'search_bar' &&
+             event_value != 'content_home'
             ) || (
              event_method == 'long_press' &&
              event_object == 'search_suggestion'
@@ -562,16 +563,9 @@ var partner_list = ['bukalapak', 'flipkart',
 
         if (event_object == 'content_tab' &&
             event_vertical == 'shopping' &&
-            extra_key == 'feed'
+            ['feed', 'source', 'category', 'component_id', 'subcategory_id'].includes(extra_key)
         ) {
-          feature.push('visit_shopping_content_tab_feed: '.concat(extra_value));
-        }
-
-        if (event_object == 'content_tab' &&
-            event_vertical == 'shopping' &&
-            extra_key == 'source'
-        ) {
-          feature.push('visit_shopping_content_tab_source: '.concat(extra_value));
+          feature.push('visit_shopping_content_tab_'.concat(extra_key).concat(': ').concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
@@ -582,25 +576,39 @@ var partner_list = ['bukalapak', 'flipkart',
           feature.push('visit_shopping_content_tab_partner: true');
         }
 
-        if (event_object == 'content_tab' &&
-            event_vertical == 'shopping' &&
-            extra_key == 'category'
+        // content tab toolbar
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_vertical == 'shopping'
         ) {
-          feature.push('shopping_content_tab_category: '.concat(extra_value));
+          feature.push('feature: shopping_toolbar');
         }
 
-        if (event_object == 'content_tab' &&
-            event_vertical == 'shopping' &&
-            extra_key == 'subcategory_id'
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            ['share', 'reload', 'back', 'close'].includes(event_value) &&
+            event_vertical == 'shopping'
         ) {
-          feature.push('shopping_content_tab_subcategory_id: '.concat(extra_value));
+          feature.push('tags: shopping_toolbar_'.concat(extra_value));
         }
 
-        if (event_object == 'content_tab' &&
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_value == 'share' &&
             event_vertical == 'shopping' &&
-            extra_key == 'component_id'
+            ['feed', 'source', 'category', 'component_id', 'subcategory_id'].includes(extra_key)
         ) {
-          feature.push('shopping_content_tab_component_id: '.concat(extra_value));
+          feature.push('shopping_toolbar_share_'.concat(extra_key).concat(': ').concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_value == 'share' &&
+            event_vertical == 'shopping' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('shopping_toolbar_share_partner: true');
         }
 
         if (event_vertical == 'shopping'
@@ -695,16 +703,9 @@ var partner_list = ['bukalapak', 'flipkart',
 
         if (event_object == 'content_tab' &&
             event_vertical == 'lifestyle' &&
-            extra_key == 'feed'
+            ['feed', 'source', 'category', 'component_id', 'subcategory_id'].includes(extra_key)
         ) {
-          feature.push('visit_lifestyle_content_tab_feed: '.concat(extra_value));
-        }
-
-        if (event_object == 'content_tab' &&
-            event_vertical == 'lifestyle' &&
-            extra_key == 'source'
-        ) {
-          feature.push('visit_lifestyle_content_tab_source: '.concat(extra_value));
+          feature.push('visit_lifestyle_content_tab_'.concat(extra_key).concat(': ').concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
@@ -715,25 +716,39 @@ var partner_list = ['bukalapak', 'flipkart',
           feature.push('visit_lifestyle_content_tab_partner: true');
         }
 
-        if (event_object == 'content_tab' &&
-            event_vertical == 'lifestyle' &&
-            extra_key == 'category'
+        // content tab toolbar
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_vertical == 'lifestyle'
         ) {
-          feature.push('lifestyle_content_tab_category: '.concat(extra_value));
+          feature.push('feature: lifestyle_toolbar');
         }
 
-        if (event_object == 'content_tab' &&
-            event_vertical == 'lifestyle' &&
-            extra_key == 'subcategory_id'
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            ['share', 'reload', 'back', 'close'].includes(event_value) &&
+            event_vertical == 'lifestyle'
         ) {
-          feature.push('lifestyle_content_tab_subcategory_id: '.concat(extra_value));
+          feature.push('tags: lifestyle_toolbar_'.concat(extra_value));
         }
 
-        if (event_object == 'content_tab' &&
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_value == 'share' &&
             event_vertical == 'lifestyle' &&
-            extra_key == 'component_id'
+            ['feed', 'source', 'category', 'component_id', 'subcategory_id'].includes(extra_key)
         ) {
-          feature.push('lifestyle_content_tab_component_id: '.concat(extra_value));
+          feature.push('lifestyle_toolbar_share_'.concat(extra_key).concat(': ').concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_value == 'share' &&
+            event_vertical == 'lifestyle' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('lifestyle_toolbar_share_partner: true');
         }
 
         if (event_vertical == 'lifestyle'
@@ -788,16 +803,9 @@ var partner_list = ['bukalapak', 'flipkart',
 
         if (event_object == 'content_tab' &&
             event_vertical == 'game' &&
-            extra_key == 'feed'
+            ['feed', 'source', 'category', 'component_id', 'subcategory_id'].includes(extra_key)
         ) {
-          feature.push('visit_game_content_tab_feed: '.concat(extra_value));
-        }
-
-        if (event_object == 'content_tab' &&
-            event_vertical == 'game' &&
-            extra_key == 'source'
-        ) {
-          feature.push('visit_game_content_tab_source: '.concat(extra_value));
+          feature.push('visit_game_content_tab_'.concat(extra_key).concat(': ').concat(extra_value));
         }
 
         if (event_object == 'content_tab' &&
@@ -806,27 +814,6 @@ var partner_list = ['bukalapak', 'flipkart',
             partner_list.includes(extra_value)
         ) {
           feature.push('visit_game_content_tab_partner: true');
-        }
-
-        if (event_object == 'content_tab' &&
-            event_vertical == 'game' &&
-            extra_key == 'category'
-        ) {
-          feature.push('game_content_tab_category: '.concat(extra_value));
-        }
-
-        if (event_object == 'content_tab' &&
-            event_vertical == 'game' &&
-            extra_key == 'subcategory_id'
-        ) {
-          feature.push('game_content_tab_subcategory_id: '.concat(extra_value));
-        }
-
-        if (event_object == 'content_tab' &&
-            event_vertical == 'game' &&
-            extra_key == 'component_id'
-        ) {
-          feature.push('game_content_tab_component_id: '.concat(extra_value));
         }
 
         if (event_vertical == 'game'
@@ -848,6 +835,163 @@ var partner_list = ['bukalapak', 'flipkart',
         var feature = [];
         var vertical = '';
         var app = '';
+
+        // content_hub
+        if (event_object == 'content_hub' &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('feature: visit_travel_content_hub');
+        }
+
+        // category
+        if (event_method == 'open' &&
+            event_object == 'category' &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('feature: open_category_travel');
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'category' &&
+            event_vertical == 'travel' &&
+            extra_key == 'category'
+        ) {
+          feature.push('tags: open_category_travel_'.concat(extra_value));
+        }
+
+        // content_tab
+        if (event_object == 'content_tab' &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('feature: visit_travel_content_tab');
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'travel' &&
+            ['feed', 'source', 'category', 'component_id', 'subcategory_id'].includes(extra_key)
+        ) {
+          feature.push('visit_travel_content_tab_'.concat(extra_key).concat(': ').concat(extra_value));
+        }
+
+        if (event_object == 'content_tab' &&
+            event_vertical == 'travel' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('visit_travel_content_tab_partner: true');
+        }
+
+        // vertical search
+        if (event_method == 'show' &&
+            event_object == 'search_bar' &&
+            event_value == 'content_home' &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('feature: travel_pre_search');
+        }
+
+        if (event_method == 'select_query' &&
+            event_object == 'search_bar' &&
+            event_value == 'content_home' &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('feature: travel_search');
+        }
+
+        if (event_method == 'select_query' &&
+            event_object == 'search_bar' &&
+            event_value == 'content_home' &&
+            event_vertical == 'travel' &&
+            extra_key == 'source'
+        ) {
+          feature.push('travel_search_source: '.concat(extra_value));
+        }
+
+        // content_home
+        if (event_method == 'click' &&
+            event_object == 'content_home' &&
+            event_value == 'item' &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('feature: travel_visit_home_item');
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'content_home' &&
+            event_value == 'item' &&
+            event_vertical == 'travel' &&
+            ['category', 'item_name', 'item_id'].includes(extra_key)
+        ) {
+          feature.push('travel_visit_home_item_'.concat(extra_key).concat(': ').concat(extra_value));
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'detail_page' &&
+            event_value == 'more' &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('feature: travel_open_home_more');
+        }
+
+        if (event_method == 'open' &&
+            event_object == 'detail_page' &&
+            event_value == 'more' &&
+            event_vertical == 'travel' &&
+            ['category', 'subcategory_id', 'item_name', 'item_id'].includes(extra_key)
+        ) {
+          feature.push('travel_open_home_more_'.concat(extra_key).concat(': ').concat(extra_value));
+        }
+
+        // content tab toolbar
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('feature: travel_toolbar');
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            ['share', 'reload', 'back', 'close'].includes(event_value) &&
+            event_vertical == 'travel'
+        ) {
+          feature.push('tags: travel_toolbar_'.concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_value == 'share' &&
+            event_vertical == 'travel' &&
+            ['feed', 'source', 'category', 'component_id', 'subcategory_id'].includes(extra_key)
+        ) {
+          feature.push('travel_toolbar_share_'.concat(extra_key).concat(': ').concat(extra_value));
+        }
+
+        if (event_method == 'click' &&
+            event_object == 'toolbar' &&
+            event_value == 'share' &&
+            event_vertical == 'travel' &&
+            extra_key == 'source' &&
+            partner_list.includes(extra_value)
+        ) {
+          feature.push('travel_toolbar_share_partner: true');
+        }
+
+        // settings
+        if (event_method == 'change' &&
+            event_object == 'setting' &&
+            event_value == 'detail_page'
+        ) {
+          feature.push('feature: change_travel_settings');
+        }
+
+        if (event_method == 'change' &&
+            event_object == 'setting' &&
+            event_value == 'detail_page' &&
+            extra_key == 'action'
+        ) {
+          feature.push('tags: change_travel_settings_'.concat(extra_value));
+        }
 
         if (event_vertical == 'travel'
         ) {

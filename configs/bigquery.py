@@ -16,7 +16,7 @@ MANGO_CORE = {
         "src": "moz-fx-data-shared-prod.telemetry.telemetry_core_parquet",
         "dest": "mango_core",
     },
-    "udf": ["map_channels", "map_markets", "match_target_markets"],
+    "udf": ["map_channels", "map_markets", "map_verticals", "match_target_countries", "match_verticals", "order_channels", "order_channel_levels", "order_markets", "order_target_countries", "order_verticals"],
     "query": "mango_core",
     "init_query": "init_mango_core",
     "cleanup_query": "cleanup_mango_core",
@@ -77,7 +77,7 @@ MANGO_CHANNEL_MAPPING = {
     "filetype": "jsonl",
     "params": {
         **BQ_PROJECT,
-        "src": "moz-taipei-bi/mango/staging-adjust-adjust_trackers/{start_date}.jsonl",
+        "src": "moz-taipei-bi/mango/staging-adjust-adjust_trackers/latest.jsonl",
         "dest": "mango_channel_mapping",
     },
 }
@@ -264,6 +264,22 @@ MANGO_FEATURE_ROI = {
     "query": "mango_feature_roi",
 }
 
+MANGO_CHANNEL_ROI = {
+    "type": "table",
+    "allow_field_addition": True,
+    "partition_field": "execution_date",
+    "append": True,
+    "params": {
+        **BQ_PROJECT,
+        "execution_date_field": "execution_date",
+        "src": "mango_user_rfe_28d",
+        "src2": "mango_cohort_retained_users",
+        "src3": "mango_active_user_count",
+        "dest": "mango_channel_roi",
+    },
+    "query": "mango_channel_roi",
+}
+
 GOOGLE_RPS = {
     "type": "gcs",
     "append": False,
@@ -296,6 +312,7 @@ MANGO_REVENUE_BUKALAPAK = {
     "append": True,
     "filetype": "jsonl",
     "backfill_days": [1, 2, 3, 4, 5, 6, 7],
+    # "skip_not_found": True,
     "params": {
         **BQ_PROJECT,
         "src": "moz-taipei-bi/mango/staging-revenue-bukalapak/{start_date}.jsonl",

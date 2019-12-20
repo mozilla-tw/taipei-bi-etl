@@ -14,7 +14,8 @@ SOURCES = {
         "cache_file": True,
         "date_format": "%Y-%m-%d",
         "file_format": "json",
-        "load": True
+        "load": True,
+        "write_latest": True,
     },
 }
 
