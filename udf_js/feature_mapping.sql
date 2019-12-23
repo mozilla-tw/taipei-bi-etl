@@ -980,14 +980,16 @@ var partner_list = ['bukalapak', 'flipkart',
         // settings
         if (event_method == 'change' &&
             event_object == 'setting' &&
-            event_value == 'detail_page'
+            ['detail_page', 'content_home'].includes(event_value) && 
+            event_vertical == 'travel' 
         ) {
           feature.push('feature: change_travel_settings');
         }
 
         if (event_method == 'change' &&
             event_object == 'setting' &&
-            event_value == 'detail_page' &&
+            ['detail_page', 'content_home'].includes(event_value) && 
+            event_vertical == 'travel' &&
             extra_key == 'action'
         ) {
           feature.push('tags: change_travel_settings_'.concat(extra_value));
